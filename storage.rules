@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Same reasoning as firestore.rules: attachment bytes are only ever read or
+// written by server code (Admin SDK, via src/lib/queries.ts), which bypasses
+// these rules. Deny all direct client access.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

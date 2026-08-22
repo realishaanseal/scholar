@@ -1,0 +1,231 @@
+"use client";
+
+import { useState } from "react";
+import { fetchJson } from "@/lib/fetchJson";
+
+type Candidate = {
+  externalId: string;
+  title: string;
+  details: string;
+  dueAt: string | null;
+  subject: string;
+  looksLikeAssignment: boolean;
+};
+
+const PLATFORMS = [
+  { id: "canvas", label: "Canvas", instructions: "Open Calendar → “Calendar Feed” in the right sidebar → copy the link." },
+  { id: "moodle", label: "Moodle", instructions: "Open Calendar → “Export calendar” → All events → “Get calendar URL”." },
+  { id: "blackboard", label: "Blackboard", instructions: "Open Calendar → “Get External Calendar Link” → copy the URL." },
+  { id: "classroom", label: "Google Classroom", instructions: "Classroom feeds into Google Calendar. In Calendar settings, open your Classroom calendar → “Secret address in iCal format”." },
+  { id: "teams", label: "Teams / Outlook", instructions: "Outlook → Calendar → Share → Publish a calendar → “Can view all details” → copy the ICS link." },
+];
+
+/**
+ * Import assignments from a learning-management system.
+ *
+ * Uses the LMS's own iCalendar feed rather than its REST API: no OAuth, no
+ * token to paste, works with every major platform, and the URL is per-student
+ * and read-only. Imported items are reviewed before anything is saved.
+ */
+export default function LmsImport({ onImported }: { onImported?: () => void }) {
+  const [platform, setPlatform] = useState(PLATFORMS[0]);
+  const [feedUrl, setFeedUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [skipped, setSkipped] = useState(0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState<number | null>(null);
+
+  async function preview() {
+    setLoading(true);
+    setError(null);
+    setDone(null);
+
+    const { ok, data, error } = await fetchJson<{
+      candidates: Candidate[]; total: number; skippedExisting: number;
+    }>("/api/lms/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedUrl }),
+    });
+
+    setLoading(false);
+
+    if (!ok || !data) {
+      setError(error ?? "Couldn't read that feed.");
+      return;
+    }
+
+    setCandidates(data.candidates);
+    setSkipped(data.skippedExisting ?? 0);
+    // Pre-select only what looks like actual coursework; class slots stay
+    // unticked so importing doesn't flood the list with timetable entries.
+    setSelected(new Set(data.candidates.filter((c) => c.looksLikeAssignment).map((c) => c.externalId)));
+  }
+
+  async function commit() {
+    if (!candidates) return;
+    const items = candidates
+      .filter((c) => selected.has(c.externalId))
+      .map((c) => ({
+        title: c.title.slice(0, 160),
+        details: c.details,
+        subject: c.subject,
+        dueAt: c.dueAt,
+        priority: "normal" as const,
+        estimateMins: null,
+      }));
+
+    if (!items.length) return;
+
+    setSaving(true);
+    const { ok, error } = await fetchJson("/api/homework/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, source: "import" }),
+    });
+    setSaving(false);
+
+    if (ok) {
+      setDone(items.length);
+      setCandidates(null);
+      setFeedUrl("");
+      onImported?.();
+    } else setError(error ?? "Couldn't save those.");
+  }
+
+  return (
+    <section className="card animate-riseIn p-6">
+      <h3 className="text-sm font-semibold text-white">Import from your school</h3>
+      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+        Scholar reads your LMS&apos;s calendar feed — the same link you&apos;d use to put coursework
+        in Google Calendar. No account linking, and it only ever reads.
+      </p>
+
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {PLATFORMS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPlatform(p)}
+            className={`rounded-lg px-3 py-1.5 text-[11.5px] font-medium transition-colors ${
+              platform.id === p.id
+                ? "bg-white/[0.10] text-white"
+                : "border border-white/[0.07] text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[11.5px] leading-relaxed text-slate-400">
+        {platform.instructions}
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          className="input flex-1 py-2.5 text-[13px]"
+          placeholder="https://…/feeds/calendars/user_xxx.ics"
+          value={feedUrl}
+          onChange={(e) => setFeedUrl(e.target.value)}
+          spellCheck={false}
+        />
+        <button
+          className="btn-primary shrink-0 px-4 py-2.5 text-xs"
+          onClick={preview}
+          disabled={loading || feedUrl.trim().length < 8}
+        >
+          {loading ? "Reading…" : "Preview"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="mt-3 rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">
+          {error}
+        </p>
+      )}
+
+      {done !== null && (
+        <p className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-2 text-xs text-emerald-300">
+          Imported {done} assignment{done === 1 ? "" : "s"}.
+        </p>
+      )}
+
+      {candidates && (
+        <div className="mt-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-[13px] font-medium text-white">
+              {candidates.length} found
+              <span className="ml-2 font-normal text-slate-500">{selected.size} selected</span>
+            </h4>
+            {skipped > 0 && (
+              <span className="text-[11px] text-slate-600">{skipped} already in Scholar</span>
+            )}
+          </div>
+
+          {candidates.length === 0 ? (
+            <p className="mt-3 rounded-lg border border-dashed border-white/[0.08] px-4 py-5 text-center text-xs text-slate-500">
+              Nothing new in that feed.
+            </p>
+          ) : (
+            <>
+              <div className="mt-3 max-h-[320px] space-y-1.5 overflow-y-auto pr-1">
+                {candidates.map((c) => {
+                  const on = selected.has(c.externalId);
+                  return (
+                    <button
+                      key={c.externalId}
+                      onClick={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          next.has(c.externalId) ? next.delete(c.externalId) : next.add(c.externalId);
+                          return next;
+                        })
+                      }
+                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${
+                        on ? "border-white/12 bg-white/[0.05]" : "border-white/[0.05] opacity-55"
+                      }`}
+                    >
+                      <span
+                        className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${
+                          on ? "border-vx-400 bg-vx-500/30" : "border-white/20"
+                        }`}
+                      >
+                        {on && (
+                          <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round">
+                            <path d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] text-slate-200">{c.title}</span>
+                        <span className="block text-[11px] text-slate-600">
+                          {c.subject}
+                          {c.dueAt && ` · ${new Date(c.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`}
+                          {!c.looksLikeAssignment && " · looks like a class"}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button className="btn-primary px-5 py-2.5" onClick={commit} disabled={saving || selected.size === 0}>
+                  {saving ? "Adding…" : `Add ${selected.size}`}
+                </button>
+                <button className="btn-ghost px-4 py-2.5 text-xs" onClick={() => setCandidates(null)}>
+                  Cancel
+                </button>
+                <p className="ml-auto text-[11px] text-slate-600">Nothing saves until you add it.</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}

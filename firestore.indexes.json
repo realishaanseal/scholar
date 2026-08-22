@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "attachments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "homeworkId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timetable",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dayOfWeek", "order": "ASCENDING" },
+        { "fieldPath": "startHour", "order": "ASCENDING" },
+        { "fieldPath": "startMin", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

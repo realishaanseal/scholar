@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// This app never talks to Firestore from the browser — every read and write
+// goes through a Next.js API route running on the server (App Hosting /
+// Cloud Run), using the Firebase Admin SDK, which authenticates with a
+// service account and bypasses these rules entirely. The actual access
+// control is the `session.user.id` check at the top of every API route in
+// src/app/api/**/route.ts (see src/lib/auth.ts).
+//
+// Because of that, the correct rule set for the client SDK is "nothing is
+// allowed" — there is no legitimate direct-from-browser access to protect.
+// If a future version adds client-side Firestore reads (e.g. for realtime
+// updates), scope those specifically to `users/{uid}/...` gated on
+// `request.auth.uid == uid`, rather than loosening this default.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,67 @@
+# Firebase App Hosting config — this app runs as a Next.js SSR backend on
+# Cloud Run under the hood. Values here become environment variables inside
+# that container.
+#
+# Secrets (AUTH_SECRET and any AI provider keys you want as a server-wide
+# fallback) are NOT written here in plain text — they're stored in Secret
+# Manager and referenced by name. The setup steps in SETUP.md walk through
+# creating each secret with `firebase apphosting:secrets:set`.
+
+runConfig:
+  # Free-tier-friendly: scales to zero when nobody's using it, and caps out
+  # at one instance so a traffic spike can't spin up paid capacity by
+  # accident. Raise maxInstances later if you outgrow this.
+  minInstances: 0
+  maxInstances: 1
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  # Required. Generate with `npx auth secret` and store it:
+  #   firebase apphosting:secrets:set auth-secret
+  - variable: AUTH_SECRET
+    secret: auth-secret
+    availability:
+      - RUNTIME
+
+  # Required. Your deployed App Hosting URL, e.g. https://your-backend--your-project.us-central1.hosted.app
+  # Fill this in after your first deploy gives you the URL, then redeploy.
+  - variable: AUTH_URL
+    value: "REPLACE_WITH_YOUR_APP_HOSTING_URL"
+    availability:
+      - RUNTIME
+
+  # Required. <project-id>.firebasestorage.app — shown on the Storage page in
+  # the Firebase console once you've enabled it.
+  - variable: FIREBASE_STORAGE_BUCKET
+    value: "REPLACE_WITH_YOUR_STORAGE_BUCKET"
+    availability:
+      - RUNTIME
+
+  # Everything below is optional — the app runs fine with none of it set,
+  # since each student pastes their own AI key in Settings → AI. Only set
+  # these if you want a server-wide fallback provider for anyone who hasn't
+  # configured their own key yet (uncommon for a personal/hackathon deploy).
+  #
+  # - variable: GEMINI_API_KEY
+  #   secret: gemini-api-key
+  #   availability:
+  #     - RUNTIME
+  # - variable: AI_PROVIDER
+  #   value: "gemini"
+  #   availability:
+  #     - RUNTIME
+
+  # Optional OAuth one-tap sign-in. Leave unset and the buttons simply don't
+  # appear (see src/lib/auth.config.ts). If you use these, store the client
+  # secrets the same way as AUTH_SECRET above.
+  #
+  # - variable: AUTH_GOOGLE_ID
+  #   value: "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID"
+  #   availability:
+  #     - RUNTIME
+  # - variable: AUTH_GOOGLE_SECRET
+  #   secret: auth-google-secret
+  #   availability:
+  #     - RUNTIME
