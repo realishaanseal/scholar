@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Logo from "@/components/Logo";
+import HomeIntroGate from "@/components/HomeIntroGate";
 
 const FEATURES = [
   {
@@ -26,6 +27,7 @@ export default async function Home() {
   if (session?.user) redirect("/dashboard");
 
   return (
+    <HomeIntroGate>
     <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col items-center justify-center px-6 py-20 text-center">
       <div className="animate-fadeIn">
         <span className="chip border border-vx-500/25 bg-vx-500/[0.10] text-vx-200">
@@ -83,5 +85,6 @@ export default async function Home() {
 
       <p className="mt-16 text-xs text-slate-600">© Varaxis · Internal development build</p>
     </main>
+    </HomeIntroGate>
   );
 }
