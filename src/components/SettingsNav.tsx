@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AISettingsPanel from "./AISettingsPanel";
 import StudySettingsPanel from "./StudySettingsPanel";
 import AnalyticsPanel from "./AnalyticsPanel";
@@ -74,6 +74,23 @@ export default function SettingsNav({
   enabledOAuthProviders: { google: boolean; github: boolean; facebook: boolean };
 }) {
   const [section, setSection] = useState<SectionId>("ai");
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Skips the initial render — only a deliberate section change should scroll.
+  const mounted = useRef(false);
+
+  // Below `lg` the nav sits stacked above the panel, so choosing a section
+  // changes content that's entirely below the fold: the row highlights and
+  // nothing else appears to happen. Bring the panel up so the tap has a
+  // visible result. At `lg` and above the two are side by side and already
+  // both in view, so scrolling there would be a pointless jump.
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [section]);
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
@@ -113,7 +130,7 @@ export default function SettingsNav({
         })}
       </nav>
 
-      <div className="min-w-0">
+      <div ref={panelRef} className="min-w-0 scroll-mt-24">
         {section === "ai" && <AISettingsPanel />}
         {section === "study" && <StudySettingsPanel />}
         {section === "insights" && <AnalyticsPanel />}

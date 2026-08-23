@@ -41,7 +41,11 @@ export default function AISetupBanner() {
           </svg>
         </span>
 
-        <div className="min-w-0 flex-1">
+        {/* min-w-[14rem], not min-w-0: with flex-wrap, a zero minimum means the
+            column never wraps to its own row — it just shrinks to a sliver and
+            the copy breaks one word per line. Giving it a real minimum makes
+            the actions wrap below instead once space runs out. */}
+        <div className="min-w-[14rem] flex-1">
           <h2 className="text-sm font-semibold text-white">The AI isn&apos;t connected yet</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
             Scholar is running on its built-in offline parser, which tidies spacing and catches

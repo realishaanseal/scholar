@@ -242,7 +242,7 @@ export default function Dashboard({ userName }: { userName: string }) {
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-all duration-200 ${
+                  className={`tap-tall rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-all duration-200 ${
                     filter === f
                       ? "text-white shadow-glow"
                       : "text-slate-400 hover:text-slate-200"

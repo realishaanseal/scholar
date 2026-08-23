@@ -20,6 +20,9 @@ import Image from "next/image";
  * delays rather than a chain of JS timers — if the main thread hitches
  * mid-sequence the whole thing stays in sync instead of drifting apart.
  * React only flips the three phase classes that gate each act.
+ *
+ * There is deliberately no skip control, and clicks and key presses are
+ * ignored: the sequence always plays through to the reveal.
  */
 
 const WORDMARK = "Varaxis Scholar";
@@ -54,8 +57,7 @@ const T_UNMOUNT = T_EXIT + 950; // must match the exit animation duration in CSS
 export default function IntroCinematic({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<"mark" | "word" | "tag">("mark");
   const [exiting, setExiting] = useState(false);
-  // Guards against a double-finish (e.g. a click landing on the same tick the
-  // auto-timer fires), which would otherwise queue two unmount callbacks.
+  // Belt and braces against a double-finish queueing two unmount callbacks.
   const finishing = useRef(false);
 
   useEffect(() => {
@@ -65,15 +67,6 @@ export default function IntroCinematic({ onDone }: { onDone: () => void }) {
       setTimeout(() => finish(), T_EXIT),
     ];
     return () => timers.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Enter" || e.key === "Escape" || e.key === " ") finish();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -91,7 +84,6 @@ export default function IntroCinematic({ onDone }: { onDone: () => void }) {
     <div
       className={`vx-intro-stage ${exiting ? "vx-intro-exit" : ""}`}
       role="presentation"
-      onClick={finish}
     >
       <div className="vx-intro-bloom" aria-hidden />
       <div className="vx-intro-rays" aria-hidden />
@@ -156,17 +148,6 @@ export default function IntroCinematic({ onDone }: { onDone: () => void }) {
 
       <div className="vx-intro-flash" aria-hidden />
 
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); finish(); }}
-        className="vx-intro-skip"
-        aria-label="Skip intro"
-      >
-        Skip
-        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 5l6 7-6 7M13 5l6 7-6 7" />
-        </svg>
-      </button>
     </div>
   );
 }

@@ -72,7 +72,7 @@ export default async function Home() {
     <HomeIntroGate>
       <div className="flex min-h-screen flex-col">
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <header className="animate-fadeIn mx-auto flex w-full max-w-[1180px] items-center justify-between px-6 py-6">
+        <header className="animate-fadeIn mx-auto flex w-full max-w-[1280px] items-center justify-between px-6 py-6">
           <div className="flex items-center gap-2.5">
             <Logo size={30} />
             {/* The full product name appears exactly once on the page, here —
@@ -96,20 +96,24 @@ export default async function Home() {
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-[1180px] flex-1 px-6">
-          {/* ── Hero ─────────────────────────────────────────────────── */}
-          <section className="mx-auto max-w-[760px] pt-16 text-center sm:pt-24">
+        <main className="mx-auto w-full max-w-[1280px] flex-1 px-6">
+          {/* ── Hero + product shot ──────────────────────────────────────
+              Side by side from `lg` up, so a laptop gets content across the
+              full width instead of a narrow centred column with empty
+              gutters. Stacks back to a centred layout on tablet and phone,
+              where a two-column split would squeeze both halves. */}
+          <div className="grid items-center gap-12 pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:pt-16">
+          <section className="text-center lg:text-left">
             <h1
               className="animate-riseIn text-[2.6rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-6xl"
               style={{ ["--i" as any]: 0 }}
             >
-              Homework, sorted
-              <br className="hidden sm:block" />{" "}
+              Homework, sorted{" "}
               <span className="gradient-text">before it&rsquo;s urgent</span>
             </h1>
 
             <p
-              className="animate-riseIn stagger mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-slate-400"
+              className="animate-riseIn stagger mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-slate-400 lg:mx-0"
               style={{ ["--i" as any]: 2 }}
             >
               Say it or type it, however messily. Scholar rewrites it into a clean
@@ -118,7 +122,7 @@ export default async function Home() {
             </p>
 
             <div
-              className="animate-riseIn stagger mt-9 flex flex-wrap items-center justify-center gap-3"
+              className="animate-riseIn stagger mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
               style={{ ["--i" as any]: 4 }}
             >
               <Link href="/signup" className="btn-primary px-6 py-3 text-[15px]">
@@ -138,7 +142,7 @@ export default async function Home() {
 
           {/* ── Product preview ──────────────────────────────────────── */}
           <section
-            className="animate-riseIn stagger relative mx-auto mt-16 max-w-[840px] sm:mt-20"
+            className="animate-riseIn stagger relative mx-auto w-full max-w-[840px] lg:mt-0 lg:max-w-none"
             style={{ ["--i" as any]: 6 }}
           >
             {/* Glow pooled under the panel so it reads as lit rather than pasted on. */}
@@ -220,6 +224,7 @@ export default async function Home() {
               </div>
             </div>
           </section>
+          </div>
 
           {/* ── Features ─────────────────────────────────────────────── */}
           <section className="mx-auto mt-24 max-w-[980px] border-t border-white/[0.06] pt-14 sm:mt-32">
@@ -249,12 +254,12 @@ export default async function Home() {
         </main>
 
         {/* ── Footer ───────────────────────────────────────────────────── */}
-        <footer className="mx-auto mt-24 w-full max-w-[1180px] px-6 pb-10">
+        <footer className="mx-auto mt-24 w-full max-w-[1280px] px-6 pb-10">
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.06] pt-7">
             <span className="text-xs text-slate-600">© 2026 Varaxis</span>
             <Link
               href="/privacy"
-              className="text-xs text-slate-600 transition-colors hover:text-slate-400"
+              className="inline-block py-2 text-xs text-slate-600 transition-colors hover:text-slate-400"
             >
               Privacy
             </Link>

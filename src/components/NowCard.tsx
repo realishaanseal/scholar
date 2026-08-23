@@ -171,7 +171,7 @@ function TimeBudget({
         <button
           key={m}
           onClick={() => onSet(minutes === m ? null : m)}
-          className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+          className={`tap-44 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
             minutes === m
               ? "bg-white/[0.12] text-white"
               : "border border-white/[0.07] text-slate-500 hover:text-slate-300"

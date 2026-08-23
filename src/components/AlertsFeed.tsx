@@ -84,7 +84,7 @@ export default function AlertsFeed({ onAction }: { onAction?: (signal: RiskSigna
                 {s.action && (
                   <button
                     onClick={() => onAction?.(s)}
-                    className="mt-2.5 text-[11.5px] font-medium transition-colors"
+                    className="tap-tall mt-2.5 text-[11.5px] font-medium transition-colors"
                     style={{ color: tone.accent }}
                   >
                     {s.action} →
@@ -94,7 +94,7 @@ export default function AlertsFeed({ onAction }: { onAction?: (signal: RiskSigna
 
               <button
                 onClick={() => dismiss(s.key)}
-                className="shrink-0 rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-white/[0.06] hover:text-slate-300"
+                className="tap-44 shrink-0 rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-white/[0.06] hover:text-slate-300"
                 aria-label="Dismiss"
                 title="Dismiss"
               >

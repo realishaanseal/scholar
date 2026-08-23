@@ -163,7 +163,7 @@ export default function HomeworkItem({
         <button
           onClick={() => onUpdate(hw.id, { status: done ? "todo" : "done" })}
           aria-label={done ? "Mark as not done" : "Mark as done"}
-          className={`mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-lg border
+          className={`tap-44 mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-lg border
                       transition-all duration-200 ease-spring hover:scale-110 active:scale-95 ${
             done
               ? "border-emerald-500/60 bg-emerald-500/25 text-emerald-300"
@@ -270,7 +270,7 @@ export default function HomeworkItem({
         {!done && onFocus && (
           <button
             onClick={onFocus}
-            className="shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
+            className="tap-44 shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
                        hover:bg-white/[0.07] hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
             aria-label="Start focus session"
             title="Start focus session"
@@ -283,7 +283,7 @@ export default function HomeworkItem({
 
         <button
           onClick={() => setEditing(true)}
-          className="shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
+          className="tap-44 shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
                      hover:bg-white/[0.07] hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
           aria-label="Edit"
         >

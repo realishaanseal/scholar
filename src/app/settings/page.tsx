@@ -14,23 +14,30 @@ export default async function SettingsPage() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-985/70 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-6 py-3.5 xl:px-10">
-          <Link href="/dashboard" className="flex items-center gap-3">
+        {/* On a phone all three blocks at full width overflow the bar and each
+            one wraps onto two or three lines. The brand is kept on one line,
+            the eyebrow is dropped, and the back label shortens — so the row
+            stays a single tidy line down to the narrowest phones. */}
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 xl:px-10">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <Logo size={34} />
             <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-tight text-white">
+              <div className="whitespace-nowrap text-sm font-semibold tracking-tight text-white">
                 Varaxis <span className="text-vx-300">Scholar</span>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Settings</div>
+              <div className="hidden text-[10px] uppercase tracking-[0.16em] text-slate-500 sm:block">
+                Settings
+              </div>
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="btn-ghost px-3.5 py-2 text-xs">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <Link href="/dashboard" className="btn-ghost px-3 py-2 text-xs sm:px-3.5">
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 12H5M11 18l-6-6 6-6" />
               </svg>
-              Back to homework
+              <span className="hidden sm:inline">Back to homework</span>
+              <span className="sm:hidden">Back</span>
             </Link>
             <SignOutButton />
           </div>

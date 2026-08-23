@@ -141,7 +141,7 @@ export default function PrivacyPage() {
       </div>
 
       <p className="mt-8 text-center text-xs text-slate-600">
-        <Link href="/" className="hover:text-slate-400">
+        <Link href="/" className="inline-block py-2 hover:text-slate-400">
           ← Back to Varaxis Scholar
         </Link>
       </p>

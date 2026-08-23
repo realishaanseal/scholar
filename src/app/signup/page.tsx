@@ -17,7 +17,7 @@ export default async function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="text-vx-400 hover:text-vx-200">
+          <Link href="/login" className="inline-block py-2 text-vx-400 hover:text-vx-200">
             Sign in
           </Link>
         </>
