@@ -54,58 +54,51 @@ export const SIGNAL_LABELS: Record<SignalKind, { label: string; hint: string }> 
   },
 };
 
-function academicProfileDoc(userId: string) {
-  return db.collection("users").doc(userId).collection("settings").doc("academicProfile");
-}
-function dismissedSignalsCol(userId: string) {
-  return db.collection("users").doc(userId).collection("dismissedSignals");
-}
-
 export async function getNotifyPrefs(userId: string): Promise<NotifyPrefs> {
-  const snap = await academicProfileDoc(userId).get();
-  const stored = snap.exists ? (snap.data() as { notifyPrefs?: Partial<NotifyPrefs> }).notifyPrefs : undefined;
-  if (!stored) return { ...DEFAULT_NOTIFY_PREFS };
+  const row = (await db
+    .prepare(`SELECT notifyPrefs FROM academic_profile WHERE userId = ?`)
+    .get(userId)) as { notifyPrefs: string | null } | undefined;
 
-  // Merge over defaults so a signal kind added in a later version is enabled
-  // per its default rather than silently missing from an older stored blob.
-  return { ...DEFAULT_NOTIFY_PREFS, ...stored };
+  if (!row?.notifyPrefs) return { ...DEFAULT_NOTIFY_PREFS };
+
+  try {
+    const stored = JSON.parse(row.notifyPrefs);
+    // Merge over defaults so a signal kind added in a later version is enabled
+    // per its default rather than silently missing from an older stored blob.
+    return { ...DEFAULT_NOTIFY_PREFS, ...stored };
+  } catch {
+    return { ...DEFAULT_NOTIFY_PREFS };
+  }
 }
 
 export async function setNotifyPrefs(userId: string, patch: Partial<NotifyPrefs>): Promise<NotifyPrefs> {
   const next = { ...(await getNotifyPrefs(userId)), ...patch };
 
-  await academicProfileDoc(userId).set({ notifyPrefs: next, updatedAt: nowISO() }, { merge: true });
+  await db.prepare(
+    `INSERT INTO academic_profile (userId, notifyPrefs, updatedAt)
+     VALUES (?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET notifyPrefs = excluded.notifyPrefs, updatedAt = excluded.updatedAt`
+  ).run(userId, JSON.stringify(next), nowISO());
 
   return next;
 }
 
-/**
- * Signal keys are mostly `kind:id` pairs of UUIDs/dates, but a couple (e.g.
- * `underestimate:${subject}`) embed a free-text subject name that could
- * contain `/` — which Firestore doc ids can't. Encode so any key is safe to
- * use directly as a doc id, and decode on the way back out.
- */
-function encodeKey(signalKey: string): string {
-  return encodeURIComponent(signalKey);
-}
-
 export async function dismissedKeys(userId: string): Promise<Set<string>> {
-  const snap = await dismissedSignalsCol(userId).get();
-  return new Set(snap.docs.map((d) => decodeURIComponent(d.id)));
+  const rows = (await db
+    .prepare(`SELECT signalKey FROM dismissed_signals WHERE userId = ?`)
+    .all(userId)) as Array<{ signalKey: string }>;
+  return new Set(rows.map((r) => r.signalKey));
 }
 
 export async function dismissSignal(userId: string, signalKey: string): Promise<void> {
-  await dismissedSignalsCol(userId).doc(encodeKey(signalKey)).set({ dismissedAt: nowISO() }, { merge: true });
+  await db.prepare(
+    `INSERT INTO dismissed_signals (userId, signalKey, dismissedAt) VALUES (?, ?, ?)
+     ON CONFLICT(userId, signalKey) DO NOTHING`
+  ).run(userId, signalKey, nowISO());
 }
 
 export async function clearDismissals(userId: string): Promise<number> {
-  const snap = await dismissedSignalsCol(userId).get();
-  if (snap.empty) return 0;
-
-  const batch = db.batch();
-  for (const d of snap.docs) batch.delete(d.ref);
-  await batch.commit();
-  return snap.size;
+  return (await db.prepare(`DELETE FROM dismissed_signals WHERE userId = ?`).run(userId)).changes;
 }
 
 /** Apply preferences and dismissals to freshly detected signals. */

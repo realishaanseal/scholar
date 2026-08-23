@@ -4,21 +4,10 @@ import { DEFAULT_AVAILABILITY, type AvailabilityProfile, type SubjectPace } from
 /**
  * Academic memory: what Scholar has learned about how this student actually works.
  *
- * All aggregates are derived from `taskEvents` at read time. Nothing is cached
- * in a stats doc on purpose — deleting an event has to immediately change what
+ * All aggregates are derived from `task_events` at read time. Nothing is cached
+ * in a stats table on purpose — deleting an event has to immediately change what
  * Scholar believes, otherwise "reset my memory" is a lie.
- *
- * Firestore has no server-side GROUP BY, so `paceBySubject` fetches every event
- * for the user and aggregates in JS. That's fine at the scale one student's
- * completed-task history reaches — this is not a query over other people's data.
  */
-
-function taskEventsCol(userId: string) {
-  return db.collection("users").doc(userId).collection("taskEvents");
-}
-function academicProfileDoc(userId: string) {
-  return db.collection("users").doc(userId).collection("settings").doc("academicProfile");
-}
 
 export type TaskEventInput = {
   userId: string;
@@ -39,25 +28,24 @@ export async function recordTaskEvent(input: TaskEventInput): Promise<void> {
         : 0
       : 1;
 
-  await taskEventsCol(input.userId).doc(newId()).set({
-    homeworkId: input.homeworkId,
-    subjectName: input.subjectName,
-    estimateMins: input.estimateMins,
-    actualMins: input.actualMins,
-    dueAt: input.dueAt,
-    completedAt: input.completedAt,
-    onTime,
-    difficulty: input.difficulty ?? null,
-    createdAt: nowISO(),
-  });
+  await db.prepare(
+    `INSERT INTO task_events
+       (id, userId, homeworkId, subjectName, estimateMins, actualMins, dueAt, completedAt, onTime, difficulty, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    newId(), input.userId, input.homeworkId, input.subjectName,
+    input.estimateMins, input.actualMins, input.dueAt, input.completedAt,
+    onTime, input.difficulty ?? null, nowISO()
+  );
 }
 
-type TaskEventDoc = {
+type PaceRow = {
   subjectName: string;
-  estimateMins: number | null;
-  actualMins: number | null;
-  onTime: number;
-  completedAt: string;
+  n: number;
+  avgActual: number | null;
+  sumEstimate: number | null;
+  sumActual: number | null;
+  onTimeCount: number;
 };
 
 /**
@@ -68,42 +56,36 @@ type TaskEventDoc = {
  * and including it would quietly bias the factor toward 1.
  */
 export async function paceBySubject(userId: string): Promise<Record<string, SubjectPace>> {
-  const snap = await taskEventsCol(userId).get();
-  const rows = snap.docs.map((d) => d.data() as TaskEventDoc);
-
-  const bySubject = new Map<string, TaskEventDoc[]>();
-  for (const r of rows) {
-    const list = bySubject.get(r.subjectName) ?? [];
-    list.push(r);
-    bySubject.set(r.subjectName, list);
-  }
+  // Postgres returns COUNT/SUM/AVG as strings by default (avoids precision
+  // loss on bigints); casting to int/float8 here keeps these genuinely numeric
+  // the way better-sqlite3's driver always returned them.
+  const rows = (await db
+    .prepare(
+      `SELECT subjectName,
+              COUNT(*)::int                                              AS n,
+              AVG(actualMins)::float8                                    AS avgActual,
+              SUM(CASE WHEN estimateMins > 0 AND actualMins > 0 THEN estimateMins ELSE 0 END)::int AS sumEstimate,
+              SUM(CASE WHEN estimateMins > 0 AND actualMins > 0 THEN actualMins   ELSE 0 END)::int AS sumActual,
+              SUM(onTime)::int                                           AS onTimeCount
+         FROM task_events
+        WHERE userId = ?
+        GROUP BY subjectName`
+    )
+    .all(userId)) as PaceRow[];
 
   const out: Record<string, SubjectPace> = {};
-  for (const [subjectName, list] of bySubject) {
-    const n = list.length;
-    const avgActual =
-      list.reduce((sum, r) => sum + (r.actualMins ?? 0), 0) / (n || 1);
-
-    let sumEstimate = 0;
-    let sumActual = 0;
-    let onTimeCount = 0;
-    for (const r of list) {
-      if ((r.estimateMins ?? 0) > 0 && (r.actualMins ?? 0) > 0) {
-        sumEstimate += r.estimateMins!;
-        sumActual += r.actualMins!;
-      }
-      onTimeCount += r.onTime;
-    }
-
+  for (const r of rows) {
+    const sumEstimate = r.sumEstimate ?? 0;
+    const sumActual = r.sumActual ?? 0;
     const calibration = sumEstimate > 0 && sumActual > 0 ? sumActual / sumEstimate : 1;
 
-    out[subjectName] = {
-      subject: subjectName,
+    out[r.subjectName] = {
+      subject: r.subjectName,
       // Clamp: one disastrous session shouldn't triple every future estimate.
       calibration: Math.min(3, Math.max(0.5, calibration)),
-      averageActualMins: Math.round(avgActual),
-      onTimeRate: n > 0 ? onTimeCount / n : 1,
-      sampleSize: n,
+      averageActualMins: Math.round(r.avgActual ?? 0),
+      onTimeRate: r.n > 0 ? r.onTimeCount / r.n : 1,
+      sampleSize: r.n,
     };
   }
   return out;
@@ -136,40 +118,24 @@ export async function memorySnapshot(userId: string): Promise<MemorySnapshot> {
 
 /** Wipe learned history. The student must be able to actually do this. */
 export async function resetMemory(userId: string): Promise<number> {
-  const snap = await taskEventsCol(userId).get();
-  if (snap.empty) return 0;
-
-  const batch = db.batch();
-  for (const d of snap.docs) batch.delete(d.ref);
-  await batch.commit();
-  return snap.size;
+  return (await db.prepare(`DELETE FROM task_events WHERE userId = ?`).run(userId)).changes;
 }
 
 export async function deleteMemoryEvent(userId: string, eventId: string): Promise<boolean> {
-  const ref = taskEventsCol(userId).doc(eventId);
-  const snap = await ref.get();
-  if (!snap.exists) return false;
-  await ref.delete();
-  return true;
+  return (await db.prepare(`DELETE FROM task_events WHERE userId = ? AND id = ?`).run(userId, eventId)).changes > 0;
 }
 
 export async function getAvailability(userId: string): Promise<AvailabilityProfile> {
-  const snap = await academicProfileDoc(userId).get();
-  if (!snap.exists) return DEFAULT_AVAILABILITY;
-
-  const data = snap.data() as Partial<AvailabilityProfile>;
-  return {
-    weekdayMins: data.weekdayMins ?? DEFAULT_AVAILABILITY.weekdayMins,
-    weekendMins: data.weekendMins ?? DEFAULT_AVAILABILITY.weekendMins,
-    studyStartHour: data.studyStartHour ?? DEFAULT_AVAILABILITY.studyStartHour,
-    studyEndHour: data.studyEndHour ?? DEFAULT_AVAILABILITY.studyEndHour,
-  };
+  const row = (await db
+    .prepare(
+      `SELECT weekdayMins, weekendMins, studyStartHour, studyEndHour
+         FROM academic_profile WHERE userId = ?`
+    )
+    .get(userId)) as AvailabilityProfile | undefined;
+  return row ?? DEFAULT_AVAILABILITY;
 }
 
-export async function setAvailability(
-  userId: string,
-  patch: Partial<AvailabilityProfile>
-): Promise<AvailabilityProfile> {
+export async function setAvailability(userId: string, patch: Partial<AvailabilityProfile>): Promise<AvailabilityProfile> {
   const current = await getAvailability(userId);
   const next: AvailabilityProfile = { ...current, ...patch };
 
@@ -181,16 +147,16 @@ export async function setAvailability(
   next.studyEndHour = clamp(next.studyEndHour, 1, 24);
   if (next.studyEndHour <= next.studyStartHour) next.studyEndHour = Math.min(24, next.studyStartHour + 1);
 
-  await academicProfileDoc(userId).set(
-    {
-      weekdayMins: next.weekdayMins,
-      weekendMins: next.weekendMins,
-      studyStartHour: next.studyStartHour,
-      studyEndHour: next.studyEndHour,
-      updatedAt: nowISO(),
-    },
-    { merge: true }
-  );
+  await db.prepare(
+    `INSERT INTO academic_profile (userId, weekdayMins, weekendMins, studyStartHour, studyEndHour, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       weekdayMins    = excluded.weekdayMins,
+       weekendMins    = excluded.weekendMins,
+       studyStartHour = excluded.studyStartHour,
+       studyEndHour   = excluded.studyEndHour,
+       updatedAt      = excluded.updatedAt`
+  ).run(userId, next.weekdayMins, next.weekendMins, next.studyStartHour, next.studyEndHour, nowISO());
 
   return next;
 }

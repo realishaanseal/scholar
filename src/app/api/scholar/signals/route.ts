@@ -22,7 +22,10 @@ export const GET = jsonRoute(async (req: Request) => {
     getNotifyPrefs(session.user.id),
   ]);
 
-  return NextResponse.json({ signals: snapshot.signals, prefs });
+  return NextResponse.json({
+    signals: snapshot.signals,
+    prefs,
+  });
 });
 
 const PatchBody = z.object({

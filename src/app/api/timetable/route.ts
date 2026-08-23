@@ -6,22 +6,14 @@ import { db, newId } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-function timetableCol(userId: string) {
-  return db.collection("users").doc(userId).collection("timetable");
-}
+const SELECT = `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location
+                  FROM timetable WHERE userId = ? ORDER BY dayOfWeek, startHour, startMin`;
 
 export const GET = jsonRoute(async () => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const snap = await timetableCol(session.user.id)
-    .orderBy("dayOfWeek", "asc")
-    .orderBy("startHour", "asc")
-    .orderBy("startMin", "asc")
-    .get();
-
-  const classes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return NextResponse.json({ classes });
+  return NextResponse.json({ classes: await db.prepare(SELECT).all(session.user.id) });
 });
 
 const Body = z.object({
@@ -51,16 +43,13 @@ export const POST = jsonRoute(async (req: Request) => {
   }
 
   const id = newId();
-  await timetableCol(session.user.id).doc(id).set({
-    title: b.title,
-    subjectName: b.subjectName ?? null,
-    dayOfWeek: b.dayOfWeek,
-    startHour: b.startHour,
-    startMin: b.startMin,
-    endHour: b.endHour,
-    endMin: b.endMin,
-    location: b.location ?? null,
-  });
+  await db.prepare(
+    `INSERT INTO timetable (id, userId, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id, session.user.id, b.title, b.subjectName ?? null, b.dayOfWeek,
+    b.startHour, b.startMin, b.endHour, b.endMin, b.location ?? null
+  );
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 });
@@ -72,10 +61,6 @@ export const DELETE = jsonRoute(async (req: Request) => {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
 
-  const ref = timetableCol(session.user.id).doc(id);
-  const snap = await ref.get();
-  if (!snap.exists) return NextResponse.json({ ok: false });
-
-  await ref.delete();
-  return NextResponse.json({ ok: true });
+  const res = await db.prepare(`DELETE FROM timetable WHERE userId = ? AND id = ?`).run(session.user.id, id);
+  return NextResponse.json({ ok: res.changes > 0 });
 });

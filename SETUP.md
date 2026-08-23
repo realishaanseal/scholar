@@ -82,12 +82,11 @@ and only you (and users you add under **App roles**) can sign in — that's fine
 
 ## When you deploy later
 
-Change two things (see DEPLOY.md for the full deployment steps):
+Change two things:
 
-1. `AUTH_URL` in `apphosting.yaml` → your App Hosting URL, e.g.
-   `https://your-backend--your-project.us-central1.hosted.app`
+1. `AUTH_URL` in the environment → your real origin, e.g. `https://scholar.varaxis.com`
 2. In each provider's console, add the production callback URL alongside the localhost one:
-   `https://your-backend--your-project.us-central1.hosted.app/api/auth/callback/<provider>`
+   `https://scholar.varaxis.com/api/auth/callback/<provider>`
 
 Keep the localhost entries so local development keeps working.
 
@@ -108,4 +107,4 @@ non-empty in `.env.local`. Check for typos in the variable names and restart the
 
 **Signed in with Google, but it made a second account** — you previously signed up with the
 same email and a password. The app links them automatically by email; if you see a duplicate,
-delete the extra `users/{uid}` document (and its subcollections) in the Firestore console.
+delete `data/scholar.db` and start clean (dev only).

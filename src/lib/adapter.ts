@@ -1,183 +1,195 @@
 import type { Adapter, AdapterAccount, AdapterSession, AdapterUser } from "next-auth/adapters";
-import { FieldValue } from "firebase-admin/firestore";
 import { db, newId } from "./db";
 
 /**
- * Auth.js adapter over Firestore. Handles OAuth account linking and (if you
- * ever switch off `session: { strategy: "jwt" }`) session storage.
- *
- * Top-level collections, mirroring the original SQLite tables:
- *   users/{uid}                          — same doc users/{uid} that queries.ts's
- *                                           findUserByEmail/createUserWithPassword use
- *   accounts/{provider}_{providerAccountId}
- *   sessions/{sessionToken}
- *   verificationTokens/{token}
+ * Auth.js adapter over Postgres. Handles OAuth account linking and (if you
+ * switch to database sessions) session storage.
  */
 
-type UserDoc = {
+type UserRow = {
+  id: string;
   name: string | null;
   email: string | null;
   emailVerified: string | null;
   image: string | null;
 };
 
-function toUser(id: string, data: UserDoc | undefined): AdapterUser | null {
-  if (!data) return null;
+function toUser(row: UserRow | undefined): AdapterUser | null {
+  if (!row) return null;
   return {
-    id,
-    name: data.name,
-    email: data.email as string,
-    emailVerified: data.emailVerified ? new Date(data.emailVerified) : null,
-    image: data.image,
+    id: row.id,
+    name: row.name,
+    email: row.email as string,
+    emailVerified: row.emailVerified ? new Date(row.emailVerified) : null,
+    image: row.image,
   };
 }
 
-function accountDocId(provider: string, providerAccountId: string): string {
-  // Both components are opaque vendor-supplied strings that may contain `/` —
-  // encode them so the composite id can never collide with a Firestore path
-  // separator or produce two different pairs mapping to the same doc id.
-  return `${encodeURIComponent(provider)}_${encodeURIComponent(providerAccountId)}`;
-}
+const USER_COLS = "id, name, email, emailVerified, image";
 
-export function FirestoreAdapter(): Adapter {
-  const users = db.collection("users");
-  const accounts = db.collection("accounts");
-  const sessions = db.collection("sessions");
-  const verificationTokens = db.collection("verificationTokens");
-
+export function PostgresAdapter(): Adapter {
   return {
     async createUser(user) {
       const id = (user as any).id || newId();
-      await users.doc(id).set({
-        name: user.name ?? null,
-        email: user.email?.toLowerCase() ?? null,
-        emailVerified: user.emailVerified ? user.emailVerified.toISOString() : null,
-        image: user.image ?? null,
-        passwordHash: null,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+      await db.prepare(
+        `INSERT INTO users (id, name, email, emailVerified, image) VALUES (?, ?, ?, ?, ?)`
+      ).run(
+        id,
+        user.name ?? null,
+        user.email?.toLowerCase() ?? null,
+        user.emailVerified ? user.emailVerified.toISOString() : null,
+        user.image ?? null
+      );
       return { ...user, id } as AdapterUser;
     },
 
     async getUser(id) {
-      const snap = await users.doc(id).get();
-      return toUser(id, snap.exists ? (snap.data() as UserDoc) : undefined);
+      return toUser((await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id)) as UserRow);
     },
 
     async getUserByEmail(email) {
-      const snap = await users.where("email", "==", email.toLowerCase()).limit(1).get();
-      if (snap.empty) return null;
-      const d = snap.docs[0]!;
-      return toUser(d.id, d.data() as UserDoc);
+      return toUser(
+        (await db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email.toLowerCase())) as UserRow
+      );
     },
 
     async getUserByAccount({ provider, providerAccountId }) {
-      const accSnap = await accounts.doc(accountDocId(provider, providerAccountId)).get();
-      if (!accSnap.exists) return null;
-      const { userId } = accSnap.data() as { userId: string };
-
-      const userSnap = await users.doc(userId).get();
-      return toUser(userId, userSnap.exists ? (userSnap.data() as UserDoc) : undefined);
+      const row = (await db
+        .prepare(
+          `SELECT u.id, u.name, u.email, u.emailVerified, u.image
+             FROM users u
+             JOIN accounts a ON a.userId = u.id
+            WHERE a.provider = ? AND a.providerAccountId = ?`
+        )
+        .get(provider, providerAccountId)) as UserRow | undefined;
+      return toUser(row);
     },
 
     async updateUser(user) {
-      const ref = users.doc(user.id!);
-      const existingSnap = await ref.get();
-      const existing = (existingSnap.data() as UserDoc | undefined) ?? { name: null, email: null, emailVerified: null, image: null };
+      const existing = (await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(user.id)) as UserRow;
+      if (!existing) throw new Error("User not found");
 
-      const next: UserDoc = {
-        name: user.name ?? existing.name,
-        email: (user.email ?? existing.email)?.toLowerCase() ?? null,
-        emailVerified: user.emailVerified ? user.emailVerified.toISOString() : existing.emailVerified,
-        image: user.image ?? existing.image,
-      };
-      await ref.set(next, { merge: true });
+      await db.prepare(
+        `UPDATE users SET name = ?, email = ?, emailVerified = ?, image = ? WHERE id = ?`
+      ).run(
+        user.name ?? existing.name,
+        (user.email ?? existing.email)?.toLowerCase() ?? null,
+        user.emailVerified ? user.emailVerified.toISOString() : existing.emailVerified,
+        user.image ?? existing.image,
+        user.id
+      );
 
-      return toUser(user.id!, next)!;
+      return toUser((await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(user.id)) as UserRow)!;
     },
 
     async deleteUser(id) {
-      await users.doc(id).delete();
+      await db.prepare(`DELETE FROM users WHERE id = ?`).run(id);
     },
 
     async linkAccount(account) {
-      await accounts.doc(accountDocId(account.provider, account.providerAccountId)).set({
-        userId: account.userId,
-        type: account.type,
-        provider: account.provider,
-        providerAccountId: account.providerAccountId,
-        refresh_token: account.refresh_token ?? null,
-        access_token: account.access_token ?? null,
-        expires_at: account.expires_at ?? null,
-        token_type: account.token_type ?? null,
-        scope: account.scope ?? null,
-        id_token: account.id_token ?? null,
-        session_state: (account as any).session_state ?? null,
-      });
+      // SQLite's "INSERT OR REPLACE" -> Postgres's ON CONFLICT ... DO UPDATE,
+      // replacing every column except the conflict target itself.
+      await db.prepare(
+        `INSERT INTO accounts
+           (id, userId, type, provider, providerAccountId, refresh_token, access_token,
+            expires_at, token_type, scope, id_token, session_state)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (provider, providerAccountId) DO UPDATE SET
+           id = excluded.id,
+           userId = excluded.userId,
+           type = excluded.type,
+           refresh_token = excluded.refresh_token,
+           access_token = excluded.access_token,
+           expires_at = excluded.expires_at,
+           token_type = excluded.token_type,
+           scope = excluded.scope,
+           id_token = excluded.id_token,
+           session_state = excluded.session_state`
+      ).run(
+        newId(),
+        account.userId,
+        account.type,
+        account.provider,
+        account.providerAccountId,
+        account.refresh_token ?? null,
+        account.access_token ?? null,
+        account.expires_at ?? null,
+        account.token_type ?? null,
+        account.scope ?? null,
+        account.id_token ?? null,
+        (account as any).session_state ?? null
+      );
       return account as AdapterAccount;
     },
 
     async unlinkAccount({ provider, providerAccountId }) {
-      await accounts.doc(accountDocId(provider, providerAccountId)).delete();
+      await db.prepare(`DELETE FROM accounts WHERE provider = ? AND providerAccountId = ?`).run(
+        provider,
+        providerAccountId
+      );
     },
 
     async createSession(session) {
-      await sessions.doc(session.sessionToken).set({
-        userId: session.userId,
-        expires: session.expires.toISOString(),
-      });
+      await db.prepare(
+        `INSERT INTO sessions (id, sessionToken, userId, expires) VALUES (?, ?, ?, ?)`
+      ).run(newId(), session.sessionToken, session.userId, session.expires.toISOString());
       return session as AdapterSession;
     },
 
     async getSessionAndUser(sessionToken) {
-      const sSnap = await sessions.doc(sessionToken).get();
-      if (!sSnap.exists) return null;
-      const s = sSnap.data() as { userId: string; expires: string };
+      const s = (await db
+        .prepare(`SELECT sessionToken, userId, expires FROM sessions WHERE sessionToken = ?`)
+        .get(sessionToken)) as { sessionToken: string; userId: string; expires: string } | undefined;
+      if (!s) return null;
 
-      const userSnap = await users.doc(s.userId).get();
-      const user = toUser(s.userId, userSnap.exists ? (userSnap.data() as UserDoc) : undefined);
+      const user = toUser((await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(s.userId)) as UserRow);
       if (!user) return null;
 
       return {
-        session: { sessionToken, userId: s.userId, expires: new Date(s.expires) },
+        session: { sessionToken: s.sessionToken, userId: s.userId, expires: new Date(s.expires) },
         user,
       };
     },
 
     async updateSession(session) {
-      const ref = sessions.doc(session.sessionToken);
-      const existingSnap = await ref.get();
-      if (!existingSnap.exists) return null;
-      const existing = existingSnap.data() as { userId: string; expires: string };
+      const existing = (await db
+        .prepare(`SELECT sessionToken, userId, expires FROM sessions WHERE sessionToken = ?`)
+        .get(session.sessionToken)) as { sessionToken: string; userId: string; expires: string } | undefined;
+      if (!existing) return null;
 
       const expires = session.expires ? session.expires.toISOString() : existing.expires;
-      const userId = session.userId ?? existing.userId;
-      await ref.set({ userId, expires }, { merge: true });
+      await db.prepare(`UPDATE sessions SET expires = ?, userId = ? WHERE sessionToken = ?`).run(
+        expires,
+        session.userId ?? existing.userId,
+        session.sessionToken
+      );
 
-      return { sessionToken: session.sessionToken, userId, expires: new Date(expires) };
+      return {
+        sessionToken: session.sessionToken,
+        userId: session.userId ?? existing.userId,
+        expires: new Date(expires),
+      };
     },
 
     async deleteSession(sessionToken) {
-      await sessions.doc(sessionToken).delete();
+      await db.prepare(`DELETE FROM sessions WHERE sessionToken = ?`).run(sessionToken);
     },
 
     async createVerificationToken(token) {
-      await verificationTokens.doc(token.token).set({
-        identifier: token.identifier,
-        expires: token.expires.toISOString(),
-      });
+      await db.prepare(
+        `INSERT INTO verification_tokens (identifier, token, expires) VALUES (?, ?, ?)`
+      ).run(token.identifier, token.token, token.expires.toISOString());
       return token;
     },
 
     async useVerificationToken({ identifier, token }) {
-      const ref = verificationTokens.doc(token);
-      const snap = await ref.get();
-      if (!snap.exists) return null;
-      const data = snap.data() as { identifier: string; expires: string };
-      if (data.identifier !== identifier) return null;
+      const row = (await db
+        .prepare(`SELECT identifier, token, expires FROM verification_tokens WHERE identifier = ? AND token = ?`)
+        .get(identifier, token)) as { identifier: string; token: string; expires: string } | undefined;
+      if (!row) return null;
 
-      await ref.delete();
-      return { identifier: data.identifier, token, expires: new Date(data.expires) };
+      await db.prepare(`DELETE FROM verification_tokens WHERE identifier = ? AND token = ?`).run(identifier, token);
+      return { identifier: row.identifier, token: row.token, expires: new Date(row.expires) };
     },
   };
 }

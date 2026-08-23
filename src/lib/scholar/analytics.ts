@@ -56,13 +56,14 @@ type EventRow = {
 const MIN_ACCURACY_SAMPLE = 3;
 
 export async function buildAnalytics(userId: string, weeks = 12, now = new Date()): Promise<AnalyticsSummary> {
-  const snap = await db
-    .collection("users")
-    .doc(userId)
-    .collection("taskEvents")
-    .orderBy("completedAt", "asc")
-    .get();
-  const rows = snap.docs.map((d) => d.data() as EventRow);
+  const rows = (await db
+    .prepare(
+      `SELECT subjectName, estimateMins, actualMins, onTime, completedAt
+         FROM task_events
+        WHERE userId = ?
+        ORDER BY completedAt ASC`
+    )
+    .all(userId)) as EventRow[];
 
   const timed = rows.filter((r) => r.actualMins && r.actualMins > 0);
   const paired = rows.filter((r) => r.estimateMins && r.estimateMins > 0 && r.actualMins && r.actualMins > 0);

@@ -25,15 +25,8 @@ export type AISettingsDTO = {
   envProvider: string | null;
 };
 
-function aiSettingsDoc(userId: string) {
-  return db.collection("users").doc(userId).collection("settings").doc("ai");
-}
-
 export async function readSettingsRow(userId: string): Promise<AISettingsRow | null> {
-  const snap = await aiSettingsDoc(userId).get();
-  if (!snap.exists) return null;
-  const data = snap.data() as Omit<AISettingsRow, "userId">;
-  return { userId, ...data };
+  return ((await db.prepare(`SELECT * FROM user_settings WHERE userId = ?`).get(userId)) as AISettingsRow) ?? null;
 }
 
 export async function getAISettings(userId: string): Promise<AISettingsDTO> {
@@ -90,32 +83,31 @@ export async function saveAISettings(userId: string, input: SaveAIInput): Promis
     hint = null;
   }
 
-  await aiSettingsDoc(userId).set(
-    {
-      aiProvider: input.provider,
-      aiModel: input.model?.trim() || null,
-      apiKeyCipher: cipher,
-      apiKeyHint: hint,
-      updatedAt: nowISO(),
-    },
-    { merge: true }
-  );
+  await db.prepare(
+    `INSERT INTO user_settings (userId, aiProvider, aiModel, apiKeyCipher, apiKeyHint, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       aiProvider = excluded.aiProvider,
+       aiModel = excluded.aiModel,
+       apiKeyCipher = excluded.apiKeyCipher,
+       apiKeyHint = excluded.apiKeyHint,
+       updatedAt = excluded.updatedAt`
+  ).run(userId, input.provider, input.model?.trim() || null, cipher, hint, nowISO());
 
   return getAISettings(userId);
 }
 
 /** Remove only the key, keeping the chosen provider and model. */
 export async function deleteAPIKey(userId: string): Promise<AISettingsDTO> {
-  await aiSettingsDoc(userId).set(
-    { apiKeyCipher: null, apiKeyHint: null, updatedAt: nowISO() },
-    { merge: true }
-  );
+  await db.prepare(
+    `UPDATE user_settings SET apiKeyCipher = NULL, apiKeyHint = NULL, updatedAt = ? WHERE userId = ?`
+  ).run(nowISO(), userId);
   return getAISettings(userId);
 }
 
 /** Reset everything back to whatever the server .env provides. */
 export async function resetAISettings(userId: string): Promise<AISettingsDTO> {
-  await aiSettingsDoc(userId).delete();
+  await db.prepare(`DELETE FROM user_settings WHERE userId = ?`).run(userId);
   return getAISettings(userId);
 }
 

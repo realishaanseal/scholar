@@ -4,11 +4,6 @@ import { listHomework } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { buildICS, type CalendarEvent } from "@/lib/calendar/ics";
 
-type TimetableRow = {
-  id: string; title: string; subjectName: string | null; dayOfWeek: number;
-  startHour: number; startMin: number; endHour: number; endMin: number; location: string | null;
-};
-
 export const runtime = "nodejs";
 
 const DAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -57,8 +52,15 @@ export async function GET(req: Request) {
   }
 
   if (includeClasses) {
-    const snap = await db.collection("users").doc(session.user.id).collection("timetable").get();
-    const classes: TimetableRow[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<TimetableRow, "id">) }));
+    const classes = (await db
+      .prepare(
+        `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location
+           FROM timetable WHERE userId = ?`
+      )
+      .all(session.user.id)) as Array<{
+        id: string; title: string; subjectName: string | null; dayOfWeek: number;
+        startHour: number; startMin: number; endHour: number; endMin: number; location: string | null;
+      }>;
 
     for (const c of classes) {
       const start = nextOccurrence(c.dayOfWeek, c.startHour, c.startMin);

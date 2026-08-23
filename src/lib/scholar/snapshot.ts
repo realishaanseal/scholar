@@ -68,33 +68,22 @@ export async function buildSnapshot(
   const homework = await listHomework(userId);
   const tasks = homework.map(toScorable);
 
-  const historySnap = await db
-    .collection("users")
-    .doc(userId)
-    .collection("taskEvents")
-    .orderBy("completedAt", "desc")
-    .limit(100)
-    .get();
-  const history = historySnap.docs.map(
-    (d) =>
-      d.data() as {
-        subjectName: string;
-        estimateMins: number | null;
-        actualMins: number | null;
-        onTime: number;
-        completedAt: string;
-      }
-  );
+  const history = (await db
+    .prepare(
+      `SELECT subjectName, estimateMins, actualMins, onTime, completedAt
+         FROM task_events WHERE userId = ? ORDER BY completedAt DESC LIMIT 100`
+    )
+    .all(userId)) as Array<{
+      subjectName: string; estimateMins: number | null; actualMins: number | null;
+      onTime: number; completedAt: string;
+    }>;
 
-  const timetableSnap = await db
-    .collection("users")
-    .doc(userId)
-    .collection("timetable")
-    .orderBy("dayOfWeek", "asc")
-    .orderBy("startHour", "asc")
-    .orderBy("startMin", "asc")
-    .get();
-  const timetable = timetableSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassSlot, "id">) }));
+  const timetable = (await db
+    .prepare(
+      `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location
+         FROM timetable WHERE userId = ? ORDER BY dayOfWeek, startHour, startMin`
+    )
+    .all(userId)) as ClassSlot[];
 
   const risks: Record<string, TaskRisk> = {};
   for (const { task, risk } of rankByRisk(tasks, { now, profile, paceBySubject: pace })) {

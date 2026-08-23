@@ -3,13 +3,9 @@ node_modules
 out
 .env
 .env.local
+data/
+*.db
+*.db-wal
+*.db-shm
 .DS_Store
 next-env.d.ts
-
-# Firebase
-.firebase/
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-*service-account*.json
-serviceAccountKey.json

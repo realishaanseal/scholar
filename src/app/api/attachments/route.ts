@@ -21,13 +21,14 @@ export async function POST(req: Request) {
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
+  const dataBase64 = buf.toString("base64");
 
   const attachment = await createPendingAttachment(
     session.user.id,
     file.name || "file",
     file.type || "application/octet-stream",
     file.size,
-    buf
+    dataBase64
   );
 
   return NextResponse.json(attachment, { status: 201 });

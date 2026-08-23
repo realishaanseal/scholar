@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { db, nowISO } from "./db";
 
 /**
@@ -10,27 +10,13 @@ import { db, nowISO } from "./db";
  * student pastes into the extension once is the honest solution — it also means
  * the extension holds a credential scoped to exactly one capability rather than
  * a full session.
- *
- * The token itself lives at `users/{uid}/settings/captureToken`. Resolving a
- * token back to a user needs the reverse direction — the extension only has
- * the token, not the uid — so a top-level `captureTokens/{token}` collection
- * acts as an index (one doc read instead of the original's full user-table
- * scan). This collection is never exposed to Firestore security rules for
- * client access; only server code (which uses the Admin SDK and bypasses rules
- * entirely) ever touches it.
  */
 
-function captureTokenDoc(userId: string) {
-  return db.collection("users").doc(userId).collection("settings").doc("captureToken");
-}
-function tokenIndexDoc(token: string) {
-  return db.collection("captureTokens").doc(token);
-}
-
 export async function getCaptureToken(userId: string): Promise<string | null> {
-  const snap = await captureTokenDoc(userId).get();
-  if (!snap.exists) return null;
-  return (snap.data() as { token: string | null }).token ?? null;
+  const row = (await db
+    .prepare(`SELECT captureToken FROM user_settings WHERE userId = ?`)
+    .get(userId)) as { captureToken: string | null } | undefined;
+  return row?.captureToken ?? null;
 }
 
 export async function ensureCaptureToken(userId: string): Promise<string> {
@@ -41,33 +27,42 @@ export async function ensureCaptureToken(userId: string): Promise<string> {
 
 export async function rotateCaptureToken(userId: string): Promise<string> {
   const token = `vxs_${randomBytes(24).toString("base64url")}`;
-  const previous = await getCaptureToken(userId);
 
-  const batch = db.batch();
-  batch.set(captureTokenDoc(userId), { token, updatedAt: nowISO() }, { merge: true });
-  if (previous) batch.delete(tokenIndexDoc(previous));
-  batch.set(tokenIndexDoc(token), { userId });
-  await batch.commit();
+  await db.prepare(
+    `INSERT INTO user_settings (userId, captureToken, updatedAt)
+     VALUES (?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET captureToken = excluded.captureToken, updatedAt = excluded.updatedAt`
+  ).run(userId, token, nowISO());
 
   return token;
 }
 
 export async function revokeCaptureToken(userId: string): Promise<void> {
-  const previous = await getCaptureToken(userId);
-
-  const batch = db.batch();
-  batch.set(captureTokenDoc(userId), { token: null, updatedAt: nowISO() }, { merge: true });
-  if (previous) batch.delete(tokenIndexDoc(previous));
-  await batch.commit();
+  await db.prepare(`UPDATE user_settings SET captureToken = NULL, updatedAt = ? WHERE userId = ?`)
+    .run(nowISO(), userId);
 }
 
-/** Resolve a bearer token to a user id. */
+/**
+ * Resolve a bearer token to a user id.
+ *
+ * Comparison is constant-time. Tokens are high-entropy so a timing attack is
+ * already impractical, but the cost of doing it properly is one function call.
+ */
 export async function userIdForToken(token: string): Promise<string | null> {
   if (!token || !token.startsWith("vxs_") || token.length < 16) return null;
 
-  const snap = await tokenIndexDoc(token).get();
-  if (!snap.exists) return null;
-  return (snap.data() as { userId: string }).userId;
+  const rows = (await db
+    .prepare(`SELECT userId, captureToken FROM user_settings WHERE captureToken IS NOT NULL`)
+    .all()) as Array<{ userId: string; captureToken: string }>;
+
+  const candidate = Buffer.from(token);
+
+  for (const row of rows) {
+    const stored = Buffer.from(row.captureToken);
+    if (stored.length !== candidate.length) continue;
+    if (timingSafeEqual(stored, candidate)) return row.userId;
+  }
+  return null;
 }
 
 /** Pull a bearer token out of an Authorization header. */

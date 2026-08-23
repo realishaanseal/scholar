@@ -5,8 +5,11 @@ import AISettingsPanel from "./AISettingsPanel";
 import StudySettingsPanel from "./StudySettingsPanel";
 import AnalyticsPanel from "./AnalyticsPanel";
 import PreferencesPanel from "./PreferencesPanel";
+import GroupsPanel from "./GroupsPanel";
+import SharingPanel from "./SharingPanel";
+import AccountPanel from "./AccountPanel";
 
-type SectionId = "ai" | "study" | "insights" | "preferences" | "account";
+type SectionId = "ai" | "study" | "insights" | "preferences" | "groups" | "sharing" | "account";
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] = [
   {
@@ -32,6 +35,18 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
     label: "Preferences",
     hint: "Alerts, language, timetable, calendar",
     icon: "M4 6h16M4 12h16M4 18h10",
+  },
+  {
+    id: "groups",
+    label: "Groups",
+    hint: "Shared boards for group work",
+    icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  },
+  {
+    id: "sharing",
+    label: "Sharing",
+    hint: "What a parent or guardian can see",
+    icon: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
   },
   {
     id: "account",
@@ -92,25 +107,9 @@ export default function SettingsNav({
         {section === "study" && <StudySettingsPanel />}
         {section === "insights" && <AnalyticsPanel />}
         {section === "preferences" && <PreferencesPanel />}
-        {section === "account" && (
-          <div className="card animate-riseIn p-6">
-            <h3 className="text-sm font-semibold text-white">Account</h3>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between gap-4 border-b border-white/[0.06] pb-3">
-                <dt className="text-slate-500">Name</dt>
-                <dd className="text-slate-200">{name ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">Email</dt>
-                <dd className="text-slate-200">{email ?? "—"}</dd>
-              </div>
-            </dl>
-            <p className="mt-5 text-xs leading-relaxed text-slate-500">
-              This is a local development build — your account and homework live in a SQLite file
-              inside the project folder, not on any server.
-            </p>
-          </div>
-        )}
+        {section === "groups" && <GroupsPanel />}
+        {section === "sharing" && <SharingPanel />}
+        {section === "account" && <AccountPanel name={name} email={email} />}
       </div>
     </div>
   );

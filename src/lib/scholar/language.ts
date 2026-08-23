@@ -51,13 +51,13 @@ const LANGUAGE_NAMES: Record<string, string> = Object.fromEntries(
   LANGUAGES.map((l) => [l.code, l.label])
 );
 
-function academicProfileDoc(userId: string) {
-  return db.collection("users").doc(userId).collection("settings").doc("academicProfile");
-}
-
 export async function getLanguages(userId: string): Promise<LanguageSettings> {
-  const snap = await academicProfileDoc(userId).get();
-  const row = snap.exists ? (snap.data() as Partial<LanguageSettings>) : undefined;
+  const row = (await db
+    .prepare(
+      `SELECT interfaceLanguage, inputLanguage, responseLanguage
+         FROM academic_profile WHERE userId = ?`
+    )
+    .get(userId)) as Partial<LanguageSettings> | undefined;
 
   return {
     interfaceLanguage: row?.interfaceLanguage || DEFAULT_LANGUAGES.interfaceLanguage,
@@ -69,15 +69,15 @@ export async function getLanguages(userId: string): Promise<LanguageSettings> {
 export async function setLanguages(userId: string, patch: Partial<LanguageSettings>): Promise<LanguageSettings> {
   const next = { ...(await getLanguages(userId)), ...patch };
 
-  await academicProfileDoc(userId).set(
-    {
-      interfaceLanguage: next.interfaceLanguage,
-      inputLanguage: next.inputLanguage,
-      responseLanguage: next.responseLanguage,
-      updatedAt: nowISO(),
-    },
-    { merge: true }
-  );
+  await db.prepare(
+    `INSERT INTO academic_profile (userId, interfaceLanguage, inputLanguage, responseLanguage, updatedAt)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       interfaceLanguage = excluded.interfaceLanguage,
+       inputLanguage     = excluded.inputLanguage,
+       responseLanguage  = excluded.responseLanguage,
+       updatedAt         = excluded.updatedAt`
+  ).run(userId, next.interfaceLanguage, next.inputLanguage, next.responseLanguage, nowISO());
 
   return next;
 }

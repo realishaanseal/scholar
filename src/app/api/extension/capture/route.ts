@@ -55,7 +55,7 @@ export const POST = jsonRoute(async (req: Request) => {
   // title as a hint markedly improves what it picks out of the noise.
   const raw = sourceTitle && text.length > 500 ? `Page: ${sourceTitle}\n\n${text}` : text;
 
-  const [knownSubjects, languages, aiConfig] = await Promise.all([
+  const [subjects, languages, aiConfig] = await Promise.all([
     listSubjects(userId),
     getLanguages(userId),
     resolveAIConfig(userId),
@@ -67,7 +67,7 @@ export const POST = jsonRoute(async (req: Request) => {
       nowISO: parsed.data.nowISO || new Date().toISOString(),
       timezone: parsed.data.timezone || "UTC",
       tzOffsetMinutes: 0,
-      knownSubjects: knownSubjects.map((s) => s.name),
+      knownSubjects: subjects.map((s) => s.name),
       languageHint: inputLanguageInstruction(languages),
     },
     aiConfig

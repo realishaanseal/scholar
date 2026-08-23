@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; width: 320px; padding: 14px;
+    background: #0b0e17; color: #e2e8f0;
+    font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { margin: 0 0 2px; font-size: 13px; font-weight: 600; color: #fff; }
+  p.sub { margin: 0 0 12px; font-size: 11px; color: #64748b; }
+  textarea {
+    width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical;
+    background: rgba(255,255,255,0.04); color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.10); border-radius: 10px;
+    padding: 9px 11px; font: inherit;
+  }
+  textarea:focus { outline: none; border-color: rgba(91,124,250,0.5); }
+  .row { display: flex; gap: 7px; margin-top: 10px; }
+  button {
+    flex: 1; border: 0; border-radius: 9px; padding: 9px 10px;
+    font: inherit; font-weight: 500; cursor: pointer; color: #fff;
+    background: linear-gradient(135deg,#5b7cfa,#7c5cf0);
+  }
+  button.ghost { background: rgba(255,255,255,0.06); color: #cbd5e1; }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { margin-top: 10px; font-size: 11px; min-height: 14px; color: #64748b; }
+  .status.ok { color: #6ee7b7; }
+  .status.err { color: #fca5a5; }
+  hr { border: 0; border-top: 1px solid rgba(255,255,255,0.07); margin: 12px 0 9px; }
+  label { display:block; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color:#64748b; margin-bottom: 4px; }
+  input {
+    width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04);
+    color: #cbd5e1; border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 11px;
+  }
+</style>
+</head>
+<body>
+  <h1>Add to Scholar</h1>
+  <p class="sub">Selected text is filled in automatically.</p>
+
+  <textarea id="text" placeholder="e.g. physics ch 4 q1-12 due friday"></textarea>
+
+  <div class="row">
+    <button id="send">Send</button>
+    <button id="page" class="ghost">Whole page</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <hr />
+  <label for="origin">Scholar address</label>
+  <input id="origin" spellcheck="false" placeholder="http://localhost:3000" />
+
+  <label for="token" style="margin-top:8px">Capture token</label>
+  <input id="token" type="password" spellcheck="false" placeholder="vxs_…" />
+  <p style="margin:5px 0 0; font-size:10px; color:#475569">
+    Scholar → Settings → Preferences → Browser extension
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
