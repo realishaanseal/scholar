@@ -23,10 +23,16 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsProvider, setNeedsProvider] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Scroll only this panel's own message list, by setting its scrollTop
+    // directly — not element.scrollIntoView(), which walks up through every
+    // scrollable ancestor (including the page itself) and can drag the whole
+    // dashboard's scroll position along with it. This can only ever move the
+    // chat's own internal scrollbar, never the page.
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [turns, busy]);
 
   async function ask(question: string) {
@@ -81,7 +87,7 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
         )}
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+      <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {turns.length === 0 && (
           <div className="pt-2">
             <p className="text-[13px] leading-relaxed text-slate-400">
@@ -145,8 +151,6 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
             )}
           </div>
         )}
-
-        <div ref={endRef} />
       </div>
 
       <form

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HomeworkDTO } from "@/lib/clientTypes";
 import type { TaskRiskDTO } from "./NowCard";
 import {
@@ -34,6 +34,20 @@ export default function HomeworkItem({
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const editCardRef = useRef<HTMLDivElement>(null);
+
+  // The edit form is taller than the collapsed card, so opening it can push
+  // its bottom (and the Save/Cancel/Delete row) below the fold — the browser
+  // doesn't scroll for you just because content grew in place. `block:
+  // "nearest"` scrolls the minimum needed to bring the whole card back into
+  // view rather than always snapping it to one edge. This card sits directly
+  // in the page's normal flow (no nested scroll container around the list),
+  // so scrollIntoView here only ever moves the page itself — unlike a chat
+  // panel with its own internal scrollbar, there's no ancestor it could
+  // wrongly bubble through instead.
+  useEffect(() => {
+    if (editing) editCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [editing]);
   const [draft, setDraft] = useState({
     title: hw.title,
     details: hw.details,
@@ -55,7 +69,7 @@ export default function HomeworkItem({
 
   if (editing) {
     return (
-      <div className="card-aurora animate-popIn">
+      <div ref={editCardRef} className="card-aurora animate-popIn">
         <div className="p-5">
           <div className="space-y-3.5">
             <div>
