@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { auth, enabledOAuthProviders } from "@/lib/auth";
 import Logo from "@/components/Logo";
 import SettingsNav from "@/components/SettingsNav";
 import SignOutButton from "@/components/SignOutButton";
@@ -47,7 +47,11 @@ export default async function SettingsPage() {
           </p>
         </div>
 
-        <SettingsNav name={session.user.name ?? null} email={session.user.email ?? null} />
+        <SettingsNav
+          name={session.user.name ?? null}
+          email={session.user.email ?? null}
+          enabledOAuthProviders={enabledOAuthProviders}
+        />
       </main>
     </div>
   );

@@ -231,7 +231,14 @@ CREATE TABLE IF NOT EXISTS homework (
   completedAt  TEXT,
   actualMins   INTEGER,
   startedAt    TEXT,
-  focusSeconds INTEGER NOT NULL DEFAULT 0
+  focusSeconds INTEGER NOT NULL DEFAULT 0,
+  -- Set when this task was created by an external sync (LMS ICS import,
+  -- Google Calendar sync) rather than typed/spoken by the student directly.
+  -- Lets a resync update the existing row instead of relying on fuzzy
+  -- title-matching, and lets a Google Calendar push know which event a task
+  -- is already mirrored to.
+  externalId     TEXT,
+  externalSource TEXT
 );
 
 CREATE TABLE IF NOT EXISTS attachments (
@@ -280,8 +287,16 @@ CREATE TABLE IF NOT EXISTS academic_profile (
   inputLanguage     TEXT,
   responseLanguage  TEXT,
   notifyPrefs       TEXT,
+  themeAccent       TEXT,
   updatedAt         TEXT NOT NULL DEFAULT ${NOW_ISO_SQL}
 );
+
+-- Added after the table's initial release — Postgres supports adding a
+-- column to an existing table idempotently, so this runs safely on every
+-- boot rather than needing a one-off migration step.
+ALTER TABLE academic_profile ADD COLUMN IF NOT EXISTS themeAccent TEXT;
+ALTER TABLE homework ADD COLUMN IF NOT EXISTS externalId TEXT;
+ALTER TABLE homework ADD COLUMN IF NOT EXISTS externalSource TEXT;
 
 CREATE TABLE IF NOT EXISTS dismissed_signals (
   userId      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -363,6 +378,45 @@ CREATE TABLE IF NOT EXISTS share_grants (
   revokedAt     TEXT
 );
 
+-- One Google account connected per user. Tokens are encrypted at rest with
+-- the same AES-256-GCM scheme user_settings.apiKeyCipher uses (see crypto.ts)
+-- — never stored in plain text, and unreadable without AUTH_SECRET.
+CREATE TABLE IF NOT EXISTS calendar_connections (
+  userId            TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  provider          TEXT NOT NULL DEFAULT 'google',
+  accessTokenCipher TEXT,
+  refreshTokenCipher TEXT NOT NULL,
+  tokenExpiresAt    TEXT,
+  scope             TEXT,
+  calendarId        TEXT NOT NULL DEFAULT 'primary',
+  -- Google's incremental-sync cursor (see the events.list syncToken param).
+  -- Null means "no successful sync yet, do a full pull."
+  syncToken         TEXT,
+  lastSyncedAt      TEXT,
+  lastSyncError     TEXT,
+  createdAt         TEXT NOT NULL DEFAULT ${NOW_ISO_SQL}
+);
+
+-- The correlation between one Scholar task and one Google Calendar event —
+-- however that pairing came to exist (pulled in from Google, or pushed out
+-- from a task the student typed here). Whichever side changes, this is what a
+-- sync uses to find "the same thing" on the other side instead of comparing
+-- titles, which breaks the moment either side edits one.
+CREATE TABLE IF NOT EXISTS calendar_links (
+  id            TEXT PRIMARY KEY,
+  userId        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  homeworkId    TEXT NOT NULL REFERENCES homework(id) ON DELETE CASCADE,
+  provider      TEXT NOT NULL DEFAULT 'google',
+  externalEventId TEXT NOT NULL,
+  -- Last known modification timestamp on each side, used to decide which way
+  -- a change should flow when both sides moved since the last sync.
+  lastPushedAt  TEXT,
+  lastPulledAt  TEXT,
+  createdAt     TEXT NOT NULL DEFAULT ${NOW_ISO_SQL},
+  UNIQUE (userId, homeworkId, provider),
+  UNIQUE (userId, provider, externalEventId)
+);
+
 CREATE INDEX IF NOT EXISTS idx_group_members_user  ON group_members(userId);
 CREATE INDEX IF NOT EXISTS idx_group_tasks_group   ON group_tasks(groupId, dueAt);
 CREATE INDEX IF NOT EXISTS idx_group_comments_task ON group_comments(groupId, taskId, createdAt);
@@ -376,6 +430,13 @@ CREATE INDEX IF NOT EXISTS idx_homework_user_status ON homework(userId, status);
 CREATE INDEX IF NOT EXISTS idx_subjects_user       ON subjects(userId);
 CREATE INDEX IF NOT EXISTS idx_attachments_homework ON attachments(homeworkId);
 CREATE INDEX IF NOT EXISTS idx_attachments_user    ON attachments(userId);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_settings_capture_token
+  ON user_settings(captureToken) WHERE captureToken IS NOT NULL;
+-- One external item (a Canvas ICS UID, a Google Calendar event id) maps to at
+-- most one homework row per user per source — this is what a resync checks
+-- against to update in place instead of creating a near-duplicate.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_homework_external
+  ON homework(userId, externalSource, externalId) WHERE externalId IS NOT NULL;
 `;
 
 /**

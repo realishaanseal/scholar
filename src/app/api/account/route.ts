@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { jsonRoute } from "@/lib/apiRoute";
-import { deleteAccount, exportEverything, getProfile, updateProfile } from "@/lib/varaxis/identity";
+import {
+  deleteAccount,
+  exportEverything,
+  getProfile,
+  getSignInMethods,
+  unlinkProviderAccount,
+  updateProfile,
+} from "@/lib/varaxis/identity";
 
 export const runtime = "nodejs";
 
@@ -23,7 +30,25 @@ export const GET = jsonRoute(async (req: Request) => {
     });
   }
 
-  return NextResponse.json({ profile: await getProfile(userId) });
+  const [profile, signIn] = await Promise.all([getProfile(userId), getSignInMethods(userId)]);
+  return NextResponse.json({ profile, signIn });
+});
+
+const UnlinkBody = z.object({ provider: z.enum(["google", "github", "facebook"]) });
+
+/** Unlink one OAuth provider. Separate verb from PATCH's profile-field update
+ *  so a client can't accidentally trigger it via the wrong body shape. */
+export const POST = jsonRoute(async (req: Request) => {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const parsed = UnlinkBody.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+
+  const result = await unlinkProviderAccount(session.user.id, parsed.data.provider);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 409 });
+
+  return NextResponse.json({ ok: true, signIn: await getSignInMethods(session.user.id) });
 });
 
 const PatchBody = z.object({ name: z.string().trim().min(1).max(80).optional() });

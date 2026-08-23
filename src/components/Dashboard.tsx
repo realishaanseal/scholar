@@ -12,6 +12,7 @@ import FocusMode from "./FocusMode";
 import PlanReview from "./PlanReview";
 import AlertsFeed, { type RiskSignal } from "./AlertsFeed";
 import CoachPanel from "./CoachPanel";
+import ThemeLoader from "./ThemeLoader";
 import type { DraftHomework, HomeworkDTO, SubjectDTO } from "@/lib/clientTypes";
 import { urgencyOf } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
@@ -31,6 +32,7 @@ export default function Dashboard({ userName }: { userName: string }) {
   const [focusId, setFocusId] = useState<string | null>(null);
   const [syllabus, setSyllabus] = useState<{ syllabus: any; plan: any[]; filename: string } | null>(null);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function load() {
     const { data } = await fetchJson<{ homework: HomeworkDTO[]; subjects: SubjectDTO[] }>("/api/homework");
@@ -78,18 +80,36 @@ export default function Dashboard({ userName }: { userName: string }) {
   }
 
   async function updateItem(id: string, patch: Record<string, unknown>) {
+    const previous = homework;
     setHomework((list) => list.map((h) => (h.id === id ? ({ ...h, ...patch } as HomeworkDTO) : h)));
-    await fetch(`/api/homework/${id}`, {
+
+    const { ok, error } = await fetchJson(`/api/homework/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+
+    if (!ok) {
+      // Roll back the optimistic change rather than letting a silent re-fetch
+      // quietly revert it with no explanation for why the edit "didn't stick."
+      setHomework(previous);
+      setActionError(error ?? "Couldn't save that change. Try again.");
+      return;
+    }
     await load();
   }
 
   async function deleteItem(id: string) {
+    const previous = homework;
     setHomework((list) => list.filter((h) => h.id !== id));
-    await fetch(`/api/homework/${id}`, { method: "DELETE" });
+
+    const { ok, error } = await fetchJson(`/api/homework/${id}`, { method: "DELETE" });
+
+    if (!ok) {
+      setHomework(previous);
+      setActionError(error ?? "Couldn't delete that task. Try again.");
+      return;
+    }
     await load();
   }
 
@@ -146,16 +166,20 @@ export default function Dashboard({ userName }: { userName: string }) {
   // that isn't the task in hand.
   if (focused) {
     return (
-      <FocusMode
-        hw={focused}
-        onExit={() => { setFocusId(null); load(); }}
-        onUpdate={updateItem}
-      />
+      <>
+        <ThemeLoader />
+        <FocusMode
+          hw={focused}
+          onExit={() => { setFocusId(null); load(); }}
+          onUpdate={updateItem}
+        />
+      </>
     );
   }
 
   return (
     <div className="space-y-6">
+      <ThemeLoader />
       <AttentionBar
         overdue={overdue}
         today={today}
@@ -163,6 +187,19 @@ export default function Dashboard({ userName }: { userName: string }) {
         active={active.length}
         userName={userName}
       />
+
+      {actionError && (
+        <div className="card animate-riseIn flex items-center justify-between gap-3 border-rose-500/25 bg-rose-500/[0.06] p-4 text-sm text-rose-200">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError(null)}
+            className="shrink-0 text-rose-300/70 hover:text-rose-200"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <AISetupBanner />
 

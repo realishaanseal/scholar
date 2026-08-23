@@ -80,6 +80,36 @@ and only you (and users you add under **App roles**) can sign in — that's fine
 
 ---
 
+## Google Calendar sync (optional, separate from Google sign-in)
+
+This reuses the same Google OAuth client as "Continue with Google" above — it just needs one
+more redirect URI added, and a broader scope granted at connect time. If you haven't set up
+Google sign-in yet, do that first.
+
+1. In the same Google Cloud Console OAuth client you created for sign-in, add a second
+   **Authorised redirect URI**:
+   `https://your-project.vercel.app/api/calendar/google/callback`
+   (or `http://localhost:3000/api/calendar/google/callback` for local dev).
+2. That's it on the Google Cloud side — no new client, no new credentials. Scholar requests
+   the `calendar.events` scope only when a student clicks **Connect** in Settings →
+   Preferences → Calendar, using the existing `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`.
+3. Because `calendar.events` is a Google "sensitive scope," the OAuth consent screen will show
+   a more prominent warning than plain sign-in does, and while your app is in Testing mode
+   only the test users you added under **OAuth consent screen → Test users** can connect it —
+   same restriction as sign-in itself. Moving to Production for real users eventually requires
+   Google's verification process for sensitive scopes; fine to defer until you have real users
+   beyond yourself.
+4. `AUTH_URL` must point at your real deployed origin for this to work (the callback route
+   builds the redirect URI from it) — same requirement as sign-in.
+
+What it actually syncs: pushing an assignment creates a Google Calendar event; editing or
+deleting *that specific event* on the Google Calendar side syncs back to the assignment. It
+does not import unrelated events already on the calendar as homework — seeing a dentist
+appointment turn into an "assignment" would be worse than not syncing at all. See the doc
+comment at the top of `src/lib/calendar/googleSync.ts` for the full reasoning.
+
+---
+
 ## When you deploy later
 
 Change two things:
@@ -89,6 +119,46 @@ Change two things:
    `https://scholar.varaxis.com/api/auth/callback/<provider>`
 
 Keep the localhost entries so local development keeps working.
+
+### Adding these to Vercel via the CLI
+
+If your Vercel project was created by importing `.env.example` through the web UI first
+(the standard "New Project" import flow), every variable in that file — including
+`AUTH_GOOGLE_ID`, `AUTH_GITHUB_ID`, etc. — already exists as a blank placeholder for both
+Production and Preview. Running `vercel env add AUTH_GOOGLE_ID production` at that point
+fails with "A variable with the name already exists." Remove the blank one first, then add
+the real value:
+
+```
+vercel env rm AUTH_GOOGLE_ID production
+vercel env add AUTH_GOOGLE_ID production
+```
+
+When pasting a long value at the interactive `? Value?` prompt, prefer piping it in instead
+of pasting directly — some terminals (PowerShell in particular) can mangle a long paste at
+that prompt:
+
+```
+echo "the-real-value" | vercel env add AUTH_GOOGLE_ID production
+```
+
+Repeat for `AUTH_GOOGLE_SECRET`, and the GitHub/Facebook equivalents. Redeploy afterward
+(`vercel --prod`, or your `scholardeploy` alias if you set one up) — env var changes don't
+take effect until the next deploy.
+
+### Managing linked sign-in methods
+
+Once more than one sign-in method exists for the same email, Settings → Account shows a
+"Sign-in methods" section listing everything currently linked (email/password, and each
+connected OAuth provider), with an Unlink button per provider. It refuses to unlink the last
+remaining way to sign in, so an account can never be locked out by its own settings page.
+
+There's no one-click "link a new provider while already signed in" button — Auth.js doesn't
+support that out of the box without deeper custom callback work. To link an additional
+provider to an existing account: sign out, then sign in with the new provider using the same
+email address. Auth.js matches by email and links it automatically (that's what
+`allowDangerousEmailAccountLinking: true` in `auth.config.ts` does) — no separate merge step
+needed.
 
 ---
 

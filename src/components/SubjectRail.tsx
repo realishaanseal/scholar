@@ -147,9 +147,9 @@ function ProgressRing({ pct }: { pct: number }) {
       <svg viewBox="0 0 68 68" className="h-full w-full -rotate-90">
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#5b7cfa" />
-            <stop offset="60%" stopColor="#9455f5" />
-            <stop offset="100%" stopColor="#4fd6e8" />
+            <stop offset="0%" style={{ stopColor: "hsl(var(--accent-h) var(--accent-s) var(--accent-l))" }} />
+            <stop offset="60%" style={{ stopColor: "hsl(var(--accent-h-2) var(--accent-s) var(--accent-l))" }} />
+            <stop offset="100%" style={{ stopColor: "hsl(calc(var(--accent-h) - 25) var(--accent-s) calc(var(--accent-l) + 15%))" }} />
           </linearGradient>
         </defs>
         <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="6" />

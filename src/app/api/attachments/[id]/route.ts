@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { jsonRoute } from "@/lib/apiRoute";
 import { deleteAttachment, getAttachmentFile } from "@/lib/queries";
 
 export const runtime = "nodejs";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = jsonRoute(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -19,13 +20,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
     },
   });
-}
+});
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = jsonRoute(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   const ok = await deleteAttachment(session.user.id, id);
   return NextResponse.json({ ok });
-}
+});

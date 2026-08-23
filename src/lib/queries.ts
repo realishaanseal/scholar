@@ -15,6 +15,7 @@ type HomeworkRow = {
   aiConfidence: number | null; aiNotes: string;
   createdAt: string; updatedAt: string; completedAt: string | null;
   actualMins: number | null; startedAt: string | null; focusSeconds: number | null;
+  externalId: string | null; externalSource: string | null;
   subjectName: string | null; subjectColor: string | null;
 };
 
@@ -32,6 +33,7 @@ function toDTO(r: HomeworkRow): HomeworkDTO {
     aiConfidence: r.aiConfidence,
     aiNotes: r.aiNotes,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
     completedAt: r.completedAt,
     actualMins: r.actualMins,
     startedAt: r.startedAt,
@@ -73,6 +75,15 @@ const SELECT_HOMEWORK = `
     LEFT JOIN subjects s ON s.id = h.subjectId
 `;
 
+/** Every externalId already imported from a given source, for dedup previews
+ *  (e.g. an LMS import screen that shouldn't re-offer what's already in). */
+export async function listExternalIds(userId: string, externalSource: string): Promise<Set<string>> {
+  const rows = (await db
+    .prepare(`SELECT externalId FROM homework WHERE userId = ? AND externalSource = ? AND externalId IS NOT NULL`)
+    .all(userId, externalSource)) as Array<{ externalId: string }>;
+  return new Set(rows.map((r) => r.externalId));
+}
+
 export async function listHomework(userId: string): Promise<HomeworkDTO[]> {
   const rows = (await db
     .prepare(`${SELECT_HOMEWORK} WHERE h.userId = ? ORDER BY h.createdAt DESC`)
@@ -99,6 +110,11 @@ export type CreateHomeworkInput = {
   source: string;
   aiConfidence: number | null;
   aiNotes: string;
+  /** Set when this task originates from an external sync (LMS ICS import,
+   *  Google Calendar), so a later resync can find and update it by identity
+   *  instead of guessing from the title. */
+  externalId?: string | null;
+  externalSource?: string | null;
 };
 
 export type AttachmentDTO = {
@@ -153,15 +169,80 @@ export async function createHomework(input: CreateHomeworkInput): Promise<Homewo
   await db.prepare(
     `INSERT INTO homework
        (id, userId, subjectId, title, details, rawInput, source, dueAt,
-        estimateMins, priority, status, aiConfidence, aiNotes, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?)`
+        estimateMins, priority, status, aiConfidence, aiNotes, createdAt, updatedAt,
+        externalId, externalSource)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?, ?)`
   ).run(
     id, input.userId, subject.id, input.title, input.details, input.rawInput,
     input.source, input.dueAt, input.estimateMins, input.priority,
-    input.aiConfidence, input.aiNotes, nowISO(), nowISO()
+    input.aiConfidence, input.aiNotes, nowISO(), nowISO(),
+    input.externalId ?? null, input.externalSource ?? null
   );
 
   return (await getHomework(input.userId, id))!;
+}
+
+export type ExternalHomeworkUpsert = {
+  userId: string;
+  externalSource: string;
+  externalId: string;
+  title: string;
+  details: string;
+  subject: string;
+  dueAt: string | null;
+  priority?: string;
+  estimateMins?: number | null;
+};
+
+/**
+ * Create-or-update a homework row keyed by (userId, externalSource, externalId)
+ * — the identity a resync uses to recognize "this is the same Canvas
+ * assignment / Google Calendar event I already imported" instead of matching
+ * on title, which breaks the moment either side edits the title.
+ *
+ * Deliberately does NOT touch `status`, `priority` (on update), or anything
+ * the student may have changed locally — a resync should refresh the facts
+ * that came from the source (title, details, due date) without clobbering
+ * work the student already did on the task (marking it in-progress, done,
+ * bumping the priority).
+ */
+export async function upsertExternalHomework(
+  input: ExternalHomeworkUpsert
+): Promise<{ homework: HomeworkDTO; created: boolean }> {
+  const existing = (await db
+    .prepare(
+      `SELECT id FROM homework WHERE userId = ? AND externalSource = ? AND externalId = ?`
+    )
+    .get(input.userId, input.externalSource, input.externalId)) as { id: string } | undefined;
+
+  if (existing) {
+    const subject = await ensureSubject(input.userId, input.subject);
+    await db.prepare(
+      `UPDATE homework
+          SET title = ?, details = ?, dueAt = ?, subjectId = ?, updatedAt = ?
+        WHERE userId = ? AND id = ?`
+    ).run(input.title, input.details, input.dueAt, subject.id, nowISO(), input.userId, existing.id);
+
+    return { homework: (await getHomework(input.userId, existing.id))!, created: false };
+  }
+
+  const homework = await createHomework({
+    userId: input.userId,
+    title: input.title,
+    details: input.details,
+    subject: input.subject,
+    dueAt: input.dueAt,
+    priority: input.priority ?? "normal",
+    estimateMins: input.estimateMins ?? null,
+    rawInput: "",
+    source: "text",
+    aiConfidence: null,
+    aiNotes: "",
+    externalId: input.externalId,
+    externalSource: input.externalSource,
+  });
+
+  return { homework, created: true };
 }
 
 export type UpdateHomeworkPatch = Partial<{

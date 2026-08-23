@@ -3,11 +3,19 @@
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { fetchJson } from "@/lib/fetchJson";
+import { ICONS, PROVIDER_NAMES } from "./OAuthButtons";
 
 type Profile = {
   id: string; name: string | null; email: string | null; createdAt: string;
   products: Array<{ id: string; label: string; active: boolean }>;
 };
+
+type SignInMethods = {
+  oauth: Array<{ provider: string; providerAccountId: string }>;
+  hasPassword: boolean;
+};
+
+const OAUTH_PROVIDER_IDS = ["google", "github", "facebook"] as const;
 
 /**
  * Account, export and deletion.
@@ -16,22 +24,50 @@ type Profile = {
  * operative half of "your data belongs to you" — a claim that means nothing if
  * acting on it requires emailing someone.
  */
-export default function AccountPanel({ name, email }: { name: string | null; email: string | null }) {
+export default function AccountPanel({
+  name,
+  email,
+  enabledOAuthProviders,
+}: {
+  name: string | null;
+  email: string | null;
+  enabledOAuthProviders: { google: boolean; github: boolean; facebook: boolean };
+}) {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [signInMethods, setSignInMethods] = useState<SignInMethods | null>(null);
   const [displayName, setDisplayName] = useState(name ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [unlinkBusy, setUnlinkBusy] = useState<string | null>(null);
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchJson<{ profile: Profile }>("/api/account").then(({ data }) => {
+    fetchJson<{ profile: Profile; signIn: SignInMethods }>("/api/account").then(({ data }) => {
       if (data?.profile) {
         setProfile(data.profile);
         setDisplayName(data.profile.name ?? "");
       }
+      if (data?.signIn) setSignInMethods(data.signIn);
     });
   }, []);
+
+  async function unlink(provider: string) {
+    setUnlinkError(null);
+    setUnlinkBusy(provider);
+    const { ok, data, error } = await fetchJson<{ signIn: SignInMethods }>("/api/account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider }),
+    });
+    setUnlinkBusy(null);
+    if (ok && data?.signIn) {
+      setSignInMethods(data.signIn);
+    } else {
+      setUnlinkError(error ?? "Couldn't unlink that provider.");
+    }
+  }
 
   async function saveName() {
     const { ok } = await fetchJson("/api/account", {
@@ -114,6 +150,75 @@ export default function AccountPanel({ name, email }: { name: string | null; ema
             </div>
           </div>
         )}
+      </section>
+
+      <section className="card animate-riseIn p-6">
+        <h3 className="text-sm font-semibold text-white">Sign-in methods</h3>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+          What you can use to get into this account. Signing in linked more than one automatically
+          when the same email address matched.
+        </p>
+
+        {!signInMethods ? (
+          <div className="mt-4 space-y-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="skeleton-shimmer h-12 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {signInMethods.hasPassword && (
+              <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/[0.1] bg-white/[0.04]">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] text-slate-200">Email and password</span>
+              </div>
+            )}
+
+            {OAUTH_PROVIDER_IDS.filter((p) => signInMethods.oauth.some((a) => a.provider === p)).map((p) => (
+              <div
+                key={p}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/[0.1] bg-white/[0.04]">
+                  {ICONS[p]}
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] text-slate-200">{PROVIDER_NAMES[p]}</span>
+                <button
+                  className="btn-ghost shrink-0 px-3 py-1.5 text-[11px] text-slate-400 hover:text-rose-300"
+                  disabled={unlinkBusy === p}
+                  onClick={() => unlink(p)}
+                >
+                  {unlinkBusy === p ? "Unlinking…" : "Unlink"}
+                </button>
+              </div>
+            ))}
+
+            {OAUTH_PROVIDER_IDS.filter(
+              (p) => enabledOAuthProviders[p] && !signInMethods.oauth.some((a) => a.provider === p)
+            ).map((p) => (
+              <div
+                key={p}
+                className="flex items-center gap-3 rounded-xl border border-dashed border-white/[0.08] p-3.5"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.02] opacity-60">
+                  {ICONS[p]}
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] text-slate-500">
+                  {PROVIDER_NAMES[p]} isn&apos;t linked
+                </span>
+                <span className="shrink-0 text-[11px] text-slate-600">
+                  Sign out, then sign in with {PROVIDER_NAMES[p]} using this email to link it
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {unlinkError && <p className="mt-3 text-[11px] text-rose-300">{unlinkError}</p>}
       </section>
 
       <section className="card animate-riseIn p-6">

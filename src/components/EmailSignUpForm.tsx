@@ -33,7 +33,22 @@ export default function EmailSignUpForm() {
       return;
     }
 
-    await signIn("credentials", { email: form.email, password: form.password, redirect: false });
+    const signInResult = await signIn("credentials", {
+      email: form.email,
+      password: form.password,
+      redirect: false,
+    });
+
+    if (!signInResult || signInResult.error) {
+      // The account was created successfully — only the immediate auto-login
+      // failed. Send them to sign in manually instead of bouncing them at
+      // /dashboard with no explanation of what went wrong.
+      setBusy(false);
+      setError("Account created — sign in below to continue.");
+      router.push("/login");
+      return;
+    }
+
     router.push("/dashboard");
     router.refresh();
   }

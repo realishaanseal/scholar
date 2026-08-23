@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { jsonRoute } from "@/lib/apiRoute";
 import { createHomework, linkAttachments, listHomework, listSubjects } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ const CreateBody = z.object({
   attachmentIds: z.array(z.string()).max(20).optional().default([]),
 });
 
-export async function GET() {
+export const GET = jsonRoute(async () => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -28,9 +29,9 @@ export async function GET() {
     listSubjects(session.user.id),
   ]);
   return NextResponse.json({ homework, subjects });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = jsonRoute(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -63,4 +64,4 @@ export async function POST(req: Request) {
   if (b.attachmentIds?.length) await linkAttachments(session.user.id, created.id, b.attachmentIds);
 
   return NextResponse.json(created, { status: 201 });
-}
+});

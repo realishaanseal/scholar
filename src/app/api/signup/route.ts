@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { jsonRoute } from "@/lib/apiRoute";
 import { createUserWithPassword, findUserByEmail } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -11,7 +12,11 @@ const Body = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
 });
 
-export async function POST(req: Request) {
+// Postgres SQLSTATE for a unique-constraint violation — thrown by the
+// `users.email` UNIQUE index when two signups for the same email race.
+const UNIQUE_VIOLATION = "23505";
+
+export const POST = jsonRoute(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -21,12 +26,26 @@ export async function POST(req: Request) {
   }
 
   const email = parsed.data.email.toLowerCase();
+
+  // This existence check is just a fast path for the common case (no wasted
+  // bcrypt hash on an obviously-taken email); it is NOT what prevents a
+  // duplicate account. Two concurrent signups for the same email can both
+  // pass this check, so the real guarantee comes from the `users.email`
+  // UNIQUE constraint below, caught explicitly rather than raced against.
   if (await findUserByEmail(email)) {
     return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await createUserWithPassword(parsed.data.name, email, passwordHash);
+
+  try {
+    await createUserWithPassword(parsed.data.name, email, passwordHash);
+  } catch (err: any) {
+    if (err?.code === UNIQUE_VIOLATION) {
+      return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+    }
+    throw err;
+  }
 
   return NextResponse.json({ ok: true });
-}
+});

@@ -45,24 +45,27 @@ export async function revokeCaptureToken(userId: string): Promise<void> {
 /**
  * Resolve a bearer token to a user id.
  *
- * Comparison is constant-time. Tokens are high-entropy so a timing attack is
- * already impractical, but the cost of doing it properly is one function call.
+ * Looks the token up directly (indexed — see idx_user_settings_capture_token
+ * in db.ts) rather than scanning every row with a capture token: that scan
+ * was O(number of users with a capture token) on every single extension
+ * request, which doesn't scale. The direct lookup is still followed by a
+ * constant-time comparison against the one matched row, so the same
+ * timing-attack resistance as before is preserved — tokens are high-entropy
+ * enough that this is belt-and-braces, not load-bearing, but it's free.
  */
 export async function userIdForToken(token: string): Promise<string | null> {
   if (!token || !token.startsWith("vxs_") || token.length < 16) return null;
 
-  const rows = (await db
-    .prepare(`SELECT userId, captureToken FROM user_settings WHERE captureToken IS NOT NULL`)
-    .all()) as Array<{ userId: string; captureToken: string }>;
+  const row = (await db
+    .prepare(`SELECT userId, captureToken FROM user_settings WHERE captureToken = ?`)
+    .get(token)) as { userId: string; captureToken: string } | undefined;
 
+  if (!row) return null;
+
+  const stored = Buffer.from(row.captureToken);
   const candidate = Buffer.from(token);
-
-  for (const row of rows) {
-    const stored = Buffer.from(row.captureToken);
-    if (stored.length !== candidate.length) continue;
-    if (timingSafeEqual(stored, candidate)) return row.userId;
-  }
-  return null;
+  if (stored.length !== candidate.length) return null;
+  return timingSafeEqual(stored, candidate) ? row.userId : null;
 }
 
 /** Pull a bearer token out of an Authorization header. */

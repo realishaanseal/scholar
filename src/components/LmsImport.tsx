@@ -10,6 +10,9 @@ type Candidate = {
   dueAt: string | null;
   subject: string;
   looksLikeAssignment: boolean;
+  /** Already imported in an earlier sync — selecting it again updates the
+   *  existing task (title/details/due date) rather than creating a duplicate. */
+  alreadyImported: boolean;
 };
 
 const PLATFORMS = [
@@ -33,10 +36,10 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
-  const [skipped, setSkipped] = useState(0);
+  const [externalSource, setExternalSource] = useState("lms");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState<number | null>(null);
+  const [done, setDone] = useState<{ created: number; updated: number } | null>(null);
 
   async function preview() {
     setLoading(true);
@@ -44,7 +47,7 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
     setDone(null);
 
     const { ok, data, error } = await fetchJson<{
-      candidates: Candidate[]; total: number; skippedExisting: number;
+      candidates: Candidate[]; total: number; externalSource: string; newCount: number; resyncCount: number;
     }>("/api/lms/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,10 +62,16 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
     }
 
     setCandidates(data.candidates);
-    setSkipped(data.skippedExisting ?? 0);
-    // Pre-select only what looks like actual coursework; class slots stay
-    // unticked so importing doesn't flood the list with timetable entries.
-    setSelected(new Set(data.candidates.filter((c) => c.looksLikeAssignment).map((c) => c.externalId)));
+    setExternalSource(data.externalSource ?? "lms");
+    // Pre-select what looks like actual coursework and isn't already
+    // imported; class slots and already-synced items stay unticked so
+    // committing doesn't flood the list with timetable entries or no-op
+    // resyncs the student didn't ask for.
+    setSelected(
+      new Set(
+        data.candidates.filter((c) => c.looksLikeAssignment && !c.alreadyImported).map((c) => c.externalId)
+      )
+    );
   }
 
   async function commit() {
@@ -76,20 +85,21 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
         dueAt: c.dueAt,
         priority: "normal" as const,
         estimateMins: null,
+        externalId: c.externalId,
       }));
 
     if (!items.length) return;
 
     setSaving(true);
-    const { ok, error } = await fetchJson("/api/homework/bulk", {
+    const { ok, data, error } = await fetchJson<{ created: number; updated: number }>("/api/homework/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, source: "import" }),
+      body: JSON.stringify({ items, source: "import", externalSource }),
     });
     setSaving(false);
 
     if (ok) {
-      setDone(items.length);
+      setDone({ created: data?.created ?? items.length, updated: data?.updated ?? 0 });
       setCandidates(null);
       setFeedUrl("");
       onImported?.();
@@ -149,7 +159,9 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
 
       {done !== null && (
         <p className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-2 text-xs text-emerald-300">
-          Imported {done} assignment{done === 1 ? "" : "s"}.
+          {done.created > 0 && `Added ${done.created} assignment${done.created === 1 ? "" : "s"}.`}
+          {done.created > 0 && done.updated > 0 && " "}
+          {done.updated > 0 && `Updated ${done.updated} already-imported item${done.updated === 1 ? "" : "s"}.`}
         </p>
       )}
 
@@ -160,8 +172,10 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
               {candidates.length} found
               <span className="ml-2 font-normal text-slate-500">{selected.size} selected</span>
             </h4>
-            {skipped > 0 && (
-              <span className="text-[11px] text-slate-600">{skipped} already in Scholar</span>
+            {candidates.some((c) => c.alreadyImported) && (
+              <span className="text-[11px] text-slate-600">
+                {candidates.filter((c) => c.alreadyImported).length} already imported — select to resync
+              </span>
             )}
           </div>
 
@@ -206,6 +220,7 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
                           {c.subject}
                           {c.dueAt && ` · ${new Date(c.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`}
                           {!c.looksLikeAssignment && " · looks like a class"}
+                          {c.alreadyImported && " · already imported, resync"}
                         </span>
                       </span>
                     </button>

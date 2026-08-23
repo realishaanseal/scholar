@@ -11,6 +11,7 @@ import {
   createHomework, listHomework, getHomework, updateHomework, deleteHomework,
   listSubjects, ensureSubject, createUserWithPassword, findUserByEmail,
   createPendingAttachment, linkAttachments, listAttachments, getAttachmentFile, deleteAttachment,
+  upsertExternalHomework, listExternalIds,
 } from "../src/lib/queries";
 import { paceBySubject, getAvailability, setAvailability, memorySnapshot, resetMemory } from "../src/lib/scholar/memory";
 import { buildAnalytics } from "../src/lib/scholar/analytics";
@@ -23,8 +24,15 @@ import {
 } from "../src/lib/sharing/store";
 import { createGrant, acceptGrant, requireScope } from "../src/lib/sharing/store";
 import { workloadSummaryFor } from "../src/lib/sharing/views";
-import { getProfile, exportEverything, deleteAccount } from "../src/lib/varaxis/identity";
+import { getProfile, exportEverything, deleteAccount, getSignInMethods, unlinkProviderAccount } from "../src/lib/varaxis/identity";
 import { ensureCaptureToken, userIdForToken, rotateCaptureToken } from "../src/lib/captureToken";
+import { getTheme, setTheme } from "../src/lib/scholar/themeStore";
+import { sanitizeAccent, encodeAccent, decodeAccent, DEFAULT_THEME } from "../src/lib/scholar/theme";
+import { accentFromHex, accentToHex } from "../src/lib/scholar/themeClient";
+import {
+  getConnection, saveConnection, disconnect as disconnectCalendar,
+  upsertLinkPushed, getLinkByHomeworkId, getLinkByEventId, listLinkedHomeworkIds,
+} from "../src/lib/calendar/googleStore";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
@@ -240,6 +248,170 @@ async function main() {
     assert.ok(dump.homework.length >= 1);
     assert.ok(!("apiKeyCipher" in (dump.aiSettings ?? {})));
     assert.ok(dump.sharing.groupsOwned.some((g: any) => g.id === groupId));
+  });
+
+  console.log("\nExternal sync (LMS import / Canvas ICS, Google Calendar) — Tier 5");
+
+  await test("upsertExternalHomework creates once, then updates on the same externalId", async () => {
+    const first = await upsertExternalHomework({
+      userId: userA.id, externalSource: "lms", externalId: "ics-uid-123",
+      title: "Essay draft", details: "v1", subject: "English", dueAt: null,
+    });
+    assert.equal(first.created, true);
+
+    const second = await upsertExternalHomework({
+      userId: userA.id, externalSource: "lms", externalId: "ics-uid-123",
+      title: "Essay final draft", details: "v2", subject: "English", dueAt: null,
+    });
+    assert.equal(second.created, false, "same externalId should update, not duplicate");
+    assert.equal(second.homework.id, first.homework.id);
+    assert.equal(second.homework.title, "Essay final draft");
+
+    const all = await listHomework(userA.id);
+    assert.equal(
+      all.filter((h) => h.title.startsWith("Essay")).length, 1,
+      "resync must not leave a duplicate row behind"
+    );
+  });
+
+  await test("upsertExternalHomework never touches status set locally", async () => {
+    const created = await upsertExternalHomework({
+      userId: userA.id, externalSource: "lms", externalId: "ics-uid-456",
+      title: "Lab report", details: "", subject: "Physics", dueAt: null,
+    });
+    await updateHomework(userA.id, created.homework.id, { status: "done" });
+
+    const resynced = await upsertExternalHomework({
+      userId: userA.id, externalSource: "lms", externalId: "ics-uid-456",
+      title: "Lab report (updated title)", details: "", subject: "Physics", dueAt: null,
+    });
+    const row = await getHomework(userA.id, resynced.homework.id);
+    assert.equal(row?.status, "done", "resync must not silently reopen a completed task");
+  });
+
+  await test("listExternalIds scopes by source, not just by user", async () => {
+    await upsertExternalHomework({
+      userId: userA.id, externalSource: "google-calendar", externalId: "evt-1",
+      title: "From Google", details: "", subject: "General", dueAt: null,
+    });
+    const lmsIds = await listExternalIds(userA.id, "lms");
+    const gcalIds = await listExternalIds(userA.id, "google-calendar");
+    assert.ok(lmsIds.has("ics-uid-123"));
+    assert.ok(!lmsIds.has("evt-1"), "a google-calendar externalId must not leak into the lms set");
+    assert.ok(gcalIds.has("evt-1"));
+  });
+
+  console.log("\nAccount linking (Sign-in methods panel) — Tier 6");
+
+  const emailPassUser = { id: newId(), name: "Email Pass", email: `emailpass-${newId()}@test.dev` };
+  await db.prepare(`INSERT INTO users (id, name, email, passwordHash) VALUES (?, ?, ?, ?)`)
+    .run(emailPassUser.id, emailPassUser.name, emailPassUser.email, "hash123");
+
+  await test("getSignInMethods reports password + zero OAuth providers for a plain signup", async () => {
+    const methods = await getSignInMethods(emailPassUser.id);
+    assert.equal(methods.hasPassword, true);
+    assert.equal(methods.oauth.length, 0);
+  });
+
+  await test("unlinkProviderAccount refuses to remove the only sign-in method", async () => {
+    // emailPassUser has a password and no linked OAuth account — there is
+    // nothing to unlink (also exercises the "not even linked" branch).
+    const result = await unlinkProviderAccount(emailPassUser.id, "google");
+    assert.equal(result.ok, false);
+  });
+
+  await test("unlinkProviderAccount succeeds when another method remains", async () => {
+    await db.prepare(
+      `INSERT INTO accounts (id, userId, type, provider, providerAccountId) VALUES (?, ?, 'oauth', 'google', ?)`
+    ).run(newId(), emailPassUser.id, `google-sub-${newId()}`);
+
+    const result = await unlinkProviderAccount(emailPassUser.id, "google");
+    assert.equal(result.ok, true);
+    const methods = await getSignInMethods(emailPassUser.id);
+    assert.equal(methods.oauth.length, 0);
+  });
+
+  await test("unlinkProviderAccount refuses the last method even with no password", async () => {
+    const oauthOnly = { id: newId(), name: "OAuth Only", email: `oauth-${newId()}@test.dev` };
+    await db.prepare(`INSERT INTO users (id, name, email) VALUES (?, ?, ?)`).run(oauthOnly.id, oauthOnly.name, oauthOnly.email);
+    await db.prepare(
+      `INSERT INTO accounts (id, userId, type, provider, providerAccountId) VALUES (?, ?, 'oauth', 'github', ?)`
+    ).run(newId(), oauthOnly.id, `gh-sub-${newId()}`);
+
+    const result = await unlinkProviderAccount(oauthOnly.id, "github");
+    assert.equal(result.ok, false, "no password + this is the only provider => must refuse");
+  });
+
+  console.log("\nAppearance theme — Tier 7");
+
+  await test("theme round-trips through Postgres and survives sanitize/encode/decode", async () => {
+    const chosen = sanitizeAccent({ h: 260, h2: 40, s: 70, l: 45 });
+    await setTheme(userA.id, chosen);
+    const loaded = await getTheme(userA.id);
+    assert.deepEqual(loaded, chosen);
+
+    const encoded = encodeAccent(chosen);
+    assert.deepEqual(decodeAccent(encoded), chosen);
+  });
+
+  await test("getTheme falls back to the default for a user who never set one", async () => {
+    const fresh = { id: newId(), name: "Fresh", email: `fresh-${newId()}@test.dev` };
+    await db.prepare(`INSERT INTO users (id, name, email) VALUES (?, ?, ?)`).run(fresh.id, fresh.name, fresh.email);
+    assert.deepEqual(await getTheme(fresh.id), DEFAULT_THEME);
+  });
+
+  await test("hex <-> HSL accent conversion round-trips for the default and a custom color", async () => {
+    for (const accent of [DEFAULT_THEME, sanitizeAccent({ h: 15, h2: 200, s: 60, l: 50 })]) {
+      const hex = accentToHex(accent);
+      // No `base` passed: this reconstructs h/s/l purely from the hex, so it
+      // actually exercises the hslToHex -> hexToHsl round trip rather than
+      // inheriting s/l from the caller (which is what passing a base does,
+      // by design, for the live picker's "only hue changed" case).
+      const back = accentFromHex(hex);
+      assert.ok(Math.abs(back.h - accent.h) <= 2, `hue drifted too far: ${back.h} vs ${accent.h}`);
+      assert.ok(Math.abs(back.s - accent.s) <= 2, `saturation drifted too far: ${back.s} vs ${accent.s}`);
+      assert.ok(Math.abs(back.l - accent.l) <= 2, `lightness drifted too far: ${back.l} vs ${accent.l}`);
+    }
+  });
+
+  console.log("\nGoogle Calendar connection + link store — Tier 8");
+
+  await test("calendar connection round-trips encrypted tokens and reports connected", async () => {
+    assert.equal(await getConnection(userA.id), null);
+
+    await saveConnection(userA.id, {
+      accessToken: "fake-access-token", refreshToken: "fake-refresh-token",
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(), scope: "https://www.googleapis.com/auth/calendar.events",
+    });
+
+    const conn = await getConnection(userA.id);
+    assert.ok(conn, "connection should now exist");
+    assert.equal(conn!.calendarId, "primary");
+  });
+
+  await test("calendar_links enforces one link per (user, homework) and per (user, event)", async () => {
+    const hw = await createHomework({
+      userId: userA.id, title: "Linked to Google", details: "", subject: "General", dueAt: null,
+      priority: "normal", estimateMins: null, rawInput: "", source: "text", aiConfidence: null, aiNotes: "",
+    });
+
+    await upsertLinkPushed(userA.id, hw.id, "google-event-abc");
+    const byHomework = await getLinkByHomeworkId(userA.id, hw.id);
+    const byEvent = await getLinkByEventId(userA.id, "google-event-abc");
+    assert.equal(byHomework?.externalEventId, "google-event-abc");
+    assert.equal(byEvent?.homeworkId, hw.id);
+
+    // Re-pushing the same task with a new event id should update the existing
+    // link row (ON CONFLICT), not create a second one.
+    await upsertLinkPushed(userA.id, hw.id, "google-event-xyz");
+    const linked = await listLinkedHomeworkIds(userA.id);
+    assert.ok(linked.has(hw.id));
+    assert.equal((await getLinkByEventId(userA.id, "google-event-abc")), null, "stale event id must no longer resolve");
+  });
+
+  await test("disconnect clears both the connection and its links", async () => {
+    await disconnectCalendar(userA.id);
+    assert.equal(await getConnection(userA.id), null);
   });
 
   console.log(`\n${passed} passed`);

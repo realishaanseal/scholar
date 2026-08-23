@@ -3,8 +3,14 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { jsonRoute } from "@/lib/apiRoute";
 import { fetchWithTimeout } from "@/lib/http";
-import { listHomework } from "@/lib/queries";
+import { listExternalIds } from "@/lib/queries";
 import { candidatesFromICS, detectPlatform, validateFeedUrl } from "@/lib/lms";
+
+/** Source tag used for every LMS ICS import, regardless of which platform was
+ *  detected — platform detection is cosmetic (it only picks the instructions
+ *  shown to the student); the identity a resync keys off is "this came from
+ *  an LMS calendar feed," which doesn't change if detection ever does. */
+const EXTERNAL_SOURCE = "lms";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -63,15 +69,25 @@ export const POST = jsonRoute(async (req: Request) => {
 
   const candidates = candidatesFromICS(text);
 
-  // Titles already in Scholar, so a repeat import doesn't offer duplicates.
-  const existing = new Set((await listHomework(session.user.id)).map((h) => h.title.toLowerCase()));
+  // Dedup by the ICS UID (externalId), not title — a title-based check breaks
+  // the moment either side edits the title, and can't tell "already imported"
+  // apart from "coincidentally worded the same." Anything already imported is
+  // still worth a resync (title/details/due date may have changed on the LMS
+  // side), so it's marked rather than silently dropped from the response.
+  const alreadyImported = await listExternalIds(session.user.id, EXTERNAL_SOURCE);
+
+  const withStatus = candidates.map((c) => ({ ...c, alreadyImported: alreadyImported.has(c.externalId) }));
 
   return NextResponse.json({
     platform: detectPlatform(validated.url.toString()),
-    total: candidates.length,
-    candidates: candidates
-      .filter((c) => !existing.has(c.title.toLowerCase()))
+    externalSource: EXTERNAL_SOURCE,
+    total: withStatus.length,
+    // New items first so the common case (reviewing what's new) doesn't
+    // require scrolling past everything already brought in previously.
+    candidates: [...withStatus]
+      .sort((a, b) => Number(a.alreadyImported) - Number(b.alreadyImported))
       .slice(0, 100),
-    skippedExisting: candidates.filter((c) => existing.has(c.title.toLowerCase())).length,
+    newCount: withStatus.filter((c) => !c.alreadyImported).length,
+    resyncCount: withStatus.filter((c) => c.alreadyImported).length,
   });
 });

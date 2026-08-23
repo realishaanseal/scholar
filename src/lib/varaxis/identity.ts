@@ -24,6 +24,53 @@ export type VaraxisProfile = {
   products: Array<{ id: string; label: string; active: boolean }>;
 };
 
+export type LinkedAccount = { provider: string; providerAccountId: string };
+
+/**
+ * Sign-in methods this account has: linked OAuth providers, and whether a
+ * password is set. Used to (a) show the student what's connected, and (b)
+ * refuse to unlink the very last one — losing every way to sign in is a
+ * self-inflicted lockout, not a preference.
+ */
+export async function getSignInMethods(
+  userId: string
+): Promise<{ oauth: LinkedAccount[]; hasPassword: boolean }> {
+  const [oauth, user] = await Promise.all([
+    db.prepare(`SELECT provider, providerAccountId FROM accounts WHERE userId = ?`).all(userId) as Promise<
+      LinkedAccount[]
+    >,
+    db.prepare(`SELECT passwordHash FROM users WHERE id = ?`).get(userId) as Promise<
+      { passwordHash: string | null } | undefined
+    >,
+  ]);
+  return { oauth, hasPassword: Boolean(user?.passwordHash) };
+}
+
+/**
+ * Unlink one OAuth provider from this account, refusing if it's the only
+ * sign-in method left (no password, and no other linked provider).
+ */
+export async function unlinkProviderAccount(
+  userId: string,
+  provider: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { oauth, hasPassword } = await getSignInMethods(userId);
+  const stillLinked = oauth.filter((a) => a.provider !== provider);
+
+  if (!oauth.some((a) => a.provider === provider)) {
+    return { ok: false, error: "That provider isn't linked to your account." };
+  }
+  if (!hasPassword && stillLinked.length === 0) {
+    return {
+      ok: false,
+      error: "This is your only way to sign in — set a password or link another provider first.",
+    };
+  }
+
+  await db.prepare(`DELETE FROM accounts WHERE userId = ? AND provider = ?`).run(userId, provider);
+  return { ok: true };
+}
+
 export async function getProfile(userId: string): Promise<VaraxisProfile | null> {
   const row = (await db
     .prepare(`SELECT id, name, email, image, createdAt FROM users WHERE id = ?`)

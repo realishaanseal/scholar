@@ -14,15 +14,24 @@ const config: Config = {
           700: "#222738",
           600: "#333a52",
         },
+        // Static fallback shades approximating the new cyan/blue default
+        // accent theme (see globals.css's --accent-* custom properties for
+        // the actual, user-overridable brand color). These are used only by
+        // the handful of `vx-*` utility classes that Tailwind resolves at
+        // build time (e.g. `border-vx-500/70`, `accent-vx-500`) — the live,
+        // per-user accent color is driven by CSS vars everywhere else.
         vx: {
-          50: "#eef2ff",
-          200: "#c7d4ff",
-          300: "#a5b8ff",
-          400: "#7d9bff",
-          500: "#5b7cfa",
-          600: "#4560e8",
-          700: "#3546bd",
+          50: "#e9fbff",
+          200: "#b9edff",
+          300: "#82dcfb",
+          400: "#4bc4ef",
+          500: "#2bbdee",
+          600: "#1f96d6",
+          700: "#1c72b3",
         },
+        // Kept as a selectable preset (see THEME_PRESETS in lib/scholar/theme.ts)
+        // for anyone who preferred the old purple/violet brand — no longer
+        // the default and no longer referenced by any base component style.
         iris: { 400: "#b07dff", 500: "#9455f5", 600: "#7c3aed" },
         aqua: { 400: "#4fd6e8", 500: "#22b8d0" },
       },
@@ -31,7 +40,7 @@ const config: Config = {
       },
       borderRadius: { "2xl": "1rem", "3xl": "1.5rem" },
       boxShadow: {
-        glow: "0 0 0 1px rgba(91,124,250,0.28), 0 10px 40px -12px rgba(91,124,250,0.5)",
+        glow: "0 0 0 1px rgba(43,189,238,0.28), 0 10px 40px -12px rgba(43,189,238,0.5)",
         lift: "0 18px 50px -20px rgba(0,0,0,0.85)",
         "inner-top": "inset 0 1px 0 0 rgba(255,255,255,0.06)",
       },

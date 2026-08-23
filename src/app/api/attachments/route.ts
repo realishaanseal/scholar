@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { jsonRoute } from "@/lib/apiRoute";
 import { createPendingAttachment } from "@/lib/queries";
 
 export const runtime = "nodejs";
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20MB per file
 
-export async function POST(req: Request) {
+export const POST = jsonRoute(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -32,4 +33,4 @@ export async function POST(req: Request) {
   );
 
   return NextResponse.json(attachment, { status: 201 });
-}
+});

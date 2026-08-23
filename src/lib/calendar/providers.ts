@@ -1,16 +1,17 @@
 /**
- * Hosted calendar sync — the abstraction, deliberately not yet wired.
+ * Hosted calendar sync.
  *
- * Google and Microsoft calendar sync both require an OAuth client registered
- * against a real domain with a verified redirect URI, which a local-first build
- * running on localhost cannot complete. Rather than ship buttons that appear to
- * connect and quietly do nothing, the interface each provider will implement is
- * defined here and the UI reports them as pending.
+ * Google is wired (see google.ts / googleStore.ts / googleSync.ts) — it
+ * reuses the same OAuth client as sign-in with the calendar scope and a
+ * second redirect URI, which only works once the app has a real deployed
+ * origin (`AUTH_URL` pointing at something other than localhost). Microsoft
+ * calendar sync would need its own registered application and isn't built
+ * yet; the interface below is what it would implement.
  *
- * The ICS path in ics.ts is the working integration in the meantime: exported
- * files import into all three major calendars, which covers the actual need
- * (getting deadlines into the calendar the student already uses) without an
- * account link.
+ * The ICS path in ics.ts remains the zero-setup fallback: exported files
+ * import into all three major calendars with no account link at all, for a
+ * student who'd rather not connect an account, or whose deployment doesn't
+ * have Google Calendar configured.
  */
 
 import type { CalendarEvent } from "./ics";
@@ -39,8 +40,8 @@ export const CALENDAR_PROVIDERS: CalendarProviderInfo[] = [
   {
     id: "google",
     label: "Google Calendar",
-    status: "pending",
-    note: "Two-way sync needs a registered Google OAuth client and a public redirect URL, which a local build can't complete. Use the .ics export for now.",
+    status: "available",
+    note: "Two-way sync: assignments you add here appear on your Google Calendar, and edits or deletions you make to those specific events sync back. Scholar won't import unrelated events from your calendar as homework.",
     canWrite: true,
   },
   {

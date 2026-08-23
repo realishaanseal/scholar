@@ -13,6 +13,7 @@ export type HomeworkDTO = {
   aiConfidence: number | null;
   aiNotes: string;
   createdAt: string;
+  updatedAt: string;
   completedAt: string | null;
   /** Recorded actual duration once completed, in minutes. */
   actualMins: number | null;

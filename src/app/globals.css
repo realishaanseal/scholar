@@ -4,8 +4,28 @@
 
 :root {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --grad-brand: linear-gradient(135deg, #5b7cfa 0%, #7c5cf0 45%, #9455f5 100%);
-  --grad-brand-hot: linear-gradient(135deg, #6b8bff 0%, #8d6bff 45%, #a866ff 100%);
+
+  /*
+   * Accent theme — the ENTIRE app's brand color derives from these four
+   * numbers. `--accent-h` / `--accent-h-2` are two hues a little apart on
+   * the wheel (cyan -> blue by default) so gradients keep visual depth
+   * instead of reading as one flat tint; `--accent-s` / `--accent-l` are
+   * shared saturation/lightness. Settings overrides these inline on <html>
+   * (see ThemePanel.tsx / applyTheme in theme-client.ts), so every rule
+   * below that reads them re-themes live with no other change needed.
+   */
+  --accent-h: 195;
+  --accent-h-2: 222;
+  --accent-s: 85%;
+  --accent-l: 55%;
+
+  --accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+  --accent-2: hsl(var(--accent-h-2) var(--accent-s) var(--accent-l));
+  --accent-soft: hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 10%));
+  --accent-2-soft: hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) + 10%));
+
+  --grad-brand: linear-gradient(135deg, var(--accent) 0%, hsl(calc((var(--accent-h) + var(--accent-h-2)) / 2) var(--accent-s) calc(var(--accent-l) + 2%)) 45%, var(--accent-2) 100%);
+  --grad-brand-hot: linear-gradient(135deg, var(--accent-soft) 0%, hsl(calc((var(--accent-h) + var(--accent-h-2)) / 2) var(--accent-s) calc(var(--accent-l) + 12%)) 45%, var(--accent-2-soft) 100%);
 }
 
 @property --angle {
@@ -91,7 +111,8 @@ body {
   }
   .card-hover:hover {
     @apply -translate-y-[2px] border-white/[0.14];
-    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(125, 155, 255, 0.12);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9),
+      0 0 0 1px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.16);
   }
 
   /* Conic gradient border that slowly rotates — used on the AI review card. */
@@ -99,10 +120,10 @@ body {
     @apply relative rounded-2xl;
     background: conic-gradient(
       from var(--angle),
-      rgba(91, 124, 250, 0.65),
-      rgba(148, 85, 245, 0.55),
-      rgba(79, 214, 232, 0.5),
-      rgba(91, 124, 250, 0.65)
+      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.65),
+      hsl(var(--accent-h-2) var(--accent-s) var(--accent-l) / 0.55),
+      hsl(calc(var(--accent-h) - 25) var(--accent-s) calc(var(--accent-l) + 15%) / 0.5),
+      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.65)
     );
     padding: 1px;
     animation: borderSpin 7s linear infinite;
@@ -123,9 +144,10 @@ body {
   }
   .input:hover { @apply border-white/[0.16]; }
   .input:focus {
-    @apply border-vx-500/70;
+    border-color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.7);
     background: rgba(8, 10, 18, 0.9);
-    box-shadow: 0 0 0 3px rgba(91, 124, 250, 0.16), 0 0 28px -6px rgba(91, 124, 250, 0.4);
+    box-shadow: 0 0 0 3px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.16),
+      0 0 28px -6px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4);
   }
 
   .label {
@@ -145,11 +167,13 @@ body {
     @apply btn text-white;
     background: var(--grad-brand);
     background-size: 160% 160%;
-    box-shadow: 0 8px 26px -10px rgba(108, 92, 246, 0.85), inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 26px -10px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 5%) / 0.85),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
   }
   .btn-primary:hover:not(:disabled) {
     background-image: var(--grad-brand-hot);
-    box-shadow: 0 14px 40px -12px rgba(124, 92, 246, 0.95), inset 0 1px 0 0 rgba(255, 255, 255, 0.24);
+    box-shadow: 0 14px 40px -12px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 5%) / 0.95),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.24);
     transform: translateY(-1px);
   }
   /* light sweep across the button on hover */
@@ -202,7 +226,12 @@ body {
   .chip-btn:hover { transform: translateY(-1px); }
 
   .gradient-text {
-    background: linear-gradient(120deg, #ffffff 10%, #c7d4ff 45%, #b07dff 90%);
+    background: linear-gradient(
+      120deg,
+      #ffffff 10%,
+      hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 20%)) 45%,
+      hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) + 10%)) 90%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -251,10 +280,10 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #3a4363, #232a3d); background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-::selection { background: rgba(124, 92, 246, 0.35); color: #fff; }
+::selection { background: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.35); color: #fff; }
 
 :focus-visible {
-  outline: 2px solid rgba(125, 155, 255, 0.75);
+  outline: 2px solid hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 15%) / 0.75);
   outline-offset: 2px;
 }
 

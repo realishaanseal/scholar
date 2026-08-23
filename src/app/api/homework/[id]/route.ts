@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { jsonRoute } from "@/lib/apiRoute";
 import { deleteHomework, updateHomework, type UpdateHomeworkPatch } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ const PatchBody = z.object({
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function PATCH(req: Request, ctx: Ctx) {
+export const PATCH = jsonRoute(async (req: Request, ctx: Ctx) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -42,9 +43,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json(updated);
-}
+});
 
-export async function DELETE(_req: Request, ctx: Ctx) {
+export const DELETE = jsonRoute(async (_req: Request, ctx: Ctx) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -53,4 +54,4 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
-}
+});

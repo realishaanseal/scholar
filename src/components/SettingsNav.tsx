@@ -5,11 +5,13 @@ import AISettingsPanel from "./AISettingsPanel";
 import StudySettingsPanel from "./StudySettingsPanel";
 import AnalyticsPanel from "./AnalyticsPanel";
 import PreferencesPanel from "./PreferencesPanel";
+import ThemePanel from "./ThemePanel";
+import ThemeLoader from "./ThemeLoader";
 import GroupsPanel from "./GroupsPanel";
 import SharingPanel from "./SharingPanel";
 import AccountPanel from "./AccountPanel";
 
-type SectionId = "ai" | "study" | "insights" | "preferences" | "groups" | "sharing" | "account";
+type SectionId = "ai" | "study" | "insights" | "preferences" | "appearance" | "groups" | "sharing" | "account";
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] = [
   {
@@ -37,6 +39,12 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
     icon: "M4 6h16M4 12h16M4 18h10",
   },
   {
+    id: "appearance",
+    label: "Appearance",
+    hint: "Accent color and theme",
+    icon: "M12 2a10 10 0 1 0 0 20 3 3 0 0 0 3-3 2 2 0 0 1 2-2h1a3 3 0 0 0 3-3c0-6.63-4.03-12-9-12zM7 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM9.5 7.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM14.5 7.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM17 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z",
+  },
+  {
     id: "groups",
     label: "Groups",
     hint: "Shared boards for group work",
@@ -59,14 +67,17 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
 export default function SettingsNav({
   email,
   name,
+  enabledOAuthProviders,
 }: {
   email: string | null;
   name: string | null;
+  enabledOAuthProviders: { google: boolean; github: boolean; facebook: boolean };
 }) {
   const [section, setSection] = useState<SectionId>("ai");
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
+      <ThemeLoader />
       <nav className="card animate-riseIn p-2 lg:sticky lg:top-24">
         {SECTIONS.map((s) => {
           const on = section === s.id;
@@ -107,9 +118,12 @@ export default function SettingsNav({
         {section === "study" && <StudySettingsPanel />}
         {section === "insights" && <AnalyticsPanel />}
         {section === "preferences" && <PreferencesPanel />}
+        {section === "appearance" && <ThemePanel />}
         {section === "groups" && <GroupsPanel />}
         {section === "sharing" && <SharingPanel />}
-        {section === "account" && <AccountPanel name={name} email={email} />}
+        {section === "account" && (
+          <AccountPanel name={name} email={email} enabledOAuthProviders={enabledOAuthProviders} />
+        )}
       </div>
     </div>
   );

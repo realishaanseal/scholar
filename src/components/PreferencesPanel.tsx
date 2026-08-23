@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import LmsImport from "./LmsImport";
 import ExtensionSetup from "./ExtensionSetup";
+import GoogleCalendarPanel from "./GoogleCalendarPanel";
 import { useNotifications } from "./PwaSetup";
 
 type Prefs = Record<string, boolean>;
@@ -293,21 +294,20 @@ export default function PreferencesPanel() {
           </div>
         </div>
 
+        <GoogleCalendarPanel />
+
         {/* Stated as pending rather than shipped as a button that does nothing. */}
-        {[
-          { label: "Google Calendar", note: "Two-way sync needs a registered Google OAuth client and a public redirect URL, which a local build can't complete." },
-          { label: "Outlook Calendar", note: "Two-way sync needs a registered Microsoft application." },
-        ].map((p) => (
-          <div key={p.label} className="mt-2.5 rounded-xl border border-white/[0.05] bg-white/[0.012] p-4 opacity-70">
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium text-slate-400">{p.label}</span>
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                Not yet connected
-              </span>
-            </div>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">{p.note}</p>
+        <div className="mt-2.5 rounded-xl border border-white/[0.05] bg-white/[0.012] p-4 opacity-70">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-medium text-slate-400">Outlook Calendar</span>
+            <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              Not yet connected
+            </span>
           </div>
-        ))}
+          <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">
+            Two-way sync needs a registered Microsoft application.
+          </p>
+        </div>
       </section>
     </div>
   );
