@@ -203,13 +203,84 @@ export type GroupTask = {
   estimateMins: number | null;
   assignedTo: string | null;
   createdAt: string;
+  /** How many distinct members have flagged this post as wrong/misleading. */
+  reportCount: number;
+  /** Whether the CALLER specifically has flagged it — drives the button's
+   *  own toggle state, separate from the count everyone sees. */
+  reportedByMe: boolean;
 };
 
 export async function listGroupTasks(groupId: string, userId: string): Promise<GroupTask[]> {
   await requireMembership(groupId, userId);
   return (await db
-    .prepare(`SELECT * FROM group_tasks WHERE groupId = ? ORDER BY (dueAt IS NULL), dueAt ASC`)
-    .all(groupId)) as GroupTask[];
+    .prepare(
+      `SELECT t.*,
+              (SELECT COUNT(*) FROM group_task_reports r WHERE r.taskId = t.id)::int AS reportCount,
+              EXISTS(SELECT 1 FROM group_task_reports r WHERE r.taskId = t.id AND r.userId = ?) AS reportedByMe
+         FROM group_tasks t
+        WHERE t.groupId = ?
+        ORDER BY (t.dueAt IS NULL), t.dueAt ASC`
+    )
+    .all(userId, groupId)) as GroupTask[];
+}
+
+export type ReportReason = "wrong" | "misleading" | "off-topic" | "other";
+
+/**
+ * Flag a task as wrong/misleading/etc. One report per member per task (the
+ * UNIQUE constraint on group_task_reports) — reporting again just updates
+ * the reason/note rather than inflating the count, since the point is "how
+ * many distinct people are raising a concern," not how many times one did.
+ */
+export async function reportGroupTask(
+  groupId: string, userId: string, taskId: string, reason: ReportReason, note: string
+): Promise<{ reportCount: number }> {
+  await requireMembership(groupId, userId);
+  const task = (await db
+    .prepare(`SELECT id FROM group_tasks WHERE id = ? AND groupId = ?`)
+    .get(taskId, groupId)) as { id: string } | undefined;
+  if (!task) throw new AccessDenied("That post doesn't exist.");
+
+  await db.prepare(
+    `INSERT INTO group_task_reports (id, taskId, groupId, userId, reason, note, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (taskId, userId) DO UPDATE SET reason = excluded.reason, note = excluded.note, createdAt = excluded.createdAt`
+  ).run(newId(), taskId, groupId, userId, reason, note.trim().slice(0, 300), nowISO());
+
+  const row = (await db
+    .prepare(`SELECT COUNT(*)::int AS n FROM group_task_reports WHERE taskId = ?`)
+    .get(taskId)) as { n: number };
+  return { reportCount: row.n };
+}
+
+export async function unreportGroupTask(
+  groupId: string, userId: string, taskId: string
+): Promise<{ reportCount: number }> {
+  await requireMembership(groupId, userId);
+  await db.prepare(`DELETE FROM group_task_reports WHERE taskId = ? AND userId = ?`).run(taskId, userId);
+
+  const row = (await db
+    .prepare(`SELECT COUNT(*)::int AS n FROM group_task_reports WHERE taskId = ?`)
+    .get(taskId)) as { n: number };
+  return { reportCount: row.n };
+}
+
+/** Who flagged a post and why — visible only to whoever can moderate the
+ *  group, so reporting isn't itself a way to broadcast an accusation. */
+export async function listTaskReports(groupId: string, userId: string, taskId: string) {
+  const role = await requireMembership(groupId, userId);
+  if (!canAdminister(role)) throw new AccessDenied("Only the group owner can see report details.");
+
+  return (await db
+    .prepare(
+      `SELECT r.reason, r.note, r.createdAt, u.name, u.email
+         FROM group_task_reports r JOIN users u ON u.id = r.userId
+        WHERE r.taskId = ? AND r.groupId = ?
+        ORDER BY r.createdAt ASC`
+    )
+    .all(taskId, groupId)) as Array<{
+      reason: ReportReason; note: string; createdAt: string; name: string | null; email: string | null;
+    }>;
 }
 
 export async function createGroupTask(
@@ -256,6 +327,8 @@ export async function deleteGroupTask(groupId: string, userId: string, taskId: s
   return (await db.prepare(`DELETE FROM group_tasks WHERE id = ? AND groupId = ?`).run(taskId, groupId)).changes > 0;
 }
 
+export type CommentAttachmentMeta = { id: string; filename: string; mimeType: string; size: number };
+
 export async function listComments(groupId: string, userId: string, taskId: string | null) {
   await requireMembership(groupId, userId);
   const sql = taskId
@@ -265,13 +338,40 @@ export async function listComments(groupId: string, userId: string, taskId: stri
         WHERE c.groupId = ? AND c.taskId IS NULL ORDER BY c.createdAt ASC`;
 
   const args = taskId ? [groupId, taskId] : [groupId];
-  return (await db.prepare(sql).all(...args)) as Array<{
+  const comments = (await db.prepare(sql).all(...args)) as Array<{
     id: string; groupId: string; taskId: string | null; userId: string;
     body: string; createdAt: string; name: string | null;
   }>;
+  if (comments.length === 0) return [] as Array<(typeof comments)[number] & { attachments: CommentAttachmentMeta[] }>;
+
+  // One query for every comment's attachment metadata (never the base64
+  // `data` itself — that's only ever fetched for the one file being
+  // downloaded, not for rendering the whole thread).
+  const ids = comments.map((c) => c.id);
+  const placeholders = ids.map(() => "?").join(",");
+  const attachmentRows = (await db
+    .prepare(
+      `SELECT id, commentId, filename, mimeType, size FROM group_comment_attachments WHERE commentId IN (${placeholders})`
+    )
+    .all(...ids)) as Array<CommentAttachmentMeta & { commentId: string }>;
+
+  const byComment = new Map<string, CommentAttachmentMeta[]>();
+  for (const a of attachmentRows) {
+    const list = byComment.get(a.commentId) ?? [];
+    list.push({ id: a.id, filename: a.filename, mimeType: a.mimeType, size: a.size });
+    byComment.set(a.commentId, list);
+  }
+
+  return comments.map((c) => ({ ...c, attachments: byComment.get(c.id) ?? [] }));
 }
 
-export async function addComment(groupId: string, userId: string, body: string, taskId: string | null) {
+export async function addComment(
+  groupId: string,
+  userId: string,
+  body: string,
+  taskId: string | null,
+  attachment?: { filename: string; mimeType: string; size: number; dataBase64: string } | null
+) {
   const role = await requireMembership(groupId, userId);
   if (!canParticipate(role)) throw new AccessDenied("Observers can't comment.");
 
@@ -280,7 +380,39 @@ export async function addComment(groupId: string, userId: string, body: string, 
     `INSERT INTO group_comments (id, groupId, taskId, userId, body, createdAt) VALUES (?, ?, ?, ?, ?, ?)`
   ).run(id, groupId, taskId, userId, body.trim().slice(0, 2000), nowISO());
 
-  return db.prepare(`SELECT * FROM group_comments WHERE id = ?`).get(id);
+  let attachmentMeta: CommentAttachmentMeta | null = null;
+  if (attachment) {
+    const attachmentId = newId();
+    await db.prepare(
+      `INSERT INTO group_comment_attachments (id, commentId, filename, mimeType, size, data, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      attachmentId, id, attachment.filename.slice(0, 200), attachment.mimeType.slice(0, 100),
+      attachment.size, attachment.dataBase64, nowISO()
+    );
+    attachmentMeta = { id: attachmentId, filename: attachment.filename, mimeType: attachment.mimeType, size: attachment.size };
+  }
+
+  const comment = await db.prepare(`SELECT * FROM group_comments WHERE id = ?`).get(id);
+  return { ...(comment as object), attachments: attachmentMeta ? [attachmentMeta] : [] };
+}
+
+/**
+ * Fetch one attachment's bytes for download. Access is membership in the
+ * GROUP the parent comment belongs to, not "did you post it" — any member
+ * can see any comment in a group they're in, and attachments are no
+ * different.
+ */
+export async function getCommentAttachment(groupId: string, userId: string, attachmentId: string) {
+  await requireMembership(groupId, userId);
+  return (await db
+    .prepare(
+      `SELECT a.filename, a.mimeType, a.data
+         FROM group_comment_attachments a
+         JOIN group_comments c ON c.id = a.commentId
+        WHERE a.id = ? AND c.groupId = ?`
+    )
+    .get(attachmentId, groupId)) as { filename: string; mimeType: string; data: string } | undefined;
 }
 
 /* ── Share grants ─────────────────────────────────────────────────────── */

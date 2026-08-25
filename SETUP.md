@@ -56,30 +56,6 @@ AUTH_GITHUB_SECRET="...."
 
 ---
 
-## Facebook
-
-Facebook is the fiddliest of the three; skip it if you're in a hurry.
-
-1. Go to https://developers.facebook.com/apps → **Create app**
-2. Use case: **Authenticate and request data from users with Facebook Login** → Next
-3. App type: **Consumer** (if asked). Name it `Varaxis Scholar`, add your contact email, create.
-4. In the app dashboard: **Add product** → **Facebook Login** → **Set up** → **Web**
-   - Site URL: `http://localhost:3000`
-5. Left menu → **Facebook Login** → **Settings**
-   - **Valid OAuth Redirect URIs**: `http://localhost:3000/api/auth/callback/facebook`
-   - Save changes
-6. Left menu → **App settings** → **Basic**. Copy the **App ID** and **App Secret**.
-
-```env
-AUTH_FACEBOOK_ID="....."
-AUTH_FACEBOOK_SECRET="....."
-```
-
-Note: Facebook requires HTTPS for live apps. In **development mode** localhost is allowed,
-and only you (and users you add under **App roles**) can sign in — that's fine for now.
-
----
-
 ## Google Calendar sync (optional, separate from Google sign-in)
 
 This reuses the same Google OAuth client as "Continue with Google" above — it just needs one
@@ -142,7 +118,7 @@ that prompt:
 echo "the-real-value" | vercel env add AUTH_GOOGLE_ID production
 ```
 
-Repeat for `AUTH_GOOGLE_SECRET`, and the GitHub/Facebook equivalents. Redeploy afterward
+Repeat for `AUTH_GOOGLE_SECRET`, and the GitHub equivalents. Redeploy afterward
 (`vercel --prod`, or your `scholardeploy` alias if you set one up) — env var changes don't
 take effect until the next deploy.
 

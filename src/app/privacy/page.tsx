@@ -8,9 +8,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Static, unauthenticated page — required by Google/GitHub/Facebook OAuth
- * app review and general good practice. Keep this in plain language; it's
- * read by users, not just platforms.
+ * Static, unauthenticated page — required by Google/GitHub OAuth app review
+ * and general good practice. Keep this in plain language; it's read by
+ * users, not just platforms.
  */
 export default function PrivacyPage() {
   return (
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
               organiser built by Varaxis. This page explains what information we collect, why, and how
               you can control or delete it. It applies to the Scholar web app at{" "}
               <span className="text-slate-200">scholar-varaxis.vercel.app</span> and to sign-in via
-              Google, GitHub, or Facebook.
+              Google or GitHub.
             </p>
           </section>
 
@@ -45,9 +45,9 @@ export default function PrivacyPage() {
             <ul className="mt-2.5 list-disc space-y-1.5 pl-5">
               <li>
                 <span className="text-slate-200">Account info:</span> your name and email address, either
-                entered directly or provided by the sign-in method you choose (Google, GitHub, or
-                Facebook). We only ever request basic profile info and an email address — never posts,
-                friends lists, or other social data.
+                entered directly or provided by the sign-in method you choose (Google or GitHub). We
+                only ever request basic profile info and an email address — never posts, friends
+                lists, or other social data.
               </li>
               <li>
                 <span className="text-slate-200">Homework data:</span> the tasks, deadlines, subjects, and
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-semibold text-white">Third-party sign-in</h2>
             <p className="mt-2.5">
-              When you sign in with Google, GitHub, or Facebook, that provider shares only your name,
+              When you sign in with Google or GitHub, that provider shares only your name,
               email address, and profile picture with us — enough to create your Scholar account. We
               never receive your password for that provider, and we never post on your behalf. You can
               review or remove connected sign-in methods any time from{" "}

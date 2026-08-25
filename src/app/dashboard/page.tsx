@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import Dashboard from "@/components/Dashboard";
 import SignOutButton from "@/components/SignOutButton";
 import Logo from "@/components/Logo";
+import LiveClasses from "@/components/LiveClasses";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,8 @@ export default async function DashboardPage() {
               />
             )}
             <span className="hidden text-xs text-slate-400 md:block">{session.user.email}</span>
+
+            <LiveClasses />
 
             <Link
               href="/settings"

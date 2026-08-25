@@ -20,7 +20,7 @@ and outgrow Neon's free storage tier, moving them to Vercel Blob (also free to
 start) is a contained change to `src/lib/queries.ts` — not a rewrite.
 
 Auth still runs through Auth.js exactly as it did locally (email+password,
-plus optional Google/GitHub/Facebook) — nothing about sign-in changes, it just
+plus optional Google/GitHub) — nothing about sign-in changes, it just
 reads and writes Postgres instead of a SQLite file. Each student still pastes
 their own AI key in Settings → AI.
 
@@ -111,7 +111,7 @@ server error — that's the thing to paste back if you get stuck.
 
 ## 6. One-tap sign-in (optional)
 
-If you want Google/GitHub/Facebook buttons on the login page, see `SETUP.md` —
+If you want Google/GitHub buttons on the login page, see `SETUP.md` —
 same steps as local dev, just use your real `https://your-project.vercel.app`
 URL instead of `http://localhost:3000` for the callback URLs, and add the
 resulting `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (etc.) as Vercel environment

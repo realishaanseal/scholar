@@ -71,7 +71,7 @@ export default function SettingsNav({
 }: {
   email: string | null;
   name: string | null;
-  enabledOAuthProviders: { google: boolean; github: boolean; facebook: boolean };
+  enabledOAuthProviders: { google: boolean; github: boolean };
 }) {
   const [section, setSection] = useState<SectionId>("ai");
   const panelRef = useRef<HTMLDivElement>(null);

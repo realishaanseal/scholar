@@ -21,6 +21,8 @@ export type ParsedClass = {
   endHour: number;
   endMin: number;
   location: string | null;
+  /** Who teaches it, if the source says so. Powers the "Classes" live view. */
+  teacherName: string | null;
 };
 
 export type ParsedTimetable = {
@@ -46,7 +48,8 @@ Return ONLY a JSON object with this exact shape:
       "startMin": 0-59,
       "endHour": 0-23,
       "endMin": 0-59,
-      "location": "string|null — room or building if given"
+      "location": "string|null — room or building if given",
+      "teacherName": "string|null — the teacher/instructor's name if the source states one, otherwise null. Never guess or invent one."
     }
   ],
   "warnings": ["string — rows you could not confidently place, and why"],
@@ -122,6 +125,7 @@ export function sanitiseClasses(raw: any): ParsedTimetable {
       endHour,
       endMin,
       location: str(r?.location, 80),
+      teacherName: str(r?.teacherName, 60),
     });
   }
 

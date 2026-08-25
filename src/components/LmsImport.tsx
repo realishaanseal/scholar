@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { fetchJson } from "@/lib/fetchJson";
 
 type Candidate = {
@@ -23,6 +24,15 @@ const PLATFORMS = [
   { id: "teams", label: "Teams / Outlook", instructions: "Outlook → Calendar → Share → Publish a calendar → “Can view all details” → copy the ICS link." },
 ];
 
+const NOTICE_PLACEHOLDER = `Paste the homework notice or diary email as it was sent — school ERP apps
+like Shikshak, Entab, Fedena, Teachmint and similar don't offer a calendar
+feed, but they almost always email or post a homework notice you can copy.
+For example:
+
+Maths: Workbook pg 42, Q1-10. Submit tomorrow.
+Science: Read Chapter 3, notes in copy.
+English: Essay on "My favourite season" due Friday.`;
+
 /**
  * Import assignments from a learning-management system.
  *
@@ -31,10 +41,13 @@ const PLATFORMS = [
  * and read-only. Imported items are reviewed before anything is saved.
  */
 export default function LmsImport({ onImported }: { onImported?: () => void }) {
+  const [mode, setMode] = useState<"feed" | "notice">("feed");
   const [platform, setPlatform] = useState(PLATFORMS[0]);
   const [feedUrl, setFeedUrl] = useState("");
+  const [noticeText, setNoticeText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsProvider, setNeedsProvider] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [externalSource, setExternalSource] = useState("lms");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -44,6 +57,7 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
   async function preview() {
     setLoading(true);
     setError(null);
+    setNeedsProvider(false);
     setDone(null);
 
     const { ok, data, error } = await fetchJson<{
@@ -74,6 +88,37 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
     );
   }
 
+  async function previewNotice() {
+    setLoading(true);
+    setError(null);
+    setNeedsProvider(false);
+    setDone(null);
+
+    const { ok, data, error } = await fetchJson<{
+      candidates: Candidate[]; total: number; externalSource: string; newCount: number; resyncCount: number;
+      warnings?: string[]; needsProvider?: boolean;
+    }>("/api/lms/notice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: noticeText }),
+    });
+
+    setLoading(false);
+
+    if (!ok || !data) {
+      setError(error ?? "That notice couldn't be read.");
+      if ((data as any)?.needsProvider) setNeedsProvider(true);
+      return;
+    }
+
+    setCandidates(data.candidates);
+    setExternalSource(data.externalSource ?? "lms-notice");
+    // Everything the model returned already passed its "is this coursework"
+    // filter, so — unlike the ICS path — everything not already imported
+    // starts ticked.
+    setSelected(new Set(data.candidates.filter((c) => !c.alreadyImported).map((c) => c.externalId)));
+  }
+
   async function commit() {
     if (!candidates) return;
     const items = candidates
@@ -102,59 +147,114 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
       setDone({ created: data?.created ?? items.length, updated: data?.updated ?? 0 });
       setCandidates(null);
       setFeedUrl("");
+      setNoticeText("");
       onImported?.();
     } else setError(error ?? "Couldn't save those.");
+  }
+
+  function switchMode(next: "feed" | "notice") {
+    setMode(next);
+    setError(null);
+    setNeedsProvider(false);
   }
 
   return (
     <section className="card animate-riseIn p-6">
       <h3 className="text-sm font-semibold text-white">Import from your school</h3>
       <p className="mt-1 text-xs leading-relaxed text-slate-500">
-        Scholar reads your LMS&apos;s calendar feed — the same link you&apos;d use to put coursework
-        in Google Calendar. No account linking, and it only ever reads.
+        {mode === "feed"
+          ? "Scholar reads your LMS's calendar feed — the same link you'd use to put coursework in Google Calendar. No account linking, and it only ever reads."
+          : "For school ERPs that don't offer a calendar feed (Shikshak, Entab, Fedena, Teachmint and similar), paste the homework notice or diary email instead — Scholar reads it the same way."}
       </p>
 
-      <div className="mt-5 flex flex-wrap gap-1.5">
-        {PLATFORMS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setPlatform(p)}
-            className={`rounded-lg px-3 py-1.5 text-[11.5px] font-medium transition-colors ${
-              platform.id === p.id
-                ? "bg-white/[0.10] text-white"
-                : "border border-white/[0.07] text-slate-500 hover:text-slate-300"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <p className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[11.5px] leading-relaxed text-slate-400">
-        {platform.instructions}
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <input
-          className="input flex-1 py-2.5 text-[13px]"
-          placeholder="https://…/feeds/calendars/user_xxx.ics"
-          value={feedUrl}
-          onChange={(e) => setFeedUrl(e.target.value)}
-          spellCheck={false}
-        />
+      <div className="mt-4 flex gap-1 rounded-full border border-white/[0.08] bg-white/[0.03] p-1 text-[11.5px]">
         <button
-          className="btn-primary shrink-0 px-4 py-2.5 text-xs"
-          onClick={preview}
-          disabled={loading || feedUrl.trim().length < 8}
+          onClick={() => switchMode("feed")}
+          className={`flex-1 rounded-full px-3 py-1.5 font-medium transition-colors ${
+            mode === "feed" ? "bg-white/[0.10] text-white" : "text-slate-500 hover:text-slate-300"
+          }`}
         >
-          {loading ? "Reading…" : "Preview"}
+          Calendar feed
+        </button>
+        <button
+          onClick={() => switchMode("notice")}
+          className={`flex-1 rounded-full px-3 py-1.5 font-medium transition-colors ${
+            mode === "notice" ? "bg-white/[0.10] text-white" : "text-slate-500 hover:text-slate-300"
+          }`}
+        >
+          Paste a notice / email
         </button>
       </div>
 
+      {mode === "feed" ? (
+        <>
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {PLATFORMS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPlatform(p)}
+                className={`rounded-lg px-3 py-1.5 text-[11.5px] font-medium transition-colors ${
+                  platform.id === p.id
+                    ? "bg-white/[0.10] text-white"
+                    : "border border-white/[0.07] text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[11.5px] leading-relaxed text-slate-400">
+            {platform.instructions}
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input
+              className="input flex-1 py-2.5 text-[13px]"
+              placeholder="https://…/feeds/calendars/user_xxx.ics"
+              value={feedUrl}
+              onChange={(e) => setFeedUrl(e.target.value)}
+              spellCheck={false}
+            />
+            <button
+              className="btn-primary shrink-0 px-4 py-2.5 text-xs"
+              onClick={preview}
+              disabled={loading || feedUrl.trim().length < 8}
+            >
+              {loading ? "Reading…" : "Preview"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <textarea
+            className="input mt-4 min-h-[104px] resize-y text-[13px]"
+            placeholder={NOTICE_PLACEHOLDER}
+            value={noticeText}
+            onChange={(e) => setNoticeText(e.target.value)}
+            disabled={loading}
+          />
+          <div className="mt-2.5 flex justify-end">
+            <button
+              className="btn-primary px-4 py-2.5 text-xs"
+              onClick={previewNotice}
+              disabled={loading || noticeText.trim().length < 8}
+            >
+              {loading ? "Reading…" : "Read notice"}
+            </button>
+          </div>
+        </>
+      )}
+
       {error && (
-        <p className="mt-3 rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">
+        <div className="mt-3 rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">
           {error}
-        </p>
+          {needsProvider && (
+            <Link href="/settings" className="ml-1 underline underline-offset-2 hover:text-red-200">
+              Open AI settings
+            </Link>
+          )}
+        </div>
       )}
 
       {done !== null && (

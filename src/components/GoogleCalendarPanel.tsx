@@ -9,6 +9,8 @@ type Status = {
   connected: boolean;
   lastSyncedAt: string | null;
   lastSyncError: string | null;
+  expectedRedirectUri: string | null;
+  redirectUriError: string | null;
 };
 
 /**
@@ -26,6 +28,7 @@ export default function GoogleCalendarPanel() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -177,6 +180,55 @@ export default function GoogleCalendarPanel() {
       {syncResult && <p className="mt-2.5 text-[11px] text-emerald-300">{syncResult}</p>}
       {(error || status.lastSyncError) && (
         <p className="mt-2.5 text-[11px] text-rose-300">{error ?? status.lastSyncError}</p>
+      )}
+
+      {/* "redirect_uri_mismatch" happens entirely on Google's side, before it
+          ever redirects back here — so the only fix is making sure this exact
+          string is registered as a redirect URI on the OAuth client in the
+          Google Cloud Console, alongside the one sign-in already uses. */}
+      {!status.connected && (error || status.expectedRedirectUri || status.redirectUriError) && (
+        <div className="mt-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          {status.redirectUriError ? (
+            <p className="text-[11px] leading-relaxed text-amber-300/90">{status.redirectUriError}</p>
+          ) : status.expectedRedirectUri ? (
+            <>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                Getting &ldquo;redirect_uri_mismatch&rdquo;? Add this exact URL as an{" "}
+                <span className="text-slate-300">Authorised redirect URI</span> on the same Google
+                OAuth client used for sign-in, in the{" "}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-slate-300"
+                >
+                  Google Cloud Console
+                </a>
+                :
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-slate-300">
+                  {status.expectedRedirectUri}
+                </code>
+                <button
+                  type="button"
+                  className="btn-ghost shrink-0 px-2.5 py-1.5 text-[11px]"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(status.expectedRedirectUri!);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1800);
+                    } catch {
+                      /* Clipboard blocked — the field above is still selectable by hand. */
+                    }
+                  }}
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
       )}
     </div>
   );

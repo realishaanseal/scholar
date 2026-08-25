@@ -297,6 +297,11 @@ CREATE TABLE IF NOT EXISTS academic_profile (
 ALTER TABLE academic_profile ADD COLUMN IF NOT EXISTS themeAccent TEXT;
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS externalId TEXT;
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS externalSource TEXT;
+-- Set the moment the extension successfully authenticates a capture with
+-- this token — the only honest signal that a pasted token actually works,
+-- as opposed to just being displayed. Settings shows this so "did I set the
+-- extension up right?" has a real answer instead of a hope.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS captureTokenLastUsedAt TEXT;
 
 CREATE TABLE IF NOT EXISTS dismissed_signals (
   userId      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -318,6 +323,12 @@ CREATE TABLE IF NOT EXISTS timetable (
   location    TEXT,
   createdAt   TEXT NOT NULL DEFAULT ${NOW_ISO_SQL}
 );
+
+-- Added after the table's initial release, same idempotent pattern as above.
+-- Powers the "Classes" live-timetable feature: who's teaching, shown next to
+-- the current/next class card. Optional — older rows and manual fixes that
+-- skip it just don't show a teacher line.
+ALTER TABLE timetable ADD COLUMN IF NOT EXISTS teacherName TEXT;
 
 /*
   ── Sharing ───────────────────────────────────────────────────────────────
@@ -365,6 +376,36 @@ CREATE TABLE IF NOT EXISTS group_comments (
   body       TEXT NOT NULL,
   createdAt  TEXT NOT NULL DEFAULT ${NOW_ISO_SQL}
 );
+
+-- One flag per report on a group task, one per reporter — many flags make a
+-- post visibly disputed without any single reporter being able to remove it
+-- outright, and the UNIQUE stops one person inflating the count by re-reporting.
+CREATE TABLE IF NOT EXISTS group_task_reports (
+  id        TEXT PRIMARY KEY,
+  taskId    TEXT NOT NULL REFERENCES group_tasks(id) ON DELETE CASCADE,
+  groupId   TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  userId    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason    TEXT NOT NULL DEFAULT 'wrong',
+  note      TEXT NOT NULL DEFAULT '',
+  createdAt TEXT NOT NULL DEFAULT ${NOW_ISO_SQL},
+  UNIQUE (taskId, userId)
+);
+
+-- One attachment per discussion comment. Kept in its own table (mirroring the
+-- homework attachments table) rather than a column on group_comments, since
+-- an attachment is optional and this keeps large payloads out of the row
+-- that's fetched on every comment list.
+CREATE TABLE IF NOT EXISTS group_comment_attachments (
+  id         TEXT PRIMARY KEY,
+  commentId  TEXT NOT NULL REFERENCES group_comments(id) ON DELETE CASCADE,
+  filename   TEXT NOT NULL,
+  mimeType   TEXT NOT NULL DEFAULT 'application/octet-stream',
+  size       INTEGER NOT NULL DEFAULT 0,
+  data       TEXT NOT NULL,
+  createdAt  TEXT NOT NULL DEFAULT ${NOW_ISO_SQL}
+);
+CREATE INDEX IF NOT EXISTS idx_group_task_reports_task ON group_task_reports(taskId);
+CREATE INDEX IF NOT EXISTS idx_group_comment_attachments_comment ON group_comment_attachments(commentId);
 
 CREATE TABLE IF NOT EXISTS share_grants (
   id            TEXT PRIMARY KEY,

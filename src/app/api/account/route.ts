@@ -34,7 +34,7 @@ export const GET = jsonRoute(async (req: Request) => {
   return NextResponse.json({ profile, signIn });
 });
 
-const UnlinkBody = z.object({ provider: z.enum(["google", "github", "facebook"]) });
+const UnlinkBody = z.object({ provider: z.enum(["google", "github"]) });
 
 /** Unlink one OAuth provider. Separate verb from PATCH's profile-field update
  *  so a client can't accidentally trigger it via the wrong body shape. */

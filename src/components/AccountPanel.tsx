@@ -15,7 +15,7 @@ type SignInMethods = {
   hasPassword: boolean;
 };
 
-const OAUTH_PROVIDER_IDS = ["google", "github", "facebook"] as const;
+const OAUTH_PROVIDER_IDS = ["google", "github"] as const;
 
 /**
  * Account, export and deletion.
@@ -31,7 +31,7 @@ export default function AccountPanel({
 }: {
   name: string | null;
   email: string | null;
-  enabledOAuthProviders: { google: boolean; github: boolean; facebook: boolean };
+  enabledOAuthProviders: { google: boolean; github: boolean };
 }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [signInMethods, setSignInMethods] = useState<SignInMethods | null>(null);

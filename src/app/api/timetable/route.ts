@@ -6,7 +6,7 @@ import { db, newId } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-const SELECT = `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location
+const SELECT = `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName
                   FROM timetable WHERE userId = ? ORDER BY dayOfWeek, startHour, startMin`;
 
 export const GET = jsonRoute(async () => {
@@ -25,6 +25,7 @@ const Body = z.object({
   endHour: z.number().int().min(0).max(23),
   endMin: z.number().int().min(0).max(59).optional().default(0),
   location: z.string().max(80).nullable().optional(),
+  teacherName: z.string().max(60).nullable().optional(),
 });
 
 /** One class, or a batch from the AI import — the single-class shape still
@@ -38,11 +39,11 @@ function endsBeforeItStarts(b: z.infer<typeof Body>) {
 async function insertClass(userId: string, b: z.infer<typeof Body>): Promise<string> {
   const id = newId();
   await db.prepare(
-    `INSERT INTO timetable (id, userId, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO timetable (id, userId, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id, userId, b.title, b.subjectName ?? null, b.dayOfWeek,
-    b.startHour, b.startMin, b.endHour, b.endMin, b.location ?? null
+    b.startHour, b.startMin, b.endHour, b.endMin, b.location ?? null, b.teacherName ?? null
   );
   return id;
 }
@@ -87,6 +88,59 @@ export const POST = jsonRoute(async (req: Request) => {
 
   const id = await insertClass(session.user.id, b);
   return NextResponse.json({ ok: true, id }, { status: 201 });
+});
+
+// Built by hand rather than `Body.partial()`: startMin/endMin carry a
+// `.default(0)` on Body, and zod applies defaults to any key missing from the
+// input — partial() would silently inject `startMin: 0` into every edit that
+// doesn't touch it, clobbering whatever was there.
+const PatchBody = z.object({
+  id: z.string().min(1),
+  title: z.string().trim().min(1).max(80).optional(),
+  subjectName: z.string().max(40).nullable().optional(),
+  dayOfWeek: z.number().int().min(0).max(6).optional(),
+  startHour: z.number().int().min(0).max(23).optional(),
+  startMin: z.number().int().min(0).max(59).optional(),
+  endHour: z.number().int().min(0).max(23).optional(),
+  endMin: z.number().int().min(0).max(59).optional(),
+  location: z.string().max(80).nullable().optional(),
+  teacherName: z.string().max(60).nullable().optional(),
+});
+
+/**
+ * Fix one field on one class (a mistyped teacher name, a room that changed)
+ * without re-running the whole import. Only touches the row if it belongs to
+ * the caller — the WHERE clause is the ownership check, not a prior SELECT.
+ */
+export const PATCH = jsonRoute(async (req: Request) => {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const parsed = PatchBody.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid edit." }, { status: 400 });
+  }
+
+  const { id, ...patch } = parsed.data;
+  const fields = Object.keys(patch) as Array<keyof typeof patch>;
+  if (fields.length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
+
+  const existing = (await db
+    .prepare(`SELECT * FROM timetable WHERE id = ? AND userId = ?`)
+    .get(id, session.user.id)) as (z.infer<typeof Body> & { id: string }) | undefined;
+  if (!existing) return NextResponse.json({ error: "That class doesn't exist." }, { status: 404 });
+
+  const merged = { ...existing, ...patch };
+  if (endsBeforeItStarts(merged as z.infer<typeof Body>)) {
+    return NextResponse.json({ error: "The end time must be after the start time." }, { status: 400 });
+  }
+
+  const setSql = fields.map((f) => `${f} = ?`).join(", ");
+  const values = fields.map((f) => (patch as any)[f] ?? null);
+  await db.prepare(`UPDATE timetable SET ${setSql} WHERE id = ? AND userId = ?`)
+    .run(...values, id, session.user.id);
+
+  return NextResponse.json({ ok: true });
 });
 
 export const DELETE = jsonRoute(async (req: Request) => {

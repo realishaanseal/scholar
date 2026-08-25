@@ -123,7 +123,7 @@ the result as degraded rather than losing what you typed.
 
 ## Sign-in
 
-Email + password works immediately. Google / GitHub / Facebook one-tap buttons appear on
+Email + password works immediately. Google / GitHub one-tap buttons appear on
 the login page **only once you add their credentials** — see [SETUP.md](./SETUP.md) for the
 step-by-step for each provider (about 5 minutes each).
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import LmsImport from "./LmsImport";
 import TimetableImport from "./TimetableImport";
+import ClassList, { type ClassSlot } from "./ClassList";
 import ExtensionSetup from "./ExtensionSetup";
 import GoogleCalendarPanel from "./GoogleCalendarPanel";
 import { useNotifications } from "./PwaSetup";
@@ -35,13 +36,6 @@ const LANGUAGES = [
   { code: "ja", label: "Japanese", native: "日本語" },
   { code: "id", label: "Indonesian", native: "Bahasa Indonesia" },
 ];
-
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-type ClassSlot = {
-  id: string; title: string; subjectName: string | null; dayOfWeek: number;
-  startHour: number; startMin: number; endHour: number; endMin: number; location: string | null;
-};
 
 export default function PreferencesPanel() {
   const notifications = useNotifications();
@@ -81,11 +75,6 @@ export default function PreferencesPanel() {
     });
     setStatus("Saved");
     setTimeout(() => setStatus(null), 1600);
-  }
-
-  async function removeClass(id: string) {
-    setClasses((c) => c.filter((x) => x.id !== id));
-    await fetchJson(`/api/timetable?id=${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
   return (
@@ -240,36 +229,12 @@ export default function PreferencesPanel() {
           Recurring classes, so the coach knows when you&apos;re in lessons rather than free to study.
         </p>
 
-        {classes.length > 0 && (
-          <div className="mt-4 space-y-1.5">
-            {classes.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
-              >
-                <span className="w-20 shrink-0 text-[11px] text-slate-500">{DAYS[c.dayOfWeek].slice(0, 3)}</span>
-                <span className="w-24 shrink-0 text-[11px] tabular-nums text-slate-500">
-                  {pad(c.startHour)}:{pad(c.startMin)}–{pad(c.endHour)}:{pad(c.endMin)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-slate-200">{c.title}</span>
-                <button
-                  onClick={() => removeClass(c.id)}
-                  className="shrink-0 text-slate-600 hover:text-red-300"
-                  aria-label="Remove"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <ClassList classes={classes} onChanged={load} />
 
+        {/* Import is the only way in now — a manual "add one class" form was
+            removed as redundant next to a whole-timetable import, and a wrong
+            row can already be fixed in place above rather than re-added. */}
         <TimetableImport onImported={load} />
-
-        {/* The manual form stays: the import above needs an AI provider and a
-            readable source, and a student adding one class shouldn't have to
-            go through a parse step to do it. */}
-        <AddClassForm onAdded={load} />
       </section>
 
       <LmsImport />
@@ -319,77 +284,6 @@ export default function PreferencesPanel() {
   );
 }
 
-function AddClassForm({ onAdded }: { onAdded: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", dayOfWeek: 1, startHour: 9, endHour: 10 });
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    setError(null);
-    const { ok, error } = await fetchJson("/api/timetable", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, startMin: 0, endMin: 0 }),
-    });
-    if (ok) {
-      setForm({ title: "", dayOfWeek: 1, startHour: 9, endHour: 10 });
-      setOpen(false);
-      onAdded();
-    } else setError(error ?? "Couldn't add that class.");
-  }
-
-  if (!open) {
-    return (
-      <button className="btn-ghost mt-4 px-3 py-2 text-xs" onClick={() => setOpen(true)}>
-        Add a class
-      </button>
-    );
-  }
-
-  return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-        <input
-          className="input py-2 text-[13px]"
-          placeholder="e.g. Physics"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-        />
-        <select
-          className="input w-auto py-2 text-[13px]"
-          value={form.dayOfWeek}
-          onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}
-        >
-          {DAYS.map((d, i) => <option key={d} value={i}>{d.slice(0, 3)}</option>)}
-        </select>
-        <select
-          className="input w-auto py-2 text-[13px]"
-          value={form.startHour}
-          onChange={(e) => setForm({ ...form, startHour: Number(e.target.value) })}
-        >
-          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{pad(h)}:00</option>)}
-        </select>
-        <select
-          className="input w-auto py-2 text-[13px]"
-          value={form.endHour}
-          onChange={(e) => setForm({ ...form, endHour: Number(e.target.value) })}
-        >
-          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{pad(h)}:00</option>)}
-        </select>
-      </div>
-
-      {error && <p className="mt-2 text-[11px] text-red-300">{error}</p>}
-
-      <div className="mt-3 flex gap-2">
-        <button className="btn-primary px-4 py-2 text-xs" onClick={submit} disabled={form.title.trim().length < 1}>
-          Add
-        </button>
-        <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setOpen(false)}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -397,8 +291,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <div className="mt-1">{children}</div>
     </div>
   );
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
 }

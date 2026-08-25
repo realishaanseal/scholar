@@ -13,6 +13,7 @@ type ParsedClass = {
   endHour: number;
   endMin: number;
   location: string | null;
+  teacherName: string | null;
 };
 
 type ParseResult = {
@@ -139,6 +140,7 @@ export default function TimetableImport({ onImported }: { onImported: () => void
         endHour: c.endHour,
         endMin: c.endMin,
         location: c.location,
+        teacherName: c.teacherName,
       }));
 
     const { ok, data, error } = await fetchJson<{ created: number }>("/api/timetable", {
@@ -302,6 +304,7 @@ export default function TimetableImport({ onImported }: { onImported: () => void
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-200">
                       {c.title}
+                      {c.teacherName && <span className="ml-1.5 text-[11px] text-slate-500">{c.teacherName}</span>}
                       {c.location && <span className="ml-1.5 text-[11px] text-slate-600">{c.location}</span>}
                     </span>
                   </label>

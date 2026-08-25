@@ -1,17 +1,21 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
-import Facebook from "next-auth/providers/facebook";
 
 /**
  * Edge-safe slice of the auth setup: no database, no bcrypt.
  * `middleware.ts` uses only this; the full config in `auth.ts` extends it.
+ *
+ * Facebook was removed: Meta requires Business Verification (a registered
+ * legal entity) to take an app out of Development mode, and Varaxis isn't
+ * one — so the button would only ever work for the developer's own test
+ * account, never for a real user. Not worth shipping a button that fails
+ * for everyone who clicks it.
  */
 
 export const enabledOAuthProviders = {
   google: Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET),
   github: Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET),
-  facebook: Boolean(process.env.AUTH_FACEBOOK_ID && process.env.AUTH_FACEBOOK_SECRET),
 };
 
 /** Only register a provider when its credentials exist, so the sign-in page
@@ -36,16 +40,6 @@ if (enabledOAuthProviders.github) {
     })
   );
 }
-if (enabledOAuthProviders.facebook) {
-  oauthProviders.push(
-    Facebook({
-      clientId: process.env.AUTH_FACEBOOK_ID,
-      clientSecret: process.env.AUTH_FACEBOOK_SECRET,
-      allowDangerousEmailAccountLinking: true,
-    })
-  );
-}
-
 export const authConfig = {
   trustHost: true,
   session: { strategy: "jwt" },
