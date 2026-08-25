@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import LmsImport from "./LmsImport";
+import TimetableImport from "./TimetableImport";
 import ExtensionSetup from "./ExtensionSetup";
 import GoogleCalendarPanel from "./GoogleCalendarPanel";
 import { useNotifications } from "./PwaSetup";
@@ -263,6 +264,11 @@ export default function PreferencesPanel() {
           </div>
         )}
 
+        <TimetableImport onImported={load} />
+
+        {/* The manual form stays: the import above needs an AI provider and a
+            readable source, and a student adding one class shouldn't have to
+            go through a parse step to do it. */}
         <AddClassForm onAdded={load} />
       </section>
 
