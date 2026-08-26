@@ -330,6 +330,14 @@ CREATE TABLE IF NOT EXISTS timetable (
 -- skip it just don't show a teacher line.
 ALTER TABLE timetable ADD COLUMN IF NOT EXISTS teacherName TEXT;
 
+-- Distinguishes an actual class from a break/library period, so the live
+-- "Classes" view can say "on a break" instead of pretending nothing is
+-- scheduled, and so the timetable import can capture breaks and library
+-- periods as real rows instead of silently dropping them. 'class' by
+-- default keeps every pre-existing row exactly as it behaved before this
+-- column existed.
+ALTER TABLE timetable ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'class';
+
 /*
   ── Sharing ───────────────────────────────────────────────────────────────
   Everything below is opt-in. No row here is created by default, and a user

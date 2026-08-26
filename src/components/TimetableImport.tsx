@@ -14,6 +14,12 @@ type ParsedClass = {
   endMin: number;
   location: string | null;
   teacherName: string | null;
+  kind: "class" | "break" | "library";
+};
+
+const KIND_BADGE: Record<string, string> = {
+  break: "Break",
+  library: "Library",
 };
 
 type ParseResult = {
@@ -141,6 +147,7 @@ export default function TimetableImport({ onImported }: { onImported: () => void
         endMin: c.endMin,
         location: c.location,
         teacherName: c.teacherName,
+        kind: c.kind,
       }));
 
     const { ok, data, error } = await fetchJson<{ created: number }>("/api/timetable", {
@@ -304,6 +311,11 @@ export default function TimetableImport({ onImported }: { onImported: () => void
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-200">
                       {c.title}
+                      {KIND_BADGE[c.kind] && (
+                        <span className="ml-1.5 rounded-full border border-white/[0.1] px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-slate-400">
+                          {KIND_BADGE[c.kind]}
+                        </span>
+                      )}
                       {c.teacherName && <span className="ml-1.5 text-[11px] text-slate-500">{c.teacherName}</span>}
                       {c.location && <span className="ml-1.5 text-[11px] text-slate-600">{c.location}</span>}
                     </span>

@@ -23,6 +23,155 @@ function untilLabel(mins: number): string {
   return `in ${Math.floor(mins / 1440)}d`;
 }
 
+function mmss(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${pad(r)}`;
+}
+
+/** Visual identity per period kind — a class, a break, or a library period. */
+const KIND_META = {
+  class: { label: "Class", dot: "bg-emerald-400", ring: "text-emerald-400", text: "text-emerald-300" },
+  break: { label: "Break", dot: "bg-amber-400", ring: "text-amber-400", text: "text-amber-300" },
+  library: { label: "Library", dot: "bg-sky-400", ring: "text-sky-400", text: "text-sky-300" },
+} as const;
+
+function meta(kind: string) {
+  return KIND_META[kind as keyof typeof KIND_META] ?? KIND_META.class;
+}
+
+type Upcoming = { c: ClassSlot; until: number };
+
+/** A ring that redraws its dash offset every render — the 1s tick above it
+ *  supplies fresh percentages, and the CSS transition on stroke-dashoffset
+ *  is what makes it glide instead of jump. */
+function Ring({ pct, colorClass, size = 156, strokeWidth = 9 }: {
+  pct: number; colorClass: string; size?: number; strokeWidth?: number;
+}) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.min(100, Math.max(0, pct));
+  const offset = c * (1 - clamped / 100);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="currentColor" strokeWidth={strokeWidth} className="text-white/[0.06]"
+      />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={offset}
+        className={`${colorClass} transition-[stroke-dashoffset] duration-1000 ease-linear`}
+      />
+    </svg>
+  );
+}
+
+function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date }) {
+  if (ongoing.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Right now</p>
+        <p className="text-xl font-semibold text-slate-300">Nothing in session</p>
+        {nextItem ? (
+          <div className="mt-2 min-w-0 max-w-[320px] rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4">
+            <div className="flex items-center justify-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${meta(nextItem.c.kind).dot}`} />
+              <p className="text-[11px] text-slate-500">Up next, {untilLabel(nextItem.until)}</p>
+            </div>
+            <p className="mt-1.5 truncate text-base font-medium text-white">{nextItem.c.title}</p>
+            <p className="mt-0.5 truncate text-[12px] text-slate-500">
+              {timeRange(nextItem.c)}
+              {nextItem.c.teacherName && ` · ${nextItem.c.teacherName}`}
+              {nextItem.c.location && ` · ${nextItem.c.location}`}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Nothing else scheduled this week.</p>
+        )}
+      </div>
+    );
+  }
+
+  const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-8 px-6 py-8">
+      {ongoing.map((c) => {
+        const km = meta(c.kind);
+        const total = endMinsOf(c) - startMinsOf(c);
+        const elapsedMins = Math.max(0, Math.min(total, nowMins - startMinsOf(c)));
+        const pct = total > 0 ? (elapsedMins / total) * 100 : 0;
+        const endAbsSec = endMinsOf(c) * 60;
+        const nowAbsSec = nowMins * 60 + now.getSeconds();
+        const remainingSec = Math.max(0, endAbsSec - nowAbsSec);
+
+        return (
+          <div key={c.id} className="flex flex-col items-center">
+            <div className="relative">
+              <Ring pct={pct} colorClass={km.ring} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-[26px] font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
+                <span className="text-[10px] uppercase tracking-wide text-slate-500">left</span>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${km.dot} animate-pulse`} />
+              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                {km.label} in progress
+              </span>
+            </div>
+            <p className="mt-1.5 max-w-[320px] truncate text-xl font-semibold text-white">{c.title}</p>
+            <p className="mt-1 max-w-[320px] truncate text-[13px] text-slate-400">
+              {timeRange(c)}
+              {c.teacherName && ` · ${c.teacherName}`}
+              {c.location && ` · ${c.location}`}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Sidebar({ upcoming }: { upcoming: Upcoming[] }) {
+  return (
+    <div>
+      <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Up next</h4>
+      {upcoming.length === 0 ? (
+        <p className="mt-3 text-[13px] text-slate-500">Nothing else scheduled this week.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {upcoming.map(({ c, until }, i) => {
+            const km = meta(c.kind);
+            return (
+              <div
+                key={c.id}
+                className={`rounded-xl border px-3.5 py-3 transition-colors ${
+                  i === 0 ? "border-white/[0.16] bg-white/[0.045]" : "border-white/[0.06] bg-white/[0.02]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${km.dot}`} />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-100">{c.title}</span>
+                  <span className="shrink-0 text-[10.5px] tabular-nums text-slate-500">{untilLabel(until)}</span>
+                </div>
+                <p className="mt-1 truncate pl-3.5 text-[11px] text-slate-500">
+                  {DAYS[c.dayOfWeek].slice(0, 3)} · {timeRange(c)}
+                  {c.teacherName && ` · ${c.teacherName}`}
+                  {c.location && ` · ${c.location}`}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * "Classes" — a live view of the student's timetable, on the same footing as
  * Settings in the dashboard header rather than buried a level down. Opening
@@ -30,6 +179,10 @@ function untilLabel(mins: number): string {
  * without a trip to Settings, and its own Setup tab is where the timetable
  * gets built or fixed — the same import/edit machinery Settings uses, so
  * there's exactly one way classes actually get created, just two doors into it.
+ *
+ * Breaks and library periods are first-class rows here (see `kind` on
+ * ClassSlot) — a lunch break shows as "on a break" with its own countdown,
+ * not a silent gap that makes the view look broken between real classes.
  */
 export default function LiveClasses() {
   const [open, setOpen] = useState(false);
@@ -46,7 +199,10 @@ export default function LiveClasses() {
     if (!open) return;
     load();
     setNow(new Date());
-    const tick = setInterval(() => setNow(new Date()), 30_000);
+    // A 1s tick (not the old 30s) is what makes the ring and countdown feel
+    // alive rather than stepping — cheap while a modal is open, fully
+    // stopped the instant it closes.
+    const tick = setInterval(() => setNow(new Date()), 1000);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -60,11 +216,11 @@ export default function LiveClasses() {
   const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
   const list = classes ?? [];
   const ongoing = list.filter((c) => startMinsOf(c) <= nowMins && nowMins < endMinsOf(c));
-  const upcoming = list
+  const upcoming: Upcoming[] = list
     .filter((c) => !ongoing.includes(c))
     .map((c) => ({ c, until: (startMinsOf(c) - nowMins + WEEK_MINS) % WEEK_MINS }))
     .sort((a, b) => a.until - b.until)
-    .slice(0, 6);
+    .slice(0, 10);
 
   return (
     <>
@@ -84,7 +240,7 @@ export default function LiveClasses() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="card animate-riseIn flex h-full w-full max-w-[640px] flex-col overflow-hidden sm:h-[min(85vh,760px)] sm:rounded-2xl">
+          <div className="card animate-riseIn flex h-full w-full max-w-[1040px] flex-col overflow-hidden sm:h-[min(90vh,860px)] sm:rounded-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5 sm:p-6">
               <h3 className="text-lg font-semibold tracking-tight text-white">Classes</h3>
               <button
@@ -110,88 +266,37 @@ export default function LiveClasses() {
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {classes === null ? (
-                <div className="space-y-2">
+                <div className="space-y-2 p-5 sm:p-6">
                   {[0, 1, 2].map((i) => <div key={i} className="skeleton-shimmer h-16 rounded-xl" />)}
                 </div>
               ) : tab === "now" ? (
                 list.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-white/[0.08] px-4 py-10 text-center">
-                    <p className="text-sm text-slate-400">No timetable set up yet.</p>
-                    <button className="btn-primary mt-4 px-4 py-2 text-xs" onClick={() => setTab("setup")}>
-                      Set up your timetable
-                    </button>
+                  <div className="p-5 sm:p-6">
+                    <div className="rounded-xl border border-dashed border-white/[0.08] px-4 py-10 text-center">
+                      <p className="text-sm text-slate-400">No timetable set up yet.</p>
+                      <button className="btn-primary mt-4 px-4 py-2 text-xs" onClick={() => setTab("setup")}>
+                        Set up your timetable
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    <div>
-                      <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Right now</h4>
-                      {ongoing.length === 0 ? (
-                        <p className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 text-[13px] text-slate-500">
-                          No class in session.
-                        </p>
-                      ) : (
-                        <div className="mt-2 space-y-2">
-                          {ongoing.map((c) => {
-                            const total = endMinsOf(c) - startMinsOf(c);
-                            const elapsed = Math.max(0, Math.min(total, nowMins - startMinsOf(c)));
-                            const pct = total > 0 ? Math.round((elapsed / total) * 100) : 0;
-                            const left = total - elapsed;
-                            return (
-                              <div key={c.id} className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-emerald-400" />
-                                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-white">{c.title}</span>
-                                  <span className="shrink-0 text-[11px] tabular-nums text-emerald-300">{left}m left</span>
-                                </div>
-                                <p className="mt-1 text-[11.5px] text-slate-400">
-                                  {timeRange(c)}
-                                  {c.teacherName && ` · ${c.teacherName}`}
-                                  {c.location && ` · ${c.location}`}
-                                </p>
-                                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                                  <div className="h-full rounded-full bg-emerald-400/80" style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                  <div className="flex h-full min-h-[420px] flex-col sm:flex-row">
+                    <div className="flex-1">
+                      <HeroNow ongoing={ongoing} nextItem={upcoming[0]} now={now} />
                     </div>
-
-                    <div>
-                      <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Coming up</h4>
-                      {upcoming.length === 0 ? (
-                        <p className="mt-2 text-[13px] text-slate-500">Nothing else scheduled this week.</p>
-                      ) : (
-                        <div className="mt-2 space-y-1.5">
-                          {upcoming.map(({ c, until }) => (
-                            <div key={c.id} className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">
-                              <span className="w-14 shrink-0 text-[11px] text-slate-500">
-                                {c.dayOfWeek === now.getDay() ? "Today" : DAYS[c.dayOfWeek].slice(0, 3)}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[13px] text-slate-200">{c.title}</span>
-                                <span className="block text-[11px] text-slate-600">
-                                  {timeRange(c)}
-                                  {c.teacherName && ` · ${c.teacherName}`}
-                                  {c.location && ` · ${c.location}`}
-                                </span>
-                              </span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-slate-500">{untilLabel(until)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="w-full shrink-0 border-t border-white/[0.07] p-5 sm:w-[300px] sm:overflow-y-auto sm:border-l sm:border-t-0">
+                      <Sidebar upcoming={upcoming} />
                     </div>
                   </div>
                 )
               ) : (
-                <div>
+                <div className="p-5 sm:p-6">
                   <p className="text-xs leading-relaxed text-slate-500">
                     Import or fix your timetable here any time — the same list is used everywhere in
-                    Scholar, including Settings → Preferences.
+                    Scholar, including Settings → Preferences. Breaks and library periods can be
+                    imported too — tag them from the timetable text or fix the tag afterwards below.
                   </p>
                   <ClassList classes={list} onChanged={load} />
                   <TimetableImport onImported={load} />

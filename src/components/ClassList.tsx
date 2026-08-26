@@ -14,10 +14,18 @@ export type ClassSlot = {
   endMin: number;
   location: string | null;
   teacherName: string | null;
+  kind: "class" | "break" | "library";
 };
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const pad = (n: number) => String(n).padStart(2, "0");
+
+const KIND_META: Record<string, { label: string; dot: string }> = {
+  class: { label: "Class", dot: "bg-emerald-400" },
+  break: { label: "Break", dot: "bg-amber-400" },
+  library: { label: "Library", dot: "bg-sky-400" },
+};
+const kindMeta = (k: string) => KIND_META[k] ?? KIND_META.class;
 
 /**
  * The list of classes already in the timetable, with per-row edit and
@@ -38,13 +46,59 @@ export default function ClassList({
   emptyHint?: string;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   if (classes.length === 0) {
     return <p className="mt-3 text-xs text-slate-500">{emptyHint}</p>;
   }
 
+  async function clearAll() {
+    setClearing(true);
+    await fetchJson("/api/timetable?all=true", { method: "DELETE" });
+    setClearing(false);
+    setConfirmingClear(false);
+    onChanged();
+  }
+
   return (
     <div className="mt-4 space-y-1.5">
+      <div className="flex items-center justify-between gap-2 pb-0.5">
+        <span className="text-[11px] text-slate-500">
+          {classes.length} {classes.length === 1 ? "class" : "classes"}
+        </span>
+
+        {confirmingClear ? (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-red-300">Clear all? Can&apos;t be undone.</span>
+            <button
+              type="button"
+              onClick={clearAll}
+              disabled={clearing}
+              className="chip-btn border border-red-500/30 bg-red-500/10 text-[11px] text-red-300 hover:bg-red-500/20"
+            >
+              {clearing ? "Clearing…" : "Yes, clear all"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingClear(false)}
+              disabled={clearing}
+              className="chip-btn border border-white/[0.08] bg-white/[0.025] text-[11px] text-slate-400 hover:text-slate-200"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingClear(true)}
+            className="chip-btn border border-white/[0.08] bg-white/[0.025] text-[11px] text-slate-500 hover:border-red-500/25 hover:text-red-300"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
       {classes.map((c) =>
         editing === c.id ? (
           <EditRow
@@ -62,6 +116,9 @@ export default function ClassList({
             <span className="w-24 shrink-0 text-[11px] tabular-nums text-slate-500">
               {pad(c.startHour)}:{pad(c.startMin)}–{pad(c.endHour)}:{pad(c.endMin)}
             </span>
+            {c.kind !== "class" && (
+              <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${kindMeta(c.kind).dot}`} title={kindMeta(c.kind).label} />
+            )}
             <span className="min-w-0 flex-1 truncate text-[13px] text-slate-200">
               {c.title}
               {c.teacherName && <span className="ml-1.5 text-slate-500">· {c.teacherName}</span>}
@@ -109,6 +166,7 @@ function EditRow({
     startMin: slot.startMin,
     endHour: slot.endHour,
     endMin: slot.endMin,
+    kind: slot.kind ?? "class",
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -129,6 +187,7 @@ function EditRow({
         startMin: form.startMin,
         endHour: form.endHour,
         endMin: form.endMin,
+        kind: form.kind,
       }),
     });
     setBusy(false);
@@ -163,6 +222,15 @@ function EditRow({
           onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}
         >
           {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+        </select>
+        <select
+          className="input py-2 text-[13px]"
+          value={form.kind}
+          onChange={(e) => setForm({ ...form, kind: e.target.value as "class" | "break" | "library" })}
+        >
+          <option value="class">Class</option>
+          <option value="break">Break</option>
+          <option value="library">Library</option>
         </select>
         <div className="flex items-center gap-1.5">
           <select

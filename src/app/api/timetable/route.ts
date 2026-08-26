@@ -6,7 +6,7 @@ import { db, newId } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-const SELECT = `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName
+const SELECT = `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName, kind
                   FROM timetable WHERE userId = ? ORDER BY dayOfWeek, startHour, startMin`;
 
 export const GET = jsonRoute(async () => {
@@ -26,6 +26,7 @@ const Body = z.object({
   endMin: z.number().int().min(0).max(59).optional().default(0),
   location: z.string().max(80).nullable().optional(),
   teacherName: z.string().max(60).nullable().optional(),
+  kind: z.enum(["class", "break", "library"]).optional().default("class"),
 });
 
 /** One class, or a batch from the AI import — the single-class shape still
@@ -39,11 +40,11 @@ function endsBeforeItStarts(b: z.infer<typeof Body>) {
 async function insertClass(userId: string, b: z.infer<typeof Body>): Promise<string> {
   const id = newId();
   await db.prepare(
-    `INSERT INTO timetable (id, userId, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO timetable (id, userId, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName, kind)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id, userId, b.title, b.subjectName ?? null, b.dayOfWeek,
-    b.startHour, b.startMin, b.endHour, b.endMin, b.location ?? null, b.teacherName ?? null
+    b.startHour, b.startMin, b.endHour, b.endMin, b.location ?? null, b.teacherName ?? null, b.kind
   );
   return id;
 }
@@ -105,6 +106,7 @@ const PatchBody = z.object({
   endMin: z.number().int().min(0).max(59).optional(),
   location: z.string().max(80).nullable().optional(),
   teacherName: z.string().max(60).nullable().optional(),
+  kind: z.enum(["class", "break", "library"]).optional(),
 });
 
 /**
@@ -147,7 +149,18 @@ export const DELETE = jsonRoute(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = new URL(req.url).searchParams.get("id");
+  const params = new URL(req.url).searchParams;
+  const id = params.get("id");
+  const all = params.get("all");
+
+  // Wiping the whole timetable in one go — meant to sit right before a fresh
+  // re-import, so a new term's timetable doesn't get merged on top of last
+  // term's stale rows. Still scoped to `userId`, same as the single-row path.
+  if (all === "true") {
+    const res = await db.prepare(`DELETE FROM timetable WHERE userId = ?`).run(session.user.id);
+    return NextResponse.json({ ok: true, deleted: res.changes });
+  }
+
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
 
   const res = await db.prepare(`DELETE FROM timetable WHERE userId = ? AND id = ?`).run(session.user.id, id);

@@ -23,6 +23,13 @@ export type ParsedClass = {
   location: string | null;
   /** Who teaches it, if the source says so. Powers the "Classes" live view. */
   teacherName: string | null;
+  /**
+   * "class" for an actual lesson, "break"/"library" for a named non-lesson
+   * period. Kept even for non-classes rather than dropped, so the live
+   * "Classes" view can say "on a break" / "library period" instead of
+   * either mislabelling it as a class or pretending nothing is scheduled.
+   */
+  kind: "class" | "break" | "library";
 };
 
 export type ParsedTimetable = {
@@ -49,7 +56,8 @@ Return ONLY a JSON object with this exact shape:
       "endHour": 0-23,
       "endMin": 0-59,
       "location": "string|null — room or building if given",
-      "teacherName": "string|null — the teacher/instructor's name if the source states one, otherwise null. Never guess or invent one."
+      "teacherName": "string|null — the teacher/instructor's name if the source states one, otherwise null. Never guess or invent one.",
+      "kind": "\"class\"|\"break\"|\"library\" — \"class\" for an actual lesson. \"break\" for any named recess, lunch, tea break, or free/study period the source calls out as its own row. \"library\" for a dedicated library period. Default to \"class\" when unsure."
     }
   ],
   "warnings": ["string — rows you could not confidently place, and why"],
@@ -64,7 +72,12 @@ Rules:
   key, or a header row of times), resolve it and emit the real time.
 - Emit one object per class per day. A class that meets Monday and Thursday
   is two objects, not one.
-- Skip breaks, lunch, registration, free periods and study halls entirely.
+- Breaks, lunch, recess and library periods are real, timed rows in the
+  student's day — capture them just like a class, with "title" set to
+  whatever the source calls it (e.g. "Lunch", "Recess", "Library") and
+  "kind" set to "break" or "library" accordingly. Do not skip them.
+- Only leave out a genuinely blank gap that the source doesn't name or time
+  at all — an actual empty space in the grid, not a labelled break.
 - If a row's time or day is genuinely unreadable, leave it out of "classes"
   and describe it in "warnings" instead. Never invent a time to fill a gap.
 - Every class must have endTime after startTime.
@@ -100,7 +113,15 @@ export function sanitiseClasses(raw: any): ParsedTimetable {
   const rows = Array.isArray(raw?.classes) ? raw.classes : [];
 
   for (const r of rows) {
-    const title = str(r?.title, 80);
+    const kindRaw = typeof r?.kind === "string" ? r.kind.toLowerCase().trim() : "class";
+    const kind: ParsedClass["kind"] =
+      kindRaw === "break" || kindRaw === "library" ? kindRaw : "class";
+
+    // A break/library row the model didn't title still deserves to show up
+    // in the review list rather than being dropped for a missing title.
+    const rawTitle = str(r?.title, 80);
+    const title = rawTitle ?? (kind === "break" ? "Break" : kind === "library" ? "Library" : null);
+
     const dayOfWeek = clampInt(r?.dayOfWeek, 0, 6);
     const startHour = clampInt(r?.startHour, 0, 23);
     const endHour = clampInt(r?.endHour, 0, 23);
@@ -126,6 +147,7 @@ export function sanitiseClasses(raw: any): ParsedTimetable {
       endMin,
       location: str(r?.location, 80),
       teacherName: str(r?.teacherName, 60),
+      kind,
     });
   }
 
