@@ -286,16 +286,16 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
   const firstStart = dayStartMins(today[0]);
   const lastEnd = Math.max(...today.map(dayEndMins));
 
-  // The range is built from the actual schedule, not from "now" — otherwise
-  // opening this at, say, midnight (hours before the first class) drags the
-  // whole bar out to reach "now", leaving most of it dead and the day's real
-  // shape squeezed into a sliver. "Now" only gets to stretch the range when
-  // it's genuinely close to the school day, so the bar stays legible either way.
-  let rangeStart = Math.max(0, firstStart - 30);
-  let rangeEnd = Math.min(1440, lastEnd + 30);
+  // The range spans exactly the scheduled day — first period's start to last
+  // period's end — so the segments always fill the whole track edge to edge
+  // with no dead space on either side. "Now" only gets to stretch the range
+  // outward when it's genuinely close to the school day (so the live marker
+  // stays visible), never inward, and never as generic padding.
+  let rangeStart = firstStart;
+  let rangeEnd = Math.max(firstStart + 1, lastEnd);
   const NEAR_MINS = 90;
-  if (nowOfDay < rangeStart && rangeStart - nowOfDay <= NEAR_MINS) rangeStart = Math.max(0, nowOfDay - 15);
-  if (nowOfDay > rangeEnd && nowOfDay - rangeEnd <= NEAR_MINS) rangeEnd = Math.min(1440, nowOfDay + 15);
+  if (nowOfDay < rangeStart && rangeStart - nowOfDay <= NEAR_MINS) rangeStart = Math.max(0, nowOfDay);
+  if (nowOfDay > rangeEnd && nowOfDay - rangeEnd <= NEAR_MINS) rangeEnd = Math.min(1440, nowOfDay);
 
   const span = Math.max(1, rangeEnd - rangeStart);
   const pctOf = (mins: number) => ((mins - rangeStart) / span) * 100;
@@ -305,10 +305,15 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
   const kindsPresent = Array.from(new Set(today.map((c) => c.kind)));
 
   // Hour gridlines, spaced out as the span grows so labels never crowd.
+  // Ticks that land on the range's own start/end are skipped — those are
+  // already the two edge labels below the bar, so showing them again as a
+  // tick would just duplicate the same time twice in a row.
   const stepMins = span <= 5 * 60 ? 60 : span <= 10 * 60 ? 120 : 180;
   const firstTick = Math.ceil(rangeStart / stepMins) * stepMins;
   const ticks: number[] = [];
-  for (let t = firstTick; t < rangeEnd; t += stepMins) ticks.push(t);
+  for (let t = firstTick; t < rangeEnd; t += stepMins) {
+    if (t > rangeStart && t < rangeEnd) ticks.push(t);
+  }
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
