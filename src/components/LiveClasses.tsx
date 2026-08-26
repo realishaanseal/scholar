@@ -263,10 +263,15 @@ function HeroNow({
 }
 
 /** A horizontal strip of today's periods — classes, breaks, and library time
- *  all drawn to scale, with hour gridlines and a live marker for "now". Turns
- *  the otherwise-empty space under the hero into something worth looking at,
- *  and is the one place breaks and library periods are visible at a glance
- *  alongside real classes rather than only inside a list. */
+ *  — laid out as a proportional sequence rather than a literal clock-scale
+ *  timeline. Each chip's width reflects its own duration relative to the
+ *  rest of the day, and every gap between chips is the same fixed size
+ *  regardless of whether the real timetable has a 5-minute gap there or none
+ *  at all — a strictly time-accurate bar made back-to-back periods (like a
+ *  lunch break starting the instant class ends) look flush while periods
+ *  with a few minutes' passing time between them showed a visible gap,
+ *  which read as uneven even though both were "correct". Turns the
+ *  otherwise-empty space under the hero into something worth looking at. */
 function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
   const today = list
     .filter((c) => c.dayOfWeek === now.getDay())
@@ -285,35 +290,35 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
 
   const firstStart = dayStartMins(today[0]);
   const lastEnd = Math.max(...today.map(dayEndMins));
-
-  // The range spans exactly the scheduled day — first period's start to last
-  // period's end — so the segments always fill the whole track edge to edge
-  // with no dead space on either side. "Now" only gets to stretch the range
-  // outward when it's genuinely close to the school day (so the live marker
-  // stays visible), never inward, and never as generic padding.
-  let rangeStart = firstStart;
-  let rangeEnd = Math.max(firstStart + 1, lastEnd);
-  const NEAR_MINS = 90;
-  if (nowOfDay < rangeStart && rangeStart - nowOfDay <= NEAR_MINS) rangeStart = Math.max(0, nowOfDay);
-  if (nowOfDay > rangeEnd && nowOfDay - rangeEnd <= NEAR_MINS) rangeEnd = Math.min(1440, nowOfDay);
-
-  const span = Math.max(1, rangeEnd - rangeStart);
-  const pctOf = (mins: number) => ((mins - rangeStart) / span) * 100;
-
-  const nowInRange = nowOfDay >= rangeStart && nowOfDay <= rangeEnd;
-  const nowPct = pctOf(nowOfDay);
+  const totalDuration = today.reduce((sum, c) => sum + Math.max(1, dayEndMins(c) - dayStartMins(c)), 0);
   const kindsPresent = Array.from(new Set(today.map((c) => c.kind)));
 
-  // Hour gridlines, spaced out as the span grows so labels never crowd.
-  // Ticks that land on the range's own start/end are skipped — those are
-  // already the two edge labels below the bar, so showing them again as a
-  // tick would just duplicate the same time twice in a row.
-  const stepMins = span <= 5 * 60 ? 60 : span <= 10 * 60 ? 120 : 180;
-  const firstTick = Math.ceil(rangeStart / stepMins) * stepMins;
-  const ticks: number[] = [];
-  for (let t = firstTick; t < rangeEnd; t += stepMins) {
-    if (t > rangeStart && t < rangeEnd) ticks.push(t);
+  // "Now" is placed by how far through the sequence of periods it falls —
+  // proportional to cumulative duration, same as the chips themselves — so
+  // the live marker still lands inside whichever chip is actually ongoing,
+  // or just past the nearest edge when it's before/after the school day.
+  let elapsedBefore = 0;
+  let nowFrac: number | null = null;
+  for (const c of today) {
+    const s = dayStartMins(c);
+    const e = dayEndMins(c);
+    const dur = Math.max(1, e - s);
+    if (nowOfDay < s) {
+      nowFrac = nowFrac ?? elapsedBefore / totalDuration;
+      break;
+    }
+    if (nowOfDay < e) {
+      nowFrac = (elapsedBefore + (nowOfDay - s)) / totalDuration;
+      break;
+    }
+    elapsedBefore += dur;
   }
+  if (nowFrac === null && nowOfDay >= lastEnd) nowFrac = 1;
+  const NEAR_MINS = 90;
+  const showNowMarker =
+    (nowOfDay >= firstStart && nowOfDay <= lastEnd) ||
+    (nowOfDay < firstStart && firstStart - nowOfDay <= NEAR_MINS) ||
+    (nowOfDay > lastEnd && nowOfDay - lastEnd <= NEAR_MINS);
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
@@ -333,25 +338,18 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
       </div>
 
       <div className="relative mt-4 h-14 w-full">
-        {ticks.map((t) => (
-          <div key={t} aria-hidden className="absolute top-0 h-full w-px bg-white/[0.05]" style={{ left: `${pctOf(t)}%` }} />
-        ))}
-
-        <div className="absolute inset-0 overflow-hidden rounded-xl border border-white/[0.06] bg-black/25">
+        <div className="flex h-full w-full gap-[3px] overflow-hidden rounded-xl border border-white/[0.06] bg-black/25 p-0.5">
           {today.map((c) => {
-            const s = dayStartMins(c);
-            const e = dayEndMins(c);
-            const left = pctOf(s);
-            const width = Math.max(1, pctOf(e) - left);
+            const dur = Math.max(1, dayEndMins(c) - dayStartMins(c));
             const km = meta(c.kind);
-            const isOngoing = s <= nowOfDay && nowOfDay < e;
-            const canLabel = width > 8;
+            const isOngoing = dayStartMins(c) <= nowOfDay && nowOfDay < dayEndMins(c);
+            const canLabel = dur / totalDuration > 0.08;
             return (
               <div
                 key={c.id}
                 title={`${c.title} · ${timeRange(c)}`}
-                className="absolute top-0.5 bottom-0.5 overflow-hidden rounded-[7px]"
-                style={{ left: `calc(${left}% + 1.5px)`, width: `calc(${width}% - 3px)` }}
+                className="relative h-full overflow-hidden rounded-[7px]"
+                style={{ flex: `${dur} 1 0%` }}
               >
                 <div
                   className={`flex h-full w-full items-center justify-center transition-all duration-300
@@ -369,11 +367,11 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
           })}
         </div>
 
-        {nowInRange && (
+        {showNowMarker && nowFrac !== null && (
           <div
             aria-hidden
             className="absolute inset-y-0 z-20 flex w-0 -translate-x-1/2 flex-col items-center"
-            style={{ left: `${Math.min(99.6, Math.max(0.4, nowPct))}%` }}
+            style={{ left: `${Math.min(99.6, Math.max(0.4, nowFrac * 100))}%` }}
           >
             <span className="-mt-1 h-2 w-2 shrink-0 rounded-full bg-white shadow-[0_0_10px_3px_rgba(255,255,255,0.65)]" />
             <span className="mt-0.5 w-px flex-1 bg-white/70" />
@@ -382,11 +380,8 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
       </div>
 
       <div className="mt-2 flex justify-between text-[10px] tabular-nums text-slate-600">
-        <span>{clockTime(rangeStart)}</span>
-        {ticks.map((t) => (
-          <span key={t} className="hidden sm:inline">{clockTime(t)}</span>
-        ))}
-        <span>{clockTime(rangeEnd)}</span>
+        <span>{clockTime(firstStart)}</span>
+        <span>{clockTime(lastEnd)}</span>
       </div>
     </div>
   );
