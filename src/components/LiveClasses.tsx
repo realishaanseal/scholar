@@ -399,8 +399,14 @@ export default function LiveClasses() {
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="card animate-riseIn flex h-full w-full max-w-[1100px] flex-col overflow-hidden sm:h-[min(90vh,880px)] sm:rounded-2xl">
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card animate-riseIn flex h-full w-full max-w-[1100px] flex-col overflow-hidden sm:h-[min(90vh,880px)] sm:rounded-2xl"
+          >
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5 sm:p-6">
               <h3 className="text-lg font-semibold tracking-tight text-white">Classes</h3>
               <button
