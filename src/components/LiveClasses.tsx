@@ -116,7 +116,7 @@ function Glow({ className }: { className: string }) {
 function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date }) {
   if (ongoing.length === 0) {
     return (
-      <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden px-6 py-10 text-center">
+      <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10 text-center">
         <Glow className="bg-vx-500/[0.14]" />
 
         <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1">
@@ -163,7 +163,7 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
   const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-6 py-8">
+    <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-8">
       {ongoing.map((c) => {
         const km = meta(c.kind);
         const total = endMinsOf(c) - startMinsOf(c);
@@ -202,9 +202,9 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
   );
 }
 
-/** A compact horizontal strip of today's periods — classes, breaks, and
- *  library time all drawn to scale, with a live marker for "now". Turns the
- *  otherwise-empty space under the hero into something worth looking at,
+/** A horizontal strip of today's periods — classes, breaks, and library time
+ *  all drawn to scale, with hour gridlines and a live marker for "now". Turns
+ *  the otherwise-empty space under the hero into something worth looking at,
  *  and is the one place breaks and library periods are visible at a glance
  *  alongside real classes rather than only inside a list. */
 function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
@@ -216,7 +216,7 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
 
   if (today.length === 0) {
     return (
-      <div>
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
         <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Today's shape</h4>
         <p className="mt-2 text-[12px] text-slate-500">Nothing scheduled today.</p>
       </div>
@@ -225,22 +225,41 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
 
   const firstStart = dayStartMins(today[0]);
   const lastEnd = Math.max(...today.map(dayEndMins));
-  const rangeStart = Math.max(0, Math.min(firstStart, Math.floor(nowOfDay / 60) * 60) - 20);
-  const rangeEnd = Math.min(1440, Math.max(lastEnd, Math.ceil(nowOfDay / 60) * 60) + 20);
+
+  // The range is built from the actual schedule, not from "now" — otherwise
+  // opening this at, say, midnight (hours before the first class) drags the
+  // whole bar out to reach "now", leaving most of it dead and the day's real
+  // shape squeezed into a sliver. "Now" only gets to stretch the range when
+  // it's genuinely close to the school day, so the bar stays legible either way.
+  let rangeStart = Math.max(0, firstStart - 30);
+  let rangeEnd = Math.min(1440, lastEnd + 30);
+  const NEAR_MINS = 90;
+  if (nowOfDay < rangeStart && rangeStart - nowOfDay <= NEAR_MINS) rangeStart = Math.max(0, nowOfDay - 15);
+  if (nowOfDay > rangeEnd && nowOfDay - rangeEnd <= NEAR_MINS) rangeEnd = Math.min(1440, nowOfDay + 15);
+
   const span = Math.max(1, rangeEnd - rangeStart);
   const pctOf = (mins: number) => ((mins - rangeStart) / span) * 100;
 
+  const nowInRange = nowOfDay >= rangeStart && nowOfDay <= rangeEnd;
   const nowPct = pctOf(nowOfDay);
-  const showNowMarker = nowPct >= -0.5 && nowPct <= 100.5;
   const kindsPresent = Array.from(new Set(today.map((c) => c.kind)));
 
+  // Hour gridlines, spaced out as the span grows so labels never crowd.
+  const stepMins = span <= 5 * 60 ? 60 : span <= 10 * 60 ? 120 : 180;
+  const firstTick = Math.ceil(rangeStart / stepMins) * stepMins;
+  const ticks: number[] = [];
+  for (let t = firstTick; t < rangeEnd; t += stepMins) ticks.push(t);
+
   return (
-    <div>
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Today's shape</h4>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {kindsPresent.map((k) => (
-            <span key={k} className="flex items-center gap-1 text-[10px] text-slate-500">
+            <span
+              key={k}
+              className="flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.02] px-2 py-0.5 text-[10px] text-slate-400"
+            >
               <span className={`h-1.5 w-1.5 rounded-full ${meta(k).dot}`} />
               {meta(k).label}
             </span>
@@ -248,34 +267,56 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
         </div>
       </div>
 
-      <div className="relative mt-3 h-10 w-full overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
-        {today.map((c) => {
-          const s = dayStartMins(c);
-          const e = dayEndMins(c);
-          const left = pctOf(s);
-          const width = Math.max(0.8, pctOf(e) - left);
-          const km = meta(c.kind);
-          const isOngoing = s <= nowOfDay && nowOfDay < e;
-          return (
-            <div
-              key={c.id}
-              title={`${c.title} · ${timeRange(c)}`}
-              className={`absolute top-0 h-full ${km.seg} transition-opacity ${isOngoing ? "opacity-100" : "opacity-55"}`}
-              style={{ left: `${left}%`, width: `${width}%` }}
-            />
-          );
-        })}
-        {showNowMarker && (
+      <div className="relative mt-4 h-14 w-full">
+        {ticks.map((t) => (
+          <div key={t} aria-hidden className="absolute top-0 h-full w-px bg-white/[0.05]" style={{ left: `${pctOf(t)}%` }} />
+        ))}
+
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-white/[0.06] bg-black/25">
+          {today.map((c) => {
+            const s = dayStartMins(c);
+            const e = dayEndMins(c);
+            const left = pctOf(s);
+            const width = Math.max(1, pctOf(e) - left);
+            const km = meta(c.kind);
+            const isOngoing = s <= nowOfDay && nowOfDay < e;
+            const canLabel = width > 8;
+            return (
+              <div
+                key={c.id}
+                title={`${c.title} · ${timeRange(c)}`}
+                className={`absolute top-0 flex h-full items-center justify-center overflow-hidden transition-all duration-300
+                            ${km.seg} ${isOngoing ? "z-10 opacity-100 ring-2 ring-inset ring-white/50" : "opacity-65 hover:opacity-85"}`}
+                style={{ left: `${left}%`, width: `${width}%` }}
+              >
+                <div aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
+                {canLabel && (
+                  <span className="relative truncate px-1.5 text-[10px] font-medium text-white drop-shadow-sm">
+                    {c.title}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {nowInRange && (
           <div
             aria-hidden
-            className="absolute top-0 h-full w-[2px] bg-white shadow-[0_0_10px_2px_rgba(255,255,255,0.65)]"
-            style={{ left: `${Math.min(99.4, Math.max(0, nowPct))}%` }}
-          />
+            className="absolute inset-y-0 z-20 flex w-0 -translate-x-1/2 flex-col items-center"
+            style={{ left: `${Math.min(99.6, Math.max(0.4, nowPct))}%` }}
+          >
+            <span className="-mt-1 h-2 w-2 shrink-0 rounded-full bg-white shadow-[0_0_10px_3px_rgba(255,255,255,0.65)]" />
+            <span className="mt-0.5 w-px flex-1 bg-white/70" />
+          </div>
         )}
       </div>
 
-      <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-slate-600">
+      <div className="mt-2 flex justify-between text-[10px] tabular-nums text-slate-600">
         <span>{clockTime(rangeStart)}</span>
+        {ticks.map((t) => (
+          <span key={t} className="hidden sm:inline">{clockTime(t)}</span>
+        ))}
         <span>{clockTime(rangeEnd)}</span>
       </div>
     </div>
