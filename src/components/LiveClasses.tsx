@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { fetchJson } from "@/lib/fetchJson";
 import ClassList, { type ClassSlot } from "./ClassList";
 import TimetableImport from "./TimetableImport";
@@ -11,6 +12,9 @@ const WEEK_MINS = 7 * 24 * 60;
 
 function startMinsOf(c: ClassSlot) { return c.dayOfWeek * 1440 + c.startHour * 60 + c.startMin; }
 function endMinsOf(c: ClassSlot) { return c.dayOfWeek * 1440 + c.endHour * 60 + c.endMin; }
+/** Minute-of-day only (no week offset) — what the day timeline plots against. */
+function dayStartMins(c: ClassSlot) { return c.startHour * 60 + c.startMin; }
+function dayEndMins(c: ClassSlot) { return c.endHour * 60 + c.endMin; }
 
 function timeRange(c: ClassSlot) {
   return `${pad(c.startHour)}:${pad(c.startMin)}–${pad(c.endHour)}:${pad(c.endMin)}`;
@@ -30,11 +34,25 @@ function mmss(totalSeconds: number): string {
   return `${m}:${pad(r)}`;
 }
 
+function clockTime(mins: number): string {
+  const m = ((mins % 1440) + 1440) % 1440;
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+}
+
 /** Visual identity per period kind — a class, a break, or a library period. */
 const KIND_META = {
-  class: { label: "Class", dot: "bg-emerald-400", ring: "text-emerald-400", text: "text-emerald-300" },
-  break: { label: "Break", dot: "bg-amber-400", ring: "text-amber-400", text: "text-amber-300" },
-  library: { label: "Library", dot: "bg-sky-400", ring: "text-sky-400", text: "text-sky-300" },
+  class: {
+    label: "Class", dot: "bg-emerald-400", ring: "text-emerald-400", text: "text-emerald-300",
+    glow: "bg-emerald-500/25", seg: "bg-emerald-400/70", border: "border-emerald-500/25",
+  },
+  break: {
+    label: "Break", dot: "bg-amber-400", ring: "text-amber-400", text: "text-amber-300",
+    glow: "bg-amber-500/25", seg: "bg-amber-400/70", border: "border-amber-500/25",
+  },
+  library: {
+    label: "Library", dot: "bg-sky-400", ring: "text-sky-400", text: "text-sky-300",
+    glow: "bg-sky-500/25", seg: "bg-sky-400/70", border: "border-sky-500/25",
+  },
 } as const;
 
 function meta(kind: string) {
@@ -46,7 +64,7 @@ type Upcoming = { c: ClassSlot; until: number };
 /** A ring that redraws its dash offset every render — the 1s tick above it
  *  supplies fresh percentages, and the CSS transition on stroke-dashoffset
  *  is what makes it glide instead of jump. */
-function Ring({ pct, colorClass, size = 156, strokeWidth = 9 }: {
+function Ring({ pct, colorClass, size = 168, strokeWidth = 9 }: {
   pct: number; colorClass: string; size?: number; strokeWidth?: number;
 }) {
   const r = (size - strokeWidth) / 2;
@@ -54,10 +72,10 @@ function Ring({ pct, colorClass, size = 156, strokeWidth = 9 }: {
   const clamped = Math.min(100, Math.max(0, pct));
   const offset = c * (1 - clamped / 100);
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 drop-shadow-[0_0_18px_rgba(0,0,0,0.35)]">
       <circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="currentColor" strokeWidth={strokeWidth} className="text-white/[0.06]"
+        stroke="currentColor" strokeWidth={strokeWidth} className="text-white/[0.07]"
       />
       <circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
@@ -69,27 +87,74 @@ function Ring({ pct, colorClass, size = 156, strokeWidth = 9 }: {
   );
 }
 
+/** A big, quietly-ticking digital clock — the thing that makes "nothing in
+ *  session" read as alive rather than empty. The colon blinks on the second. */
+function LiveClock({ now }: { now: Date }) {
+  const blink = now.getSeconds() % 2 === 0;
+  return (
+    <div className="flex items-baseline justify-center gap-1">
+      <span className="text-6xl font-semibold tabular-nums tracking-tight text-white">{pad(now.getHours())}</span>
+      <span className={`text-6xl font-semibold tabular-nums text-white transition-opacity duration-200 ${blink ? "opacity-100" : "opacity-15"}`}>:</span>
+      <span className="text-6xl font-semibold tabular-nums tracking-tight text-white">{pad(now.getMinutes())}</span>
+    </div>
+  );
+}
+
+/** Ambient blurred color wash behind the hero content, tinted by kind and
+ *  gently breathing — the same "aurora glow" language the rest of the app
+ *  uses for its background blobs, scoped down to one card. */
+function Glow({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2
+                  rounded-full blur-[90px] animate-breathe ${className}`}
+    />
+  );
+}
+
 function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date }) {
   if (ongoing.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Right now</p>
-        <p className="text-xl font-semibold text-slate-300">Nothing in session</p>
+      <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden px-6 py-10 text-center">
+        <Glow className="bg-vx-500/[0.14]" />
+
+        <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Live · free right now</span>
+        </div>
+
+        <div className="relative">
+          <LiveClock now={now} />
+          <p className="mt-1 text-[12px] font-medium uppercase tracking-[0.12em] text-slate-500">
+            {DAYS[now.getDay()]}
+          </p>
+        </div>
+
         {nextItem ? (
-          <div className="mt-2 min-w-0 max-w-[320px] rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4">
-            <div className="flex items-center justify-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${meta(nextItem.c.kind).dot}`} />
-              <p className="text-[11px] text-slate-500">Up next, {untilLabel(nextItem.until)}</p>
+          <div
+            className={`relative mt-1 w-full max-w-[340px] overflow-hidden rounded-2xl border bg-white/[0.03] px-5 py-4 text-left
+                        ${meta(nextItem.c.kind).border}`}
+          >
+            <span className={`absolute inset-y-0 left-0 w-[3px] ${meta(nextItem.c.kind).seg}`} aria-hidden />
+            <div className="flex items-center justify-between gap-2 pl-2">
+              <div className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${meta(nextItem.c.kind).dot}`} />
+                <p className="text-[11px] text-slate-500">Up next</p>
+              </div>
+              <p className={`text-[11px] font-medium tabular-nums ${meta(nextItem.c.kind).text}`}>
+                {untilLabel(nextItem.until)}
+              </p>
             </div>
-            <p className="mt-1.5 truncate text-base font-medium text-white">{nextItem.c.title}</p>
-            <p className="mt-0.5 truncate text-[12px] text-slate-500">
+            <p className="mt-1.5 truncate pl-2 text-lg font-semibold text-white">{nextItem.c.title}</p>
+            <p className="mt-0.5 truncate pl-2 text-[12px] text-slate-500">
               {timeRange(nextItem.c)}
               {nextItem.c.teacherName && ` · ${nextItem.c.teacherName}`}
               {nextItem.c.location && ` · ${nextItem.c.location}`}
             </p>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Nothing else scheduled this week.</p>
+          <p className="relative text-sm text-slate-500">Nothing else scheduled this week.</p>
         )}
       </div>
     );
@@ -98,7 +163,7 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
   const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-8 px-6 py-8">
+    <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-6 py-8">
       {ongoing.map((c) => {
         const km = meta(c.kind);
         const total = endMinsOf(c) - startMinsOf(c);
@@ -109,22 +174,23 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
         const remainingSec = Math.max(0, endAbsSec - nowAbsSec);
 
         return (
-          <div key={c.id} className="flex flex-col items-center">
-            <div className="relative">
+          <div key={c.id} className="relative flex flex-col items-center">
+            <Glow className={km.glow} />
+            <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1">
+              <span className={`h-1.5 w-1.5 rounded-full ${km.dot} animate-pulse`} />
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                Live · {km.label.toLowerCase()} in progress
+              </span>
+            </div>
+            <div className="relative mt-5">
               <Ring pct={pct} colorClass={km.ring} />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-[26px] font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
+                <span className={`text-3xl font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
                 <span className="text-[10px] uppercase tracking-wide text-slate-500">left</span>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${km.dot} animate-pulse`} />
-              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                {km.label} in progress
-              </span>
-            </div>
-            <p className="mt-1.5 max-w-[320px] truncate text-xl font-semibold text-white">{c.title}</p>
-            <p className="mt-1 max-w-[320px] truncate text-[13px] text-slate-400">
+            <p className="relative mt-5 max-w-[320px] truncate text-2xl font-semibold text-white">{c.title}</p>
+            <p className="relative mt-1.5 max-w-[320px] truncate text-[13px] text-slate-400">
               {timeRange(c)}
               {c.teacherName && ` · ${c.teacherName}`}
               {c.location && ` · ${c.location}`}
@@ -136,7 +202,89 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
   );
 }
 
-function Sidebar({ upcoming }: { upcoming: Upcoming[] }) {
+/** A compact horizontal strip of today's periods — classes, breaks, and
+ *  library time all drawn to scale, with a live marker for "now". Turns the
+ *  otherwise-empty space under the hero into something worth looking at,
+ *  and is the one place breaks and library periods are visible at a glance
+ *  alongside real classes rather than only inside a list. */
+function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
+  const today = list
+    .filter((c) => c.dayOfWeek === now.getDay())
+    .sort((a, b) => dayStartMins(a) - dayStartMins(b));
+
+  const nowOfDay = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+
+  if (today.length === 0) {
+    return (
+      <div>
+        <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Today's shape</h4>
+        <p className="mt-2 text-[12px] text-slate-500">Nothing scheduled today.</p>
+      </div>
+    );
+  }
+
+  const firstStart = dayStartMins(today[0]);
+  const lastEnd = Math.max(...today.map(dayEndMins));
+  const rangeStart = Math.max(0, Math.min(firstStart, Math.floor(nowOfDay / 60) * 60) - 20);
+  const rangeEnd = Math.min(1440, Math.max(lastEnd, Math.ceil(nowOfDay / 60) * 60) + 20);
+  const span = Math.max(1, rangeEnd - rangeStart);
+  const pctOf = (mins: number) => ((mins - rangeStart) / span) * 100;
+
+  const nowPct = pctOf(nowOfDay);
+  const showNowMarker = nowPct >= -0.5 && nowPct <= 100.5;
+  const kindsPresent = Array.from(new Set(today.map((c) => c.kind)));
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Today's shape</h4>
+        <div className="flex items-center gap-3">
+          {kindsPresent.map((k) => (
+            <span key={k} className="flex items-center gap-1 text-[10px] text-slate-500">
+              <span className={`h-1.5 w-1.5 rounded-full ${meta(k).dot}`} />
+              {meta(k).label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mt-3 h-10 w-full overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
+        {today.map((c) => {
+          const s = dayStartMins(c);
+          const e = dayEndMins(c);
+          const left = pctOf(s);
+          const width = Math.max(0.8, pctOf(e) - left);
+          const km = meta(c.kind);
+          const isOngoing = s <= nowOfDay && nowOfDay < e;
+          return (
+            <div
+              key={c.id}
+              title={`${c.title} · ${timeRange(c)}`}
+              className={`absolute top-0 h-full ${km.seg} transition-opacity ${isOngoing ? "opacity-100" : "opacity-55"}`}
+              style={{ left: `${left}%`, width: `${width}%` }}
+            />
+          );
+        })}
+        {showNowMarker && (
+          <div
+            aria-hidden
+            className="absolute top-0 h-full w-[2px] bg-white shadow-[0_0_10px_2px_rgba(255,255,255,0.65)]"
+            style={{ left: `${Math.min(99.4, Math.max(0, nowPct))}%` }}
+          />
+        )}
+      </div>
+
+      <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-slate-600">
+        <span>{clockTime(rangeStart)}</span>
+        <span>{clockTime(rangeEnd)}</span>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar({ upcoming, now }: { upcoming: Upcoming[]; now: Date }) {
+  let lastDay: number | null = null;
+
   return (
     <div>
       <h4 className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">Up next</h4>
@@ -146,23 +294,35 @@ function Sidebar({ upcoming }: { upcoming: Upcoming[] }) {
         <div className="mt-3 space-y-2">
           {upcoming.map(({ c, until }, i) => {
             const km = meta(c.kind);
+            const showDayHeader = c.dayOfWeek !== lastDay;
+            lastDay = c.dayOfWeek;
+            const dayLabel = c.dayOfWeek === now.getDay() ? "Today" : DAYS[c.dayOfWeek];
+
             return (
-              <div
-                key={c.id}
-                className={`rounded-xl border px-3.5 py-3 transition-colors ${
-                  i === 0 ? "border-white/[0.16] bg-white/[0.045]" : "border-white/[0.06] bg-white/[0.02]"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${km.dot}`} />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-100">{c.title}</span>
-                  <span className="shrink-0 text-[10.5px] tabular-nums text-slate-500">{untilLabel(until)}</span>
+              <div key={c.id}>
+                {showDayHeader && (
+                  <p className="mb-1.5 mt-3 px-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600 first:mt-0">
+                    {dayLabel}
+                  </p>
+                )}
+                <div
+                  className={`relative overflow-hidden rounded-xl border pl-4 pr-3.5 py-3 transition-colors ${
+                    i === 0 ? "border-white/[0.18] bg-white/[0.05]" : "border-white/[0.06] bg-white/[0.02]"
+                  }`}
+                >
+                  <span className={`absolute inset-y-0 left-0 w-[3px] ${km.seg}`} aria-hidden />
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-100">{c.title}</span>
+                    <span className={`shrink-0 text-[10.5px] tabular-nums ${i === 0 ? km.text : "text-slate-500"}`}>
+                      {untilLabel(until)}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-slate-500">
+                    {timeRange(c)}
+                    {c.teacherName && ` · ${c.teacherName}`}
+                    {c.location && ` · ${c.location}`}
+                  </p>
                 </div>
-                <p className="mt-1 truncate pl-3.5 text-[11px] text-slate-500">
-                  {DAYS[c.dayOfWeek].slice(0, 3)} · {timeRange(c)}
-                  {c.teacherName && ` · ${c.teacherName}`}
-                  {c.location && ` · ${c.location}`}
-                </p>
               </div>
             );
           })}
@@ -182,7 +342,7 @@ function Sidebar({ upcoming }: { upcoming: Upcoming[] }) {
  *
  * Breaks and library periods are first-class rows here (see `kind` on
  * ClassSlot) — a lunch break shows as "on a break" with its own countdown,
- * not a silent gap that makes the view look broken between real classes.
+ * and "Today's shape" draws the whole day including them, not just classes.
  */
 export default function LiveClasses() {
   const [open, setOpen] = useState(false);
@@ -199,9 +359,9 @@ export default function LiveClasses() {
     if (!open) return;
     load();
     setNow(new Date());
-    // A 1s tick (not the old 30s) is what makes the ring and countdown feel
-    // alive rather than stepping — cheap while a modal is open, fully
-    // stopped the instant it closes.
+    // A 1s tick (not the old 30s) is what makes the ring, clock and "now"
+    // marker feel alive rather than stepping — cheap while a modal is open,
+    // fully stopped the instant it closes.
     const tick = setInterval(() => setNow(new Date()), 1000);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
@@ -238,9 +398,9 @@ export default function LiveClasses() {
         </svg>
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="card animate-riseIn flex h-full w-full max-w-[1040px] flex-col overflow-hidden sm:h-[min(90vh,860px)] sm:rounded-2xl">
+          <div className="card animate-riseIn flex h-full w-full max-w-[1100px] flex-col overflow-hidden sm:h-[min(90vh,880px)] sm:rounded-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5 sm:p-6">
               <h3 className="text-lg font-semibold tracking-tight text-white">Classes</h3>
               <button
@@ -282,12 +442,17 @@ export default function LiveClasses() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex h-full min-h-[420px] flex-col sm:flex-row">
-                    <div className="flex-1">
-                      <HeroNow ongoing={ongoing} nextItem={upcoming[0]} now={now} />
+                  <div className="flex h-full min-h-[460px] flex-col sm:flex-row">
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex-1">
+                        <HeroNow ongoing={ongoing} nextItem={upcoming[0]} now={now} />
+                      </div>
+                      <div className="border-t border-white/[0.06] p-5 sm:p-6">
+                        <DayShape list={list} now={now} />
+                      </div>
                     </div>
-                    <div className="w-full shrink-0 border-t border-white/[0.07] p-5 sm:w-[300px] sm:overflow-y-auto sm:border-l sm:border-t-0">
-                      <Sidebar upcoming={upcoming} />
+                    <div className="w-full shrink-0 border-t border-white/[0.07] p-5 sm:w-[320px] sm:overflow-y-auto sm:border-l sm:border-t-0">
+                      <Sidebar upcoming={upcoming} now={now} />
                     </div>
                   </div>
                 )
@@ -304,7 +469,8 @@ export default function LiveClasses() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
