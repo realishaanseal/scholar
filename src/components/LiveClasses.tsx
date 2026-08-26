@@ -107,33 +107,88 @@ function Glow({ className }: { className: string }) {
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2
-                  rounded-full blur-[90px] animate-breathe ${className}`}
+      className={`pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2
+                  rounded-full blur-[100px] animate-breathe ${className}`}
     />
   );
 }
 
-function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date }) {
+/** A faint dotted grid, the same quiet texture used elsewhere in the app to
+ *  keep a big empty panel from reading as literally empty. */
+function GridTexture() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 opacity-[0.25]"
+      style={{
+        backgroundImage: "radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px)",
+        backgroundSize: "22px 22px",
+        maskImage: "radial-gradient(ellipse at center, black 10%, transparent 72%)",
+        WebkitMaskImage: "radial-gradient(ellipse at center, black 10%, transparent 72%)",
+      }}
+    />
+  );
+}
+
+/** Three small stats about the day — classes, break/library time, and hours
+ *  remaining. On its own the countdown reads as a small element floating in
+ *  a big panel; this strip gives the rest of the panel real information
+ *  instead of just more empty air. */
+function DayStats({ today, now }: { today: ClassSlot[]; now: Date }) {
+  const nowOfDay = now.getHours() * 60 + now.getMinutes();
+  const classCount = today.filter((c) => c.kind === "class").length;
+  const breakMins = today
+    .filter((c) => c.kind !== "class")
+    .reduce((sum, c) => sum + (dayEndMins(c) - dayStartMins(c)), 0);
+  const remaining = today.filter((c) => dayEndMins(c) > nowOfDay);
+  const doneCount = today.length - remaining.length;
+
+  const stats = [
+    { label: "Classes today", value: String(classCount) },
+    { label: "Break & library", value: breakMins > 0 ? `${Math.round(breakMins / 60 * 10) / 10}h` : "—" },
+    { label: "Completed", value: `${doneCount}/${today.length}` },
+  ];
+
+  return (
+    <div className="relative grid w-full max-w-[420px] grid-cols-3 divide-x divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+      {stats.map((s) => (
+        <div key={s.label} className="px-3 py-3 text-center">
+          <p className="text-lg font-semibold tabular-nums text-slate-100">{s.value}</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-slate-500">{s.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HeroNow({
+  ongoing, nextItem, now, today,
+}: {
+  ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date; today: ClassSlot[];
+}) {
   if (ongoing.length === 0) {
     return (
-      <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10 text-center">
-        <Glow className="bg-vx-500/[0.14]" />
+      <div className="relative flex h-full min-h-[380px] flex-col items-center justify-center gap-7 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10 text-center">
+        <Glow className="bg-vx-500/[0.16]" />
+        <GridTexture />
 
-        <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1">
+        <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3.5 py-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Live · free right now</span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Live · free right now</span>
         </div>
 
         <div className="relative">
-          <LiveClock now={now} />
-          <p className="mt-1 text-[12px] font-medium uppercase tracking-[0.12em] text-slate-500">
+          <div className="scale-125 sm:scale-150">
+            <LiveClock now={now} />
+          </div>
+          <p className="mt-4 text-[13px] font-medium uppercase tracking-[0.18em] text-slate-500">
             {DAYS[now.getDay()]}
           </p>
         </div>
 
         {nextItem ? (
           <div
-            className={`relative mt-1 w-full max-w-[340px] overflow-hidden rounded-2xl border bg-white/[0.03] px-5 py-4 text-left
+            className={`relative w-full max-w-[380px] overflow-hidden rounded-2xl border bg-white/[0.03] px-5 py-4 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)]
                         ${meta(nextItem.c.kind).border}`}
           >
             <span className={`absolute inset-y-0 left-0 w-[3px] ${meta(nextItem.c.kind).seg}`} aria-hidden />
@@ -146,8 +201,8 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
                 {untilLabel(nextItem.until)}
               </p>
             </div>
-            <p className="mt-1.5 truncate pl-2 text-lg font-semibold text-white">{nextItem.c.title}</p>
-            <p className="mt-0.5 truncate pl-2 text-[12px] text-slate-500">
+            <p className="mt-1.5 truncate pl-2 text-xl font-semibold text-white">{nextItem.c.title}</p>
+            <p className="mt-0.5 truncate pl-2 text-[13px] text-slate-500">
               {timeRange(nextItem.c)}
               {nextItem.c.teacherName && ` · ${nextItem.c.teacherName}`}
               {nextItem.c.location && ` · ${nextItem.c.location}`}
@@ -156,6 +211,8 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
         ) : (
           <p className="relative text-sm text-slate-500">Nothing else scheduled this week.</p>
         )}
+
+        {today.length > 0 && <DayStats today={today} now={now} />}
       </div>
     );
   }
@@ -163,7 +220,8 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
   const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-8">
+    <div className="relative flex h-full min-h-[380px] flex-col items-center justify-center gap-7 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10">
+      <GridTexture />
       {ongoing.map((c) => {
         const km = meta(c.kind);
         const total = endMinsOf(c) - startMinsOf(c);
@@ -176,21 +234,21 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
         return (
           <div key={c.id} className="relative flex flex-col items-center">
             <Glow className={km.glow} />
-            <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1">
+            <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3.5 py-1.5">
               <span className={`h-1.5 w-1.5 rounded-full ${km.dot} animate-pulse`} />
-              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
                 Live · {km.label.toLowerCase()} in progress
               </span>
             </div>
-            <div className="relative mt-5">
-              <Ring pct={pct} colorClass={km.ring} />
+            <div className="relative mt-6">
+              <Ring pct={pct} colorClass={km.ring} size={196} strokeWidth={10} />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-3xl font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
-                <span className="text-[10px] uppercase tracking-wide text-slate-500">left</span>
+                <span className={`text-4xl font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
+                <span className="text-[11px] uppercase tracking-wide text-slate-500">left</span>
               </div>
             </div>
-            <p className="relative mt-5 max-w-[320px] truncate text-2xl font-semibold text-white">{c.title}</p>
-            <p className="relative mt-1.5 max-w-[320px] truncate text-[13px] text-slate-400">
+            <p className="relative mt-6 max-w-[360px] truncate text-3xl font-semibold text-white">{c.title}</p>
+            <p className="relative mt-2 max-w-[360px] truncate text-sm text-slate-400">
               {timeRange(c)}
               {c.teacherName && ` · ${c.teacherName}`}
               {c.location && ` · ${c.location}`}
@@ -198,6 +256,8 @@ function HeroNow({ ongoing, nextItem, now }: { ongoing: ClassSlot[]; nextItem: U
           </div>
         );
       })}
+
+      {today.length > 0 && <DayStats today={today} now={now} />}
     </div>
   );
 }
@@ -285,16 +345,20 @@ function DayShape({ list, now }: { list: ClassSlot[]; now: Date }) {
               <div
                 key={c.id}
                 title={`${c.title} · ${timeRange(c)}`}
-                className={`absolute top-0 flex h-full items-center justify-center overflow-hidden transition-all duration-300
-                            ${km.seg} ${isOngoing ? "z-10 opacity-100 ring-2 ring-inset ring-white/50" : "opacity-65 hover:opacity-85"}`}
-                style={{ left: `${left}%`, width: `${width}%` }}
+                className="absolute top-0.5 bottom-0.5 overflow-hidden rounded-[7px]"
+                style={{ left: `calc(${left}% + 1.5px)`, width: `calc(${width}% - 3px)` }}
               >
-                <div aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
-                {canLabel && (
-                  <span className="relative truncate px-1.5 text-[10px] font-medium text-white drop-shadow-sm">
-                    {c.title}
-                  </span>
-                )}
+                <div
+                  className={`flex h-full w-full items-center justify-center transition-all duration-300
+                              ${km.seg} ${isOngoing ? "z-10 opacity-100 ring-2 ring-inset ring-white/50" : "opacity-65 hover:opacity-85"}`}
+                >
+                  <div aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
+                  {canLabel && (
+                    <span className="relative truncate px-1.5 text-[10px] font-medium text-white drop-shadow-sm">
+                      {c.title}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -422,6 +486,9 @@ export default function LiveClasses() {
     .map((c) => ({ c, until: (startMinsOf(c) - nowMins + WEEK_MINS) % WEEK_MINS }))
     .sort((a, b) => a.until - b.until)
     .slice(0, 10);
+  const today = list
+    .filter((c) => c.dayOfWeek === now.getDay())
+    .sort((a, b) => dayStartMins(a) - dayStartMins(b));
 
   return (
     <>
@@ -492,7 +559,7 @@ export default function LiveClasses() {
                   <div className="flex h-full min-h-[460px] flex-col sm:flex-row">
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex-1">
-                        <HeroNow ongoing={ongoing} nextItem={upcoming[0]} now={now} />
+                        <HeroNow ongoing={ongoing} nextItem={upcoming[0]} now={now} today={today} />
                       </div>
                       <div className="border-t border-white/[0.06] p-5 sm:p-6">
                         <DayShape list={list} now={now} />
