@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { jsonRoute } from "@/lib/apiRoute";
-import { listSubjects } from "@/lib/queries";
+import { listSubjects, listTimetable } from "@/lib/queries";
 import { resolveAIConfig } from "@/lib/settings";
 import { parseHomework } from "@/lib/ai";
 import { getLanguages, inputLanguageInstruction } from "@/lib/scholar/language";
+import { describeScheduleForPrompt } from "@/lib/scholar/timetableSchedule";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,21 +27,30 @@ export const POST = jsonRoute(async (req: Request) => {
     return NextResponse.json({ error: "Give me a little more to work with." }, { status: 400 });
   }
 
-  const [subjects, languages, aiConfig] = await Promise.all([
+  const [subjects, languages, aiConfig, timetable] = await Promise.all([
     listSubjects(session.user.id),
     getLanguages(session.user.id),
     resolveAIConfig(session.user.id),
+    listTimetable(session.user.id),
   ]);
+
+  const nowISO = parsedBody.data.nowISO || new Date().toISOString();
+  const tzOffsetMinutes = parsedBody.data.tzOffsetMinutes ?? 0;
+  // `now` with the user's local wall-clock in its UTC fields, matching the
+  // convention the schedule helpers and the heuristic parser both use.
+  const nowLocal = new Date(new Date(nowISO).getTime() + tzOffsetMinutes * 60_000);
 
   try {
     const result = await parseHomework(
       {
         raw: parsedBody.data.raw,
-        nowISO: parsedBody.data.nowISO || new Date().toISOString(),
+        nowISO,
         timezone: parsedBody.data.timezone || "UTC",
-        tzOffsetMinutes: parsedBody.data.tzOffsetMinutes ?? 0,
+        tzOffsetMinutes,
         knownSubjects: subjects.map((s) => s.name),
         languageHint: inputLanguageInstruction(languages),
+        scheduleContext: timetable.length ? describeScheduleForPrompt(timetable, nowLocal) : undefined,
+        timetableSlots: timetable.length ? timetable : undefined,
       },
       aiConfig
     );

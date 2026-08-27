@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -53,6 +53,40 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<{ created: number; updated: number } | null>(null);
+  const [savedFeedUrl, setSavedFeedUrl] = useState<string | null>(null);
+  const [loadingSaved, setLoadingSaved] = useState(true);
+
+  // Restore a previously-saved feed URL so the student isn't asked to paste
+  // the same link in every time they open this — it's remembered the first
+  // time a feed successfully previews.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { ok, data } = await fetchJson<{ feedUrl: string | null; platform: string | null }>(
+        "/api/lms/import"
+      );
+      if (cancelled || !ok || !data?.feedUrl) {
+        setLoadingSaved(false);
+        return;
+      }
+      setFeedUrl(data.feedUrl);
+      setSavedFeedUrl(data.feedUrl);
+      const match = PLATFORMS.find((p) => p.id === data.platform);
+      if (match) setPlatform(match);
+      setLoadingSaved(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function forgetSavedFeed() {
+    await fetchJson("/api/lms/import", { method: "DELETE" });
+    setSavedFeedUrl(null);
+    setFeedUrl("");
+    setCandidates(null);
+    setDone(null);
+  }
 
   async function preview() {
     setLoading(true);
@@ -86,6 +120,9 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
         data.candidates.filter((c) => c.looksLikeAssignment && !c.alreadyImported).map((c) => c.externalId)
       )
     );
+    // A feed that previewed successfully is saved server-side (see the
+    // route), so reflect that here too rather than waiting for a reload.
+    setSavedFeedUrl(feedUrl);
   }
 
   async function previewNotice() {
@@ -208,22 +245,42 @@ export default function LmsImport({ onImported }: { onImported?: () => void }) {
             {platform.instructions}
           </p>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input
-              className="input flex-1 py-2.5 text-[13px]"
-              placeholder="https://…/feeds/calendars/user_xxx.ics"
-              value={feedUrl}
-              onChange={(e) => setFeedUrl(e.target.value)}
-              spellCheck={false}
-            />
-            <button
-              className="btn-primary shrink-0 px-4 py-2.5 text-xs"
-              onClick={preview}
-              disabled={loading || feedUrl.trim().length < 8}
-            >
-              {loading ? "Reading…" : "Preview"}
-            </button>
-          </div>
+          {savedFeedUrl && feedUrl === savedFeedUrl ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
+              <span className="min-w-0 flex-1 truncate text-[12px] text-slate-400" title={savedFeedUrl}>
+                {savedFeedUrl}
+              </span>
+              <span className="shrink-0 text-[10.5px] font-medium uppercase tracking-wide text-emerald-400/80">Saved</span>
+              <button
+                className="btn-primary shrink-0 px-4 py-2.5 text-xs"
+                onClick={preview}
+                disabled={loading}
+              >
+                {loading ? "Checking…" : "Check for new"}
+              </button>
+              <button className="btn-ghost shrink-0 px-3 py-2.5 text-xs" onClick={forgetSavedFeed}>
+                Change feed URL
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <input
+                className="input flex-1 py-2.5 text-[13px]"
+                placeholder={loadingSaved ? "Loading…" : "https://…/feeds/calendars/user_xxx.ics"}
+                value={feedUrl}
+                onChange={(e) => setFeedUrl(e.target.value)}
+                spellCheck={false}
+                disabled={loadingSaved}
+              />
+              <button
+                className="btn-primary shrink-0 px-4 py-2.5 text-xs"
+                onClick={preview}
+                disabled={loading || loadingSaved || feedUrl.trim().length < 8}
+              >
+                {loading ? "Reading…" : "Preview"}
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>

@@ -2,11 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetchJson";
-import LmsImport from "./LmsImport";
-import TimetableImport from "./TimetableImport";
-import ClassList, { type ClassSlot } from "./ClassList";
-import ExtensionSetup from "./ExtensionSetup";
-import GoogleCalendarPanel from "./GoogleCalendarPanel";
 import { useNotifications } from "./PwaSetup";
 
 type Prefs = Record<string, boolean>;
@@ -41,18 +36,15 @@ export default function PreferencesPanel() {
   const notifications = useNotifications();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [languages, setLanguages] = useState<any>(null);
-  const [classes, setClasses] = useState<ClassSlot[]>([]);
   const [status, setStatus] = useState<string | null>(null);
 
   async function load() {
-    const [signals, study, timetable] = await Promise.all([
+    const [signals, study] = await Promise.all([
       fetchJson<{ prefs: Prefs }>("/api/scholar/signals"),
       fetchJson<{ languages: any }>("/api/settings/study"),
-      fetchJson<{ classes: ClassSlot[] }>("/api/timetable"),
     ]);
     if (signals.data) setPrefs(signals.data.prefs);
     if (study.data?.languages) setLanguages(study.data.languages);
-    if (timetable.data) setClasses(timetable.data.classes ?? []);
   }
 
   useEffect(() => { load(); }, []);
@@ -220,65 +212,6 @@ export default function PreferencesPanel() {
           Mixed input works without changing anything — &ldquo;physics ka ch 4 friday ko submit
           karna hai&rdquo; is read as a Physics assignment due Friday.
         </p>
-      </section>
-
-      {/* ── Timetable ──────────────────────────────────────────────────── */}
-      <section className="card animate-riseIn p-6">
-        <h3 className="text-sm font-semibold text-white">Class timetable</h3>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Recurring classes, so the coach knows when you&apos;re in lessons rather than free to study.
-        </p>
-
-        <ClassList classes={classes} onChanged={load} />
-
-        {/* Import is the only way in now — a manual "add one class" form was
-            removed as redundant next to a whole-timetable import, and a wrong
-            row can already be fixed in place above rather than re-added. */}
-        <TimetableImport onImported={load} />
-      </section>
-
-      <LmsImport />
-
-      <ExtensionSetup />
-
-      {/* ── Calendar ───────────────────────────────────────────────────── */}
-      <section className="card animate-riseIn p-6">
-        <h3 className="text-sm font-semibold text-white">Calendar</h3>
-
-        <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-slate-200">Calendar file (.ics)</span>
-                <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-300">
-                  Available
-                </span>
-              </div>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
-                Download your deadlines and classes, then import into Google Calendar, Outlook or
-                Apple Calendar.
-              </p>
-            </div>
-            <a href="/api/calendar/export" className="btn-primary shrink-0 px-4 py-2 text-xs" download>
-              Download .ics
-            </a>
-          </div>
-        </div>
-
-        <GoogleCalendarPanel />
-
-        {/* Stated as pending rather than shipped as a button that does nothing. */}
-        <div className="mt-2.5 rounded-xl border border-white/[0.05] bg-white/[0.012] p-4 opacity-70">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-medium text-slate-400">Outlook Calendar</span>
-            <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              Not yet connected
-            </span>
-          </div>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">
-            Two-way sync needs a registered Microsoft application.
-          </p>
-        </div>
       </section>
     </div>
   );

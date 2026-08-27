@@ -5,6 +5,7 @@ import { jsonRoute } from "@/lib/apiRoute";
 import { fetchWithTimeout } from "@/lib/http";
 import { listExternalIds } from "@/lib/queries";
 import { candidatesFromICS, detectPlatform, validateFeedUrl } from "@/lib/lms";
+import { getLmsFeed, saveLmsFeed, clearLmsFeed } from "@/lib/settings";
 
 /** Source tag used for every LMS ICS import, regardless of which platform was
  *  detected — platform detection is cosmetic (it only picks the instructions
@@ -19,6 +20,25 @@ const Body = z.object({ feedUrl: z.string().min(8).max(2000) });
 
 /** Guard against a feed that redirects to something enormous. */
 const MAX_FEED_BYTES = 5 * 1024 * 1024;
+
+/** The saved feed URL, if this student has set one up before — lets the UI
+ *  restore the field on load instead of asking them to paste it every visit. */
+export const GET = jsonRoute(async () => {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const feed = await getLmsFeed(session.user.id);
+  return NextResponse.json(feed);
+});
+
+/** "Change feed URL" — forgets the saved one so a new one can be pasted. */
+export const DELETE = jsonRoute(async () => {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  await clearLmsFeed(session.user.id);
+  return NextResponse.json({ ok: true });
+});
 
 export const POST = jsonRoute(async (req: Request) => {
   const session = await auth();
@@ -78,8 +98,18 @@ export const POST = jsonRoute(async (req: Request) => {
 
   const withStatus = candidates.map((c) => ({ ...c, alreadyImported: alreadyImported.has(c.externalId) }));
 
+  const platform = detectPlatform(validated.url.toString());
+
+  // A feed that actually resolved and parsed is worth remembering — so
+  // "Import from your school" doesn't ask the student to re-paste the same
+  // URL on every visit. Best-effort: a save failure here shouldn't turn a
+  // working preview into an error response.
+  saveLmsFeed(session.user.id, parsed.data.feedUrl, platform.id).catch((err) =>
+    console.error("[api/lms/import] failed to save feed URL", err)
+  );
+
   return NextResponse.json({
-    platform: detectPlatform(validated.url.toString()),
+    platform,
     externalSource: EXTERNAL_SOURCE,
     total: withStatus.length,
     // New items first so the common case (reviewing what's new) doesn't

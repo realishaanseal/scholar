@@ -11,6 +11,7 @@ Rules:
 - "details" holds every remaining useful specific: page numbers, question ranges, chapter names, submission format, teacher's instructions. Clean it up into readable sentences or short lines. Empty string if there is nothing extra.
 - "subject" is the school subject. Prefer an exact match from the known subjects list when the note clearly refers to one. Otherwise use a standard subject name (e.g. Mathematics, Physics, Chemistry, Biology, English, History, Geography, Computer Science, Economics). Use "General" only if truly unclear.
 - "dueAt" resolves relative dates ("tomorrow", "next Friday", "in 3 days", "by Monday morning") against the provided current datetime and timezone. Return full ISO 8601 with offset. If a time of day is stated use it; otherwise default to 09:00 local on the due date. Return null if no deadline is mentioned or implied — never guess a date.
+- If a timetable is provided below and the note references it — "next chem class", "next chemistry lab", "3rd period tomorrow", "before my physics class", "period after lunch" — resolve the date/time against the ACTUAL matching row in that timetable, not a guess. Match by subject name or period title (a "lab" mention should prefer a row whose title or location says "Lab"; a bare "class" or subject name with no lab/library qualifier means any class period in that subject). Use that occurrence's start time as dueAt unless the note also states an explicit different time. If the note references the timetable but nothing in it plausibly matches, fall back to the closest reasonable interpretation and say so in "notes" — never invent a class that isn't listed.
 - "priority": "high" if the student signals urgency/importance (test, exam, graded, "must", "important", due within ~24h), "low" for optional/extra practice, otherwise "normal".
 - "estimateMins": your realistic estimate of focused work time in minutes, or null if you cannot reasonably tell.
 - "confidence": 0 to 1, how sure you are the structured record faithfully represents the note.
@@ -27,6 +28,9 @@ export function buildUserPrompt(input: ParseInput): string {
     `Known subjects already used by this student: ${
       input.knownSubjects.length ? input.knownSubjects.join(", ") : "(none yet)"
     }`,
+    input.scheduleContext
+      ? `\nStudent's upcoming timetable (P1, P2... = period number that day, in order; use this to resolve any reference to a class, lab, or period):\n${input.scheduleContext}`
+      : "",
     input.languageHint ? `\n${input.languageHint}` : "",
     "",
     "Raw note:",

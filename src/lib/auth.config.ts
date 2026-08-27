@@ -48,7 +48,21 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const path = request.nextUrl.pathname;
-      const isProtected = path.startsWith("/dashboard") || path.startsWith("/settings");
+      // Every page under the (app) route group needs a session — kept as an
+      // explicit list here (rather than "everything but a few public pages")
+      // so a new authenticated page under (app) has to be added here
+      // deliberately, the same way it has to be added to AppShell's nav.
+      const PROTECTED_PREFIXES = [
+        "/dashboard",
+        "/settings",
+        "/timetable",
+        "/import",
+        "/calendar",
+        "/extension",
+        "/insights",
+        "/groups",
+      ];
+      const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
       if (isProtected) return Boolean(auth?.user);
       return true;
     },

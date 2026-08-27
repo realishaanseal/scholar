@@ -6,10 +6,10 @@ import { saveConnection } from "@/lib/calendar/googleStore";
 
 export const runtime = "nodejs";
 
-/** Where the student lands after connecting (or failing to) — the Settings
+/** Where the student lands after connecting (or failing to) — the Calendar
  *  page reads `?calendar=` to show a one-time result banner. */
 function settingsRedirect(req: Request, status: "connected" | "error", message?: string) {
-  const url = new URL("/settings", req.url);
+  const url = new URL("/calendar", req.url);
   url.searchParams.set("calendar", status);
   if (message) url.searchParams.set("calendarError", message.slice(0, 200));
   return NextResponse.redirect(url);

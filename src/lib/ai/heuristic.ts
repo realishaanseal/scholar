@@ -1,4 +1,5 @@
 import type { AIProvider, ParsedHomework, ParseInput } from "./types";
+import { resolveTimetableReference } from "../scholar/timetableSchedule";
 
 /**
  * Zero-dependency, zero-key fallback. Runs when no AI provider is configured
@@ -259,18 +260,41 @@ export function heuristicParse(input: ParseInput): ParsedHomework {
   const cleaned = tidy(input.raw);
   const { title, details } = splitTitleAndDetails(cleaned);
 
-  const dueLocal = detectDueDate(input.raw, nowLocal);
+  // A reference to the actual timetable ("next chem lab", "3rd period
+  // tomorrow") is more specific than a generic date word, so it's tried
+  // first — only falling back to plain date detection when nothing in the
+  // schedule matches (or there's no timetable to check against).
+  let dueLocal: Date | null = null;
+  let usedTimetable = false;
+  let timetableSubject: string | null = null;
+  if (input.timetableSlots?.length) {
+    const fromTimetable = resolveTimetableReference(input.raw, input.timetableSlots, nowLocal);
+    if (fromTimetable) {
+      dueLocal = fromTimetable.date;
+      usedTimetable = true;
+      timetableSubject = fromTimetable.slot.subjectName || fromTimetable.slot.title || null;
+    }
+  }
+  if (!dueLocal) dueLocal = detectDueDate(input.raw, nowLocal);
   const due = dueLocal ? new Date(dueLocal.getTime() - offsetMs) : null;
+
+  // The raw text might not name a subject at all ("finish the reading before
+  // 3rd period today"), but if a timetable match was found, its subject is a
+  // much better answer than the generic "General" fallback.
+  const textSubject = detectSubject(input.raw, input.knownSubjects);
+  const subject = textSubject === "General" && timetableSubject ? timetableSubject : textSubject;
 
   return {
     title: stripDeadlineFromTitle(title).slice(0, 120),
     details,
-    subject: detectSubject(input.raw, input.knownSubjects),
+    subject,
     dueAt: due ? due.toISOString() : null,
     priority: detectPriority(input.raw, due, nowUTC),
     estimateMins: null,
-    confidence: 0.35,
-    notes: "Parsed without an AI model — add a free API key in .env.local for much better cleanup and date handling.",
+    confidence: usedTimetable ? 0.5 : 0.35,
+    notes: usedTimetable
+      ? "Due date matched against your timetable. Parsed without an AI model — add a free API key in .env.local for much better cleanup and date handling."
+      : "Parsed without an AI model — add a free API key in .env.local for much better cleanup and date handling.",
   };
 }
 

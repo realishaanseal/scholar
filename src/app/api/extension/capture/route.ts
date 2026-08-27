@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { jsonRoute } from "@/lib/apiRoute";
-import { createHomework, listSubjects } from "@/lib/queries";
+import { createHomework, listSubjects, listTimetable } from "@/lib/queries";
 import { resolveAIConfig } from "@/lib/settings";
 import { parseHomework } from "@/lib/ai";
 import { getLanguages, inputLanguageInstruction } from "@/lib/scholar/language";
+import { describeScheduleForPrompt } from "@/lib/scholar/timetableSchedule";
 import { bearerFrom, userIdForToken } from "@/lib/captureToken";
 
 export const runtime = "nodejs";
@@ -55,20 +56,25 @@ export const POST = jsonRoute(async (req: Request) => {
   // title as a hint markedly improves what it picks out of the noise.
   const raw = sourceTitle && text.length > 500 ? `Page: ${sourceTitle}\n\n${text}` : text;
 
-  const [subjects, languages, aiConfig] = await Promise.all([
+  const [subjects, languages, aiConfig, timetable] = await Promise.all([
     listSubjects(userId),
     getLanguages(userId),
     resolveAIConfig(userId),
+    listTimetable(userId),
   ]);
+
+  const nowISO = parsed.data.nowISO || new Date().toISOString();
 
   const result = await parseHomework(
     {
       raw,
-      nowISO: parsed.data.nowISO || new Date().toISOString(),
+      nowISO,
       timezone: parsed.data.timezone || "UTC",
       tzOffsetMinutes: 0,
       knownSubjects: subjects.map((s) => s.name),
       languageHint: inputLanguageInstruction(languages),
+      scheduleContext: timetable.length ? describeScheduleForPrompt(timetable, new Date(nowISO)) : undefined,
+      timetableSlots: timetable.length ? timetable : undefined,
     },
     aiConfig
   );

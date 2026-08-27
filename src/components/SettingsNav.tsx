@@ -3,16 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import AISettingsPanel from "./AISettingsPanel";
 import StudySettingsPanel from "./StudySettingsPanel";
-import AnalyticsPanel from "./AnalyticsPanel";
 import PreferencesPanel from "./PreferencesPanel";
 import ThemePanel from "./ThemePanel";
-import ThemeLoader from "./ThemeLoader";
-import GroupsPanel from "./GroupsPanel";
 import SharingPanel from "./SharingPanel";
 import AccountPanel from "./AccountPanel";
 
-type SectionId = "ai" | "study" | "insights" | "preferences" | "appearance" | "groups" | "sharing" | "account";
+type SectionId = "ai" | "study" | "preferences" | "appearance" | "sharing" | "account";
 
+// Timetable, LMS/import, Calendar, Extension, Insights and Groups all used to
+// live here too — they moved out to their own top-level pages (see the icon
+// rail in AppShell) because a student checks those often, which made them
+// feel buried under "Settings" rather than things they'd actually go look
+// at. What's left here is genuine configuration: set once, rarely revisited.
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] = [
   {
     id: "ai",
@@ -27,15 +29,9 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
     icon: "M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
   },
   {
-    id: "insights",
-    label: "Insights",
-    hint: "How your work actually goes",
-    icon: "M3 3v18h18M7 15l4-4 3 3 5-6",
-  },
-  {
     id: "preferences",
-    label: "Preferences",
-    hint: "Alerts, language, timetable, calendar",
+    label: "Alerts & language",
+    hint: "What Scholar warns you about, and in which language",
     icon: "M4 6h16M4 12h16M4 18h10",
   },
   {
@@ -43,12 +39,6 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
     label: "Appearance",
     hint: "Accent color and theme",
     icon: "M12 2a10 10 0 1 0 0 20 3 3 0 0 0 3-3 2 2 0 0 1 2-2h1a3 3 0 0 0 3-3c0-6.63-4.03-12-9-12zM7 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM9.5 7.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM14.5 7.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM17 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z",
-  },
-  {
-    id: "groups",
-    label: "Groups",
-    hint: "Shared boards for group work",
-    icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   },
   {
     id: "sharing",
@@ -94,7 +84,6 @@ export default function SettingsNav({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
-      <ThemeLoader />
       <nav className="card animate-riseIn p-2 lg:sticky lg:top-24">
         {SECTIONS.map((s) => {
           const on = section === s.id;
@@ -133,10 +122,8 @@ export default function SettingsNav({
       <div ref={panelRef} className="min-w-0 scroll-mt-24">
         {section === "ai" && <AISettingsPanel />}
         {section === "study" && <StudySettingsPanel />}
-        {section === "insights" && <AnalyticsPanel />}
         {section === "preferences" && <PreferencesPanel />}
         {section === "appearance" && <ThemePanel />}
-        {section === "groups" && <GroupsPanel />}
         {section === "sharing" && <SharingPanel />}
         {section === "account" && (
           <AccountPanel name={name} email={email} enabledOAuthProviders={enabledOAuthProviders} />

@@ -302,6 +302,12 @@ ALTER TABLE homework ADD COLUMN IF NOT EXISTS externalSource TEXT;
 -- as opposed to just being displayed. Settings shows this so "did I set the
 -- extension up right?" has a real answer instead of a hope.
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS captureTokenLastUsedAt TEXT;
+-- The student's LMS calendar-feed URL, saved once so "Import from your
+-- school" doesn't need re-pasting on every visit. platform is the detected
+-- LmsId (see src/lib/lms), stored alongside so the UI can restore which
+-- platform chip was selected without re-matching the URL on every load.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lmsFeedUrl TEXT;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lmsFeedPlatform TEXT;
 
 CREATE TABLE IF NOT EXISTS dismissed_signals (
   userId      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

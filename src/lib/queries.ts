@@ -1,6 +1,6 @@
 import { db, newId, nowISO } from "./db";
 import { recordTaskEvent } from "./scholar/memory";
-import type { HomeworkDTO, SubjectDTO } from "./clientTypes";
+import type { HomeworkDTO, SubjectDTO, TimetableSlotDTO } from "./clientTypes";
 
 const PALETTE = [
   "#5b7cfa", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4",
@@ -67,6 +67,19 @@ export async function listSubjects(userId: string): Promise<SubjectDTO[]> {
   return (await db
     .prepare(`SELECT id, name, color FROM subjects WHERE userId = ? ORDER BY LOWER(name) ASC`)
     .all(userId)) as SubjectDTO[];
+}
+
+/** The student's whole timetable, ordered so the AI (and anything else that
+ *  needs "what's on when") can walk it in schedule order without re-sorting.
+ *  Used to resolve phrases like "next chem class" or "tomorrow's 3rd period"
+ *  against a real schedule instead of guessing. */
+export async function listTimetable(userId: string): Promise<TimetableSlotDTO[]> {
+  return (await db
+    .prepare(
+      `SELECT id, title, subjectName, dayOfWeek, startHour, startMin, endHour, endMin, location, teacherName, kind
+         FROM timetable WHERE userId = ? ORDER BY dayOfWeek, startHour, startMin`
+    )
+    .all(userId)) as TimetableSlotDTO[];
 }
 
 const SELECT_HOMEWORK = `

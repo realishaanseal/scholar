@@ -1,5 +1,19 @@
 export type SubjectDTO = { id: string; name: string; color: string };
 
+export type TimetableSlotDTO = {
+  id: string;
+  title: string;
+  subjectName: string | null;
+  dayOfWeek: number; // 0 = Sunday .. 6 = Saturday
+  startHour: number;
+  startMin: number;
+  endHour: number;
+  endMin: number;
+  location: string | null;
+  teacherName: string | null;
+  kind: "class" | "break" | "library" | string;
+};
+
 export type HomeworkDTO = {
   id: string;
   title: string;

@@ -13,6 +13,38 @@ export type AISettingsRow = {
   updatedAt: string;
 };
 
+export type LmsFeedDTO = {
+  feedUrl: string | null;
+  platform: string | null;
+};
+
+/** The saved LMS calendar-feed URL, if the student has set one up before. */
+export async function getLmsFeed(userId: string): Promise<LmsFeedDTO> {
+  const row = (await db
+    .prepare(`SELECT lmsFeedUrl, lmsFeedPlatform FROM user_settings WHERE userId = ?`)
+    .get(userId)) as { lmsFeedUrl: string | null; lmsFeedPlatform: string | null } | undefined;
+  return { feedUrl: row?.lmsFeedUrl ?? null, platform: row?.lmsFeedPlatform ?? null };
+}
+
+/** Saved once so "Import from your school" doesn't need re-pasting every visit. */
+export async function saveLmsFeed(userId: string, feedUrl: string, platform: string): Promise<void> {
+  await db.prepare(
+    `INSERT INTO user_settings (userId, lmsFeedUrl, lmsFeedPlatform, updatedAt)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       lmsFeedUrl = excluded.lmsFeedUrl,
+       lmsFeedPlatform = excluded.lmsFeedPlatform,
+       updatedAt = excluded.updatedAt`
+  ).run(userId, feedUrl, platform, nowISO());
+}
+
+/** "Change feed URL" clears the saved one so the student can paste a new one. */
+export async function clearLmsFeed(userId: string): Promise<void> {
+  await db.prepare(
+    `UPDATE user_settings SET lmsFeedUrl = NULL, lmsFeedPlatform = NULL, updatedAt = ? WHERE userId = ?`
+  ).run(nowISO(), userId);
+}
+
 /** What the client is allowed to see — never the key itself. */
 export type AISettingsDTO = {
   provider: string;

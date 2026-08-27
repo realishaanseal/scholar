@@ -1,3 +1,5 @@
+import type { TimetableSlotDTO } from "../clientTypes";
+
 export type ParsedHomework = {
   title: string;
   details: string;
@@ -19,6 +21,16 @@ export type ParseInput = {
   knownSubjects: string[];
   /** Language guidance, so mixed-language input is understood rather than mangled. */
   languageHint?: string;
+  /** A compact, human-readable rendering of the student's upcoming timetable
+   *  (see describeScheduleForPrompt), so references like "next chem class",
+   *  "next chem lab", or "3rd period tomorrow" resolve against their real
+   *  schedule instead of being guessed or dropped. Absent/undefined when the
+   *  student has no timetable set up. */
+  scheduleContext?: string;
+  /** The raw timetable rows, for the offline heuristic parser to match
+   *  "next chem class" / "3rd period tomorrow" style phrases directly
+   *  (see resolveTimetableReference) without needing an AI model. */
+  timetableSlots?: TimetableSlotDTO[];
 };
 
 export interface AIProvider {
