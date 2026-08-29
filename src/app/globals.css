@@ -240,6 +240,16 @@ body {
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+
+    /* background-clip: text paints only across the content box. Where the
+       line-height is tighter than the font's natural line box (the landing
+       hero runs leading-[1.08]), a descender — the tail of a g, y or p —
+       falls outside that box, gets no gradient, and reads as cut off.
+       Extend the paint box downward and pull the layout back by the same
+       amount: on an inline span the padding never affected layout anyway,
+       and on an inline-block the negative margin cancels it exactly. */
+    padding-bottom: 0.22em;
+    margin-bottom: -0.22em;
   }
 
   .rail-divider {
