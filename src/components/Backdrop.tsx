@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
+import GridPulse from "./GridPulse";
 
 const DRIFT: Record<"a" | "b" | "c", any> = {
   a: {
@@ -89,6 +90,7 @@ export default function Backdrop() {
         />
       </div>
       <div className="grid-veil" aria-hidden />
+      <GridPulse />
       <div className="vignette-veil" aria-hidden />
       <div className="grain-veil" aria-hidden />
     </>
