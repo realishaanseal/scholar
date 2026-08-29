@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  /* Tells the UA to render its own chrome — scrollbars, form controls, the
+     canvas behind the page — in dark. Without it a scrollbar track is
+     painted light and reads as a bright seam down the side of a panel. */
+  color-scheme: dark;
+
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   /*
@@ -303,12 +308,27 @@ body {
   to { --angle: 360deg; }
 }
 
+/* Firefox and any UA that honours the standard properties. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333845 transparent;
+}
+
+/* WebKit/Blink. The track needs an explicit transparent background: left
+   unset it falls back to the UA's own light fill, which is what made the
+   modal's scrollbar read as a white stripe. */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #2b2e38, #191b21);
+  background: linear-gradient(180deg, #333845, #1e212a);
   border: 3px solid transparent;
   background-clip: padding-box;
   border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #454b5c, #282c37);
+  background-clip: padding-box;
 }
 
 /* ── Touch input ─────────────────────────────────────────────────────────

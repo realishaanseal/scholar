@@ -93,7 +93,7 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
         {/* ── Header ─────────────────────────────────────────────────── */}
         <motion.header
           variants={dropIn}
-          className="mx-auto flex w-full max-w-[1280px] items-center justify-between px-6 py-6"
+          className="mx-auto flex w-full max-w-[1280px] items-center justify-between px-6 py-[clamp(0.75rem,2vh,1.5rem)]"
         >
           <div className="flex items-center gap-2.5">
             <motion.span whileHover={{ rotate: -8, scale: 1.06 }} transition={SPRING} className="block">
@@ -120,7 +120,7 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
         </motion.header>
 
         <div className="mx-auto w-full max-w-[1280px] px-6">
-          <div className="grid items-center gap-12 pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:pt-16">
+          <div className="grid items-center gap-10 pt-[clamp(0.5rem,2.4vh,2.25rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14">
             <section className="text-center lg:text-left">
               <h1 className="text-[2.6rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-6xl">
                 <span className="sr-only">Homework, sorted before it’s urgent</span>
@@ -138,7 +138,7 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
 
               <motion.p
                 variants={rise}
-                className="mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-slate-400 lg:mx-0"
+                className="mx-auto mt-[clamp(0.85rem,2.1vh,1.5rem)] max-w-[560px] text-[17px] leading-relaxed text-slate-400 lg:mx-0"
               >
                 Say it or type it, however messily. Scholar rewrites it into a clean
                 assignment, works out the subject and the deadline, and puts the things
@@ -147,7 +147,7 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
 
               <motion.div
                 variants={rise}
-                className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+                className="mt-[clamp(1.1rem,2.9vh,2.25rem)] flex flex-wrap items-center justify-center gap-3 lg:justify-start"
               >
                 <Magnetic>
                   <Link href="/signup" className="btn-primary px-6 py-3 text-[15px]">
@@ -238,7 +238,7 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
 
       <main className="mx-auto w-full max-w-[1280px] flex-1 px-6">
         {/* ── Features ─────────────────────────────────────────────── */}
-        <section className="mx-auto mt-24 max-w-[980px] border-t border-white/[0.06] pt-14 sm:mt-32">
+        <section className="mx-auto mt-[clamp(1.1rem,3vh,3.5rem)] max-w-[980px] border-t border-white/[0.06] pt-[clamp(1.1rem,2.8vh,2.5rem)]">
           <Stagger className="grid gap-10 sm:grid-cols-3 sm:gap-8" stagger={0.12}>
             {FEATURES.map((f) => (
               <StaggerItem key={f.t}>
@@ -265,8 +265,13 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <Reveal as="footer" className="mx-auto mt-24 w-full max-w-[1280px] px-6 pb-10" y={10}>
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.06] pt-7">
+      <Reveal as="footer" className="mx-auto mt-[clamp(0.8rem,2vh,2.5rem)] w-full max-w-[1280px] px-6 pb-[clamp(0.9rem,2.2vh,2.5rem)]"
+        /* Fades only, no rise: the footer sits on the fold, and a 10px
+           entrance offset was enough to overflow the viewport for the length
+           of the animation and flash a scrollbar in and out. */
+        y={0}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.06] pt-[clamp(0.85rem,1.9vh,1.75rem)]">
           <span className="text-xs text-slate-600">© 2026 Varaxis</span>
           <Link
             href="/privacy"

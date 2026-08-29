@@ -51,15 +51,73 @@ function Ring({ pct, colorClass, size = 168, strokeWidth = 9 }: {
   );
 }
 
-/** A big, quietly-ticking digital clock — the thing that makes "nothing in
- *  session" read as alive rather than empty. The colon blinks on the second. */
-function LiveClock({ now }: { now: Date }) {
-  const blink = now.getSeconds() % 2 === 0;
+/** One digit that rolls: the outgoing value slides up and out while the
+ *  incoming one arrives from below, inside a fixed box so nothing reflows.
+ *  The em-based size keeps it locked to the font, whatever scale the clock
+ *  is rendered at. */
+function RollDigit({ value }: { value: string }) {
   return (
-    <div className="flex items-baseline justify-center gap-1">
-      <span className="text-6xl font-semibold tabular-nums tracking-tight text-white">{pad(now.getHours())}</span>
-      <span className={`text-6xl font-semibold tabular-nums text-white transition-opacity duration-200 ${blink ? "opacity-100" : "opacity-15"}`}>:</span>
-      <span className="text-6xl font-semibold tabular-nums tracking-tight text-white">{pad(now.getMinutes())}</span>
+    <span
+      className="relative inline-block overflow-hidden align-baseline"
+      style={{ width: "0.60em", height: "1.06em" }}
+    >
+      <AnimatePresence initial={false}>
+        <motion.span
+          key={value}
+          className="absolute inset-0 flex items-center justify-center tabular-nums"
+          initial={{ y: "-105%", opacity: 0 }}
+          animate={{ y: "0%", opacity: 1 }}
+          exit={{ y: "105%", opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+/** Fills across the current minute and resets on the turn. Gives the "free
+ *  right now" state something continuously moving, so it reads as live
+ *  rather than as a screenshot of a clock. */
+function MinuteSweep({ seconds }: { seconds: number }) {
+  const pct = (seconds / 60) * 100;
+  return (
+    <div className="mx-auto mt-3 h-[2px] w-[86%] overflow-hidden rounded-full bg-white/[0.07]">
+      <motion.div
+        className="h-full rounded-full"
+        style={{ background: "var(--grad-brand)" }}
+        animate={{ width: pct + "%" }}
+        /* On the turn of the minute the bar would otherwise animate all the
+           way back down; snap it instead so only the fill is ever animated. */
+        transition={seconds === 0 ? { duration: 0 } : { duration: 1, ease: "linear" }}
+      />
+    </div>
+  );
+}
+
+/** A big, quietly-ticking digital clock — the thing that makes "nothing in
+ *  session" read as alive rather than empty. Digits roll as they change and
+ *  the colon breathes on the second. */
+function LiveClock({ now }: { now: Date }) {
+  const hh = pad(now.getHours());
+  const mm = pad(now.getMinutes());
+  return (
+    <div>
+      <div className="flex items-center justify-center text-6xl font-semibold tracking-tight text-white">
+        <RollDigit value={hh[0]} />
+        <RollDigit value={hh[1]} />
+        <motion.span
+          className="px-[0.06em]"
+          animate={{ opacity: [1, 0.15, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          :
+        </motion.span>
+        <RollDigit value={mm[0]} />
+        <RollDigit value={mm[1]} />
+      </div>
+      <MinuteSweep seconds={now.getSeconds()} />
     </div>
   );
 }
@@ -368,7 +426,12 @@ function Sidebar({ upcoming, now }: { upcoming: Upcoming[]; now: Date }) {
             const dayLabel = c.dayOfWeek === now.getDay() ? "Today" : DAYS[c.dayOfWeek];
 
             return (
-              <div key={c.id}>
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, ease: EASE_OUT, delay: Math.min(i, 12) * 0.04 }}
+              >
                 {showDayHeader && (
                   <p className="mb-1.5 mt-3 px-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600 first:mt-0">
                     {dayLabel}
@@ -392,7 +455,7 @@ function Sidebar({ upcoming, now }: { upcoming: Upcoming[]; now: Date }) {
                     {c.location && ` · ${c.location}`}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
