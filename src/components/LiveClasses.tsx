@@ -7,6 +7,7 @@ import { EASE_OUT, SPRING } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 import ClassList, { type ClassSlot } from "./ClassList";
 import TimetableImport from "./TimetableImport";
+import DayDial from "./DayDial";
 
 import {
   DAYS,
@@ -24,32 +25,6 @@ import {
 } from "@/lib/scholar/timetableView";
 
 type Upcoming = { c: ClassSlot; until: number };
-
-/** A ring that redraws its dash offset every render — the 1s tick above it
- *  supplies fresh percentages, and the CSS transition on stroke-dashoffset
- *  is what makes it glide instead of jump. */
-function Ring({ pct, colorClass, size = 168, strokeWidth = 9 }: {
-  pct: number; colorClass: string; size?: number; strokeWidth?: number;
-}) {
-  const r = (size - strokeWidth) / 2;
-  const c = 2 * Math.PI * r;
-  const clamped = Math.min(100, Math.max(0, pct));
-  const offset = c * (1 - clamped / 100);
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 drop-shadow-[0_0_18px_rgba(0,0,0,0.35)]">
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="currentColor" strokeWidth={strokeWidth} className="text-white/[0.07]"
-      />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round"
-        strokeDasharray={c} strokeDashoffset={offset}
-        className={`${colorClass} transition-[stroke-dashoffset] duration-1000 ease-linear`}
-      />
-    </svg>
-  );
-}
 
 /** One digit that rolls: the outgoing value slides up and out while the
  *  incoming one arrives from below, inside a fixed box so nothing reflows.
@@ -77,25 +52,6 @@ function RollDigit({ value }: { value: string }) {
   );
 }
 
-/** Fills across the current minute and resets on the turn. Gives the "free
- *  right now" state something continuously moving, so it reads as live
- *  rather than as a screenshot of a clock. */
-function MinuteSweep({ seconds }: { seconds: number }) {
-  const pct = (seconds / 60) * 100;
-  return (
-    <div className="mx-auto mt-3 h-[2px] w-[86%] overflow-hidden rounded-full bg-white/[0.07]">
-      <motion.div
-        className="h-full rounded-full"
-        style={{ background: "var(--grad-brand)" }}
-        animate={{ width: pct + "%" }}
-        /* On the turn of the minute the bar would otherwise animate all the
-           way back down; snap it instead so only the fill is ever animated. */
-        transition={seconds === 0 ? { duration: 0 } : { duration: 1, ease: "linear" }}
-      />
-    </div>
-  );
-}
-
 /** A big, quietly-ticking digital clock — the thing that makes "nothing in
  *  session" read as alive rather than empty. Digits roll as they change and
  *  the colon breathes on the second. */
@@ -117,167 +73,193 @@ function LiveClock({ now }: { now: Date }) {
         <RollDigit value={mm[0]} />
         <RollDigit value={mm[1]} />
       </div>
-      <MinuteSweep seconds={now.getSeconds()} />
     </div>
   );
 }
 
-/** Ambient blurred color wash behind the hero content, tinted by kind and
- *  gently breathing — the same "aurora glow" language the rest of the app
- *  uses for its background blobs, scoped down to one card. */
-function Glow({ className }: { className: string }) {
+/**
+ * The panel's own backdrop: concentric rings with a slow conic sheen turning
+ * behind them, masked to a soft annulus. Replaces the blurred blob and dot
+ * grid that used to sit here — those read as filler behind a clock, whereas
+ * these are built around the dial and give it something to sit in.
+ */
+function PanelBackdrop() {
   return (
-    <div
-      aria-hidden
-      className={`pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2
-                  rounded-full blur-[100px] animate-breathe ${className}`}
-    />
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 62% at 50% 46%, hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.09), transparent 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background:
+            "repeating-radial-gradient(circle at center, transparent 0 45px, rgba(255,255,255,0.024) 45px 46px)",
+          maskImage: "radial-gradient(circle at center, #000 26%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(circle at center, #000 26%, transparent 70%)",
+        }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background:
+            "conic-gradient(from 0deg, transparent 0deg, hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 10%) / 0.11) 42deg, transparent 116deg, transparent 232deg, hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) + 8%) / 0.08) 276deg, transparent 340deg)",
+          maskImage: "radial-gradient(circle at center, transparent 33%, #000 60%, transparent 86%)",
+          WebkitMaskImage:
+            "radial-gradient(circle at center, transparent 33%, #000 60%, transparent 86%)",
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 54, ease: "linear", repeat: Infinity }}
+      />
+    </>
   );
 }
 
-/** A faint dotted grid, the same quiet texture used elsewhere in the app to
- *  keep a big empty panel from reading as literally empty. */
-function GridTexture() {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 opacity-[0.25]"
-      style={{
-        backgroundImage: "radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px)",
-        backgroundSize: "22px 22px",
-        maskImage: "radial-gradient(ellipse at center, black 10%, transparent 72%)",
-        WebkitMaskImage: "radial-gradient(ellipse at center, black 10%, transparent 72%)",
-      }}
-    />
-  );
-}
-
-/** Three small stats about the day — classes, break/library time, and hours
- *  remaining. On its own the countdown reads as a small element floating in
- *  a big panel; this strip gives the rest of the panel real information
- *  instead of just more empty air. */
+/** Three small stats about the day — classes, break/library time, and how
+ *  much of it is already behind you. */
 function DayStats({ today, now }: { today: ClassSlot[]; now: Date }) {
   const nowOfDay = now.getHours() * 60 + now.getMinutes();
   const classCount = today.filter((c) => c.kind === "class").length;
   const breakMins = today
     .filter((c) => c.kind !== "class")
     .reduce((sum, c) => sum + (dayEndMins(c) - dayStartMins(c)), 0);
-  const remaining = today.filter((c) => dayEndMins(c) > nowOfDay);
-  const doneCount = today.length - remaining.length;
+  const doneCount = today.filter((c) => dayEndMins(c) <= nowOfDay).length;
 
   const stats = [
     { label: "Classes today", value: String(classCount) },
-    { label: "Break & library", value: breakMins > 0 ? `${Math.round(breakMins / 60 * 10) / 10}h` : "—" },
+    { label: "Break & library", value: breakMins > 0 ? `${Math.round((breakMins / 60) * 10) / 10}h` : "—" },
     { label: "Completed", value: `${doneCount}/${today.length}` },
   ];
 
   return (
     <div className="relative grid w-full max-w-[420px] grid-cols-3 divide-x divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
-      {stats.map((s) => (
-        <div key={s.label} className="px-3 py-3 text-center">
+      {stats.map((s, i) => (
+        <motion.div
+          key={s.label}
+          className="px-3 py-3 text-center"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE_OUT, delay: 0.5 + i * 0.06 }}
+        >
           <p className="text-lg font-semibold tabular-nums text-slate-100">{s.value}</p>
           <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-slate-500">{s.label}</p>
-        </div>
+        </motion.div>
       ))}
     </div>
   );
 }
 
+/**
+ * The "Now" view.
+ *
+ * One layout for both states rather than two unrelated ones: the dial is
+ * always the anchor, and only what sits inside it changes — a countdown while
+ * a period runs, the clock while nothing does. That keeps the panel from
+ * visibly re-arranging itself every time a lesson starts or ends.
+ */
 function HeroNow({
   ongoing, nextItem, now, today,
 }: {
   ongoing: ClassSlot[]; nextItem: Upcoming | undefined; now: Date; today: ClassSlot[];
 }) {
-  if (ongoing.length === 0) {
-    return (
-      <div className="relative flex h-full min-h-[380px] flex-col items-center justify-center gap-7 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10 text-center">
-        <Glow className="bg-vx-500/[0.16]" />
-        <GridTexture />
-
-        <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3.5 py-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Live · free right now</span>
-        </div>
-
-        <div className="relative">
-          <div className="scale-125 sm:scale-150">
-            <LiveClock now={now} />
-          </div>
-          <p className="mt-4 text-[13px] font-medium uppercase tracking-[0.18em] text-slate-500">
-            {DAYS[now.getDay()]}
-          </p>
-        </div>
-
-        {nextItem ? (
-          <div
-            className={`relative w-full max-w-[380px] overflow-hidden rounded-2xl border bg-white/[0.03] px-5 py-4 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)]
-                        ${meta(nextItem.c.kind).border}`}
-          >
-            <span className={`absolute inset-y-0 left-0 w-[3px] ${meta(nextItem.c.kind).seg}`} aria-hidden />
-            <div className="flex items-center justify-between gap-2 pl-2">
-              <div className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${meta(nextItem.c.kind).dot}`} />
-                <p className="text-[11px] text-slate-500">Up next</p>
-              </div>
-              <p className={`text-[11px] font-medium tabular-nums ${meta(nextItem.c.kind).text}`}>
-                {untilLabel(nextItem.until)}
-              </p>
-            </div>
-            <p className="mt-1.5 truncate pl-2 text-xl font-semibold text-white">{nextItem.c.title}</p>
-            <p className="mt-0.5 truncate pl-2 text-[13px] text-slate-500">
-              {timeRange(nextItem.c)}
-              {nextItem.c.teacherName && ` · ${nextItem.c.teacherName}`}
-              {nextItem.c.location && ` · ${nextItem.c.location}`}
-            </p>
-          </div>
-        ) : (
-          <p className="relative text-sm text-slate-500">Nothing else scheduled this week.</p>
-        )}
-
-        {today.length > 0 && <DayStats today={today} now={now} />}
-      </div>
-    );
-  }
+  const live = ongoing[0];
+  const km = live ? meta(live.kind) : null;
 
   const nowMins = now.getDay() * 1440 + now.getHours() * 60 + now.getMinutes();
+  const remainingSec = live
+    ? Math.max(0, endMinsOf(live) * 60 - (nowMins * 60 + now.getSeconds()))
+    : 0;
 
   return (
-    <div className="relative flex h-full min-h-[380px] flex-col items-center justify-center gap-7 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-10">
-      <GridTexture />
-      {ongoing.map((c) => {
-        const km = meta(c.kind);
-        const total = endMinsOf(c) - startMinsOf(c);
-        const elapsedMins = Math.max(0, Math.min(total, nowMins - startMinsOf(c)));
-        const pct = total > 0 ? (elapsedMins / total) * 100 : 0;
-        const endAbsSec = endMinsOf(c) * 60;
-        const nowAbsSec = nowMins * 60 + now.getSeconds();
-        const remainingSec = Math.max(0, endAbsSec - nowAbsSec);
+    <div className="relative flex h-full min-h-[420px] flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] px-6 py-8 text-center">
+      <PanelBackdrop />
 
-        return (
-          <div key={c.id} className="relative flex flex-col items-center">
-            <Glow className={km.glow} />
-            <div className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3.5 py-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${km.dot} animate-pulse`} />
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
-                Live · {km.label.toLowerCase()} in progress
-              </span>
+      <motion.div
+        className="relative flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] px-3.5 py-1.5"
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: EASE_OUT }}
+      >
+        <motion.span
+          className={`h-1.5 w-1.5 rounded-full ${live ? km!.dot : "bg-emerald-400"}`}
+          animate={{ opacity: [1, 0.25, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
+          {live ? `Live · ${km!.label.toLowerCase()} in progress` : "Live · free right now"}
+        </span>
+      </motion.div>
+
+      <motion.div
+        className="relative"
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.06 }}
+      >
+        {/* An empty day has nothing to plot, and a dial drawn as a bare ring
+            is just the old clock-in-a-void with a circle around it. Drop the
+            ring entirely and let the clock and the up-next card carry it. */}
+        <DayDial today={today} now={now} hidden={today.length === 0}>
+          {live ? (
+            <div>
+              <div className={`text-4xl font-semibold tabular-nums ${km!.text}`}>
+                {mmss(remainingSec)}
+              </div>
+              <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.14em] text-slate-500">left</div>
+              <p className="mt-2 line-clamp-2 text-[13px] font-medium leading-snug text-white">
+                {live.title}
+              </p>
             </div>
-            <div className="relative mt-6">
-              <Ring pct={pct} colorClass={km.ring} size={196} strokeWidth={10} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-4xl font-semibold tabular-nums ${km.text}`}>{mmss(remainingSec)}</span>
-                <span className="text-[11px] uppercase tracking-wide text-slate-500">left</span>
+          ) : (
+            <div>
+              <LiveClock now={now} />
+              <div className="mt-1 text-[10.5px] uppercase tracking-[0.18em] text-slate-500">
+                {DAYS[now.getDay()]}
               </div>
             </div>
-            <p className="relative mt-6 max-w-[360px] truncate text-3xl font-semibold text-white">{c.title}</p>
-            <p className="relative mt-2 max-w-[360px] truncate text-sm text-slate-400">
-              {timeRange(c)}
-              {c.teacherName && ` · ${c.teacherName}`}
-              {c.location && ` · ${c.location}`}
+          )}
+        </DayDial>
+      </motion.div>
+
+      {live ? (
+        <p className="relative max-w-[380px] truncate text-[13px] text-slate-400">
+          {timeRange(live)}
+          {live.teacherName ? ` · ${live.teacherName}` : ""}
+          {live.location ? ` · ${live.location}` : ""}
+        </p>
+      ) : nextItem ? (
+        <motion.div
+          className={`relative w-full max-w-[380px] overflow-hidden rounded-2xl border bg-white/[0.03] px-5 py-4 text-left ${meta(nextItem.c.kind).border}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: EASE_OUT, delay: 0.35 }}
+        >
+          <span className={`absolute inset-y-0 left-0 w-[3px] ${meta(nextItem.c.kind).seg}`} aria-hidden />
+          <div className="flex items-center justify-between gap-2 pl-2">
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${meta(nextItem.c.kind).dot}`} />
+              <p className="text-[11px] text-slate-500">Up next</p>
+            </div>
+            <p className={`text-[11px] font-medium tabular-nums ${meta(nextItem.c.kind).text}`}>
+              {untilLabel(nextItem.until)}
             </p>
           </div>
-        );
-      })}
+          <p className="mt-1.5 truncate pl-2 text-lg font-semibold text-white">{nextItem.c.title}</p>
+          <p className="mt-0.5 truncate pl-2 text-[12.5px] text-slate-500">
+            {timeRange(nextItem.c)}
+            {nextItem.c.teacherName && ` · ${nextItem.c.teacherName}`}
+            {nextItem.c.location && ` · ${nextItem.c.location}`}
+          </p>
+        </motion.div>
+      ) : (
+        <p className="relative text-sm text-slate-500">Nothing else scheduled this week.</p>
+      )}
 
       {today.length > 0 && <DayStats today={today} now={now} />}
     </div>
