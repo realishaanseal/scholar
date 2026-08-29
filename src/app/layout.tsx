@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import Backdrop from "@/components/Backdrop";
 import PwaSetup from "@/components/PwaSetup";
+import { RTL_LOCALES } from "@/i18n/request";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,13 +36,19 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const dir = RTL_LOCALES.has(locale) ? "rtl" : "ltr";
+
   return (
-    <html lang="en">
+    <html lang={locale} dir={dir}>
       <body>
-        <Backdrop />
-        <PwaSetup />
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Backdrop />
+          <PwaSetup />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -36,7 +36,10 @@ const NAV: NavItem[] = [
   {
     href: "/import",
     label: "Import",
-    icon: "M12 3v10m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
+    // A graduation cap — "bring in work from school" (LMS/notice import) —
+    // rather than a generic download arrow, which read as "download a file"
+    // instead of "import from your school."
+    icon: "M12 3L2 8l10 5 8-4v6M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5",
   },
   {
     href: "/calendar",
@@ -66,8 +69,10 @@ const NAV: NavItem[] = [
 const SETTINGS_ITEM: NavItem = {
   href: "/settings",
   label: "Settings",
-  icon: "M12 2l1.9 5.5L19 9l-5.1 1.5L12 16l-1.9-5.5L5 9l5.1-1.5z",
-  filled: true,
+  // A real gear, not the sparkle glyph the old AI-settings tab used —
+  // Settings needs to read unmistakably as configuration at a glance.
+  icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.76 1.02 1.4 1.02H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
+  filled: false,
 };
 
 function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
@@ -96,7 +101,7 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
       </svg>
       {/* Tooltip-style label for the icon rail (desktop only — mobile's bottom
           bar shows the label inline instead, see below). */}
-      <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg border border-white/10 bg-ink-950 px-2.5 py-1.5 text-[11.5px] font-medium text-white opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 max-lg:hidden">
+      <span className="pointer-events-none absolute start-full ms-3 whitespace-nowrap rounded-lg border border-white/10 bg-ink-950 px-2.5 py-1.5 text-[11.5px] font-medium text-white opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 max-lg:hidden">
         {item.label}
       </span>
     </Link>
@@ -125,7 +130,7 @@ export default function AppShell({
   return (
     <div className="min-h-screen lg:flex">
       {/* Desktop rail */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[76px] flex-col items-center gap-1.5 border-r border-white/[0.06] bg-ink-985/80 py-4 backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 start-0 z-40 hidden w-[76px] flex-col items-center gap-1.5 border-e border-white/[0.06] bg-ink-985/80 py-4 backdrop-blur-xl lg:flex">
         <Link href="/dashboard" className="mb-3">
           <Logo size={34} />
         </Link>
@@ -139,7 +144,7 @@ export default function AppShell({
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col lg:pl-[76px]">
+      <div className="flex min-h-screen flex-1 flex-col lg:ps-[76px]">
         {/* Top bar — brand on mobile (rail replaces it on desktop), user info, sign out */}
         <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-985/70 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5 xl:px-10">

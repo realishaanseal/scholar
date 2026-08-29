@@ -5,5 +5,14 @@ import { authConfig } from "@/lib/auth.config";
 export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/settings/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/settings/:path*",
+    "/timetable/:path*",
+    "/import/:path*",
+    "/calendar/:path*",
+    "/extension/:path*",
+    "/insights/:path*",
+    "/groups/:path*",
+  ],
 };
