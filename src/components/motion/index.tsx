@@ -304,8 +304,8 @@ export function TiltCard({
 export function Magnetic({
   children,
   className,
-  strength = 0.32,
-  radius = 90,
+  strength = 0.14,
+  radius = 64,
 }: {
   children: ReactNode;
   className?: string;
@@ -314,8 +314,8 @@ export function Magnetic({
 }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const x = useSpring(useMotionValue(0), SPRING_SNAPPY);
-  const y = useSpring(useMotionValue(0), SPRING_SNAPPY);
+  const x = useSpring(useMotionValue(0), SPRING_SOFT);
+  const y = useSpring(useMotionValue(0), SPRING_SOFT);
 
   function onMove(e: React.MouseEvent) {
     if (reduce || !ref.current) return;
