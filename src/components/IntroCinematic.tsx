@@ -103,7 +103,7 @@ export default function IntroCinematic({ onDone }: { onDone: () => void }) {
     <motion.div
       role="presentation"
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
-      style={{ background: "#04050a", isolation: "isolate" }}
+      style={{ background: "#07080c", isolation: "isolate" }}
       initial={{ opacity: 1 }}
       animate={exiting ? { opacity: 0 } : { opacity: 1 }}
       transition={{ duration: 0.95, ease: [0.6, 0, 0.28, 1], times: exiting ? [0, 1] : undefined }}

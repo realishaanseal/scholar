@@ -8,16 +8,18 @@
   /*
    * Accent theme — the ENTIRE app's brand color derives from these four
    * numbers. `--accent-h` / `--accent-h-2` are two hues a little apart on
-   * the wheel (cyan -> blue by default) so gradients keep visual depth
-   * instead of reading as one flat tint; `--accent-s` / `--accent-l` are
-   * shared saturation/lightness. Settings overrides these inline on <html>
-   * (see ThemePanel.tsx / applyTheme in theme-client.ts), so every rule
-   * below that reads them re-themes live with no other change needed.
+   * the wheel (royal blue -> indigo by default) so gradients keep visual
+   * depth instead of reading as one flat tint; `--accent-s` / `--accent-l`
+   * are shared saturation/lightness. Deliberately mid-saturation, not neon —
+   * a confident blue reads as considered where a bright cyan reads as a
+   * template. Settings overrides these inline on <html> (see ThemePanel.tsx
+   * / applyTheme in themeClient.ts), so every rule below that reads them
+   * re-themes live with no other change needed.
    */
-  --accent-h: 195;
-  --accent-h-2: 222;
-  --accent-s: 85%;
-  --accent-l: 55%;
+  --accent-h: 224;
+  --accent-h-2: 250;
+  --accent-s: 70%;
+  --accent-l: 62%;
 
   --accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
   --accent-2: hsl(var(--accent-h-2) var(--accent-s) var(--accent-l));
@@ -39,9 +41,10 @@ html, body { height: 100%; }
 body {
   @apply text-slate-200 antialiased;
   overflow-x: hidden;
-  /* Deep base with a cool spotlight at the top and a warm-dark floor. */
+  /* Deep graphite base — near-neutral with only a whisper of cool at the top
+     spotlight, so the accent does the coloring rather than the canvas. */
   background:
-    radial-gradient(130% 80% at 50% -15%, #1a2145 0%, #0d1224 40%, #06070e 100%);
+    radial-gradient(120% 78% at 50% -12%, #191d2a 0%, #0e1017 44%, #08090d 100%);
   background-attachment: fixed;
 }
 
@@ -53,8 +56,10 @@ body {
   inset: -25%;
   z-index: -3;
   pointer-events: none;
-  filter: blur(70px) saturate(150%);
-  opacity: 1;
+  filter: blur(84px) saturate(112%);
+  /* Pulled well back — the glow should be sensed at the edges of vision, not
+     stared at. The rest of the premium feel comes from restraint here. */
+  opacity: 0.42;
 }
 
 .aurora-blob {
@@ -70,11 +75,11 @@ body {
   z-index: -2;
   pointer-events: none;
   background-image:
-    linear-gradient(to right, rgba(160, 180, 255, 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(160, 180, 255, 0.055) 1px, transparent 1px);
-  background-size: 58px 58px;
-  mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 72%);
+    linear-gradient(to right, rgba(150, 172, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(150, 172, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 15%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 15%, transparent 70%);
 }
 
 /* Vignette: darkens the edges so content in the middle carries the eye. */
@@ -83,7 +88,7 @@ body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(ellipse 95% 80% at 50% 40%, transparent 55%, rgba(3, 4, 8, 0.55) 100%);
+  background: radial-gradient(ellipse 92% 78% at 50% 38%, transparent 52%, rgba(2, 3, 6, 0.62) 100%);
 }
 
 .grain-veil {
@@ -91,63 +96,63 @@ body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.22;
+  opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
 }
 
 @layer components {
   /* ── Surfaces ──────────────────────────────────────────────────────────── */
   .card {
-    @apply relative rounded-2xl border border-white/[0.08] shadow-lift shadow-inner-top;
+    @apply relative rounded-2xl border border-white/[0.055] shadow-lift shadow-inner-top;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 45%),
-      rgba(13, 16, 25, 0.72);
-    backdrop-filter: blur(14px) saturate(130%);
-    -webkit-backdrop-filter: blur(14px) saturate(130%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 42%),
+      rgba(17, 19, 27, 0.66);
+    backdrop-filter: blur(16px) saturate(118%);
+    -webkit-backdrop-filter: blur(16px) saturate(118%);
   }
 
   .card-hover {
     @apply transition-all duration-300 ease-smooth;
   }
   .card-hover:hover {
-    @apply -translate-y-[2px] border-white/[0.14];
-    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9),
-      0 0 0 1px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.16);
+    @apply -translate-y-[2px] border-white/[0.11];
+    box-shadow: 0 22px 50px -26px rgba(0, 0, 0, 0.85),
+      0 0 0 1px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.1);
   }
 
-  /* Conic gradient border that slowly rotates — used on the AI review card. */
+  /* A hairline gradient border that drifts very slowly — used on the AI
+     review card. Kept low-contrast so it reads as a finish, not a light show. */
   .card-aurora {
     @apply relative rounded-2xl;
     background: conic-gradient(
       from var(--angle),
-      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.65),
-      hsl(var(--accent-h-2) var(--accent-s) var(--accent-l) / 0.55),
-      hsl(calc(var(--accent-h) - 25) var(--accent-s) calc(var(--accent-l) + 15%) / 0.5),
-      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.65)
+      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4),
+      hsl(var(--accent-h-2) var(--accent-s) var(--accent-l) / 0.28),
+      hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 8%) / 0.14),
+      hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4)
     );
     padding: 1px;
-    animation: borderSpin 7s linear infinite;
+    animation: borderSpin 13s linear infinite;
   }
   .card-aurora > * {
     @apply rounded-[15px];
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 40%),
-      rgba(11, 14, 22, 0.94);
-    backdrop-filter: blur(14px);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 40%),
+      rgba(14, 16, 23, 0.95);
+    backdrop-filter: blur(16px);
   }
 
   /* ── Form controls ─────────────────────────────────────────────────────── */
   .input {
-    @apply w-full rounded-xl border border-white/[0.09] px-4 py-3 text-sm text-slate-100
+    @apply w-full rounded-xl border border-white/[0.08] px-4 py-3 text-sm text-slate-100
            placeholder:text-slate-500 outline-none transition-all duration-200;
-    background: rgba(8, 10, 18, 0.66);
+    background: rgba(10, 12, 18, 0.6);
   }
-  .input:hover { @apply border-white/[0.16]; }
+  .input:hover { @apply border-white/[0.14]; }
   .input:focus {
-    border-color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.7);
-    background: rgba(8, 10, 18, 0.9);
-    box-shadow: 0 0 0 3px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.16),
-      0 0 28px -6px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4);
+    border-color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.6);
+    background: rgba(10, 12, 18, 0.85);
+    box-shadow: 0 0 0 3px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.14);
   }
 
   .label {
@@ -167,13 +172,13 @@ body {
     @apply btn text-white;
     background: var(--grad-brand);
     background-size: 160% 160%;
-    box-shadow: 0 8px 26px -10px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 5%) / 0.85),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+    box-shadow: 0 6px 20px -8px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 8%) / 0.6),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
   }
   .btn-primary:hover:not(:disabled) {
     background-image: var(--grad-brand-hot);
-    box-shadow: 0 14px 40px -12px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 5%) / 0.95),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.24);
+    box-shadow: 0 12px 32px -12px hsl(var(--accent-h-2) var(--accent-s) calc(var(--accent-l) - 8%) / 0.7),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
   }
   /* light sweep across the button on hover */
@@ -181,7 +186,7 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
     transform: translateX(-120%) skewX(-18deg);
     pointer-events: none;
   }
@@ -272,7 +277,7 @@ body {
 
 ::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #2a3149, #1b2030);
+  background: linear-gradient(180deg, #2b2e38, #191b21);
   border: 3px solid transparent;
   background-clip: padding-box;
   border-radius: 999px;

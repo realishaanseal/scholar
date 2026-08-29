@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#05060b",
+  themeColor: "#08090d",
   width: "device-width",
   initialScale: 1,
   // Capture is the main mobile action and it's a text field; blocking zoom

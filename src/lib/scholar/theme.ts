@@ -19,24 +19,28 @@ export type ThemeAccent = {
   l: number; // 0-100 (%)
 };
 
-/** The new default — a cyan-to-blue sweep, replacing the old purple/violet brand. */
-export const DEFAULT_THEME: ThemeAccent = { h: 195, h2: 222, s: 85, l: 55 };
+/**
+ * The default — a confident royal blue easing into indigo. Mid-saturation on
+ * purpose: bright enough to lead the UI, restrained enough to read as a
+ * considered brand rather than a stock template.
+ */
+export const DEFAULT_THEME: ThemeAccent = { h: 224, h2: 250, s: 70, l: 62 };
 
 export type ThemePreset = { id: string; label: string; accent: ThemeAccent };
 
 /**
  * Curated quick picks shown as swatches in Settings, alongside the free-form
- * color input. Cyan/Blue is first and is what a fresh account gets by
- * default. The old purple brand is kept as an ordinary preset (not the
- * default) for anyone who liked it.
+ * color input. Royal Blue is first and is what a fresh account gets by
+ * default. Every preset is tuned toward the low-saturation, premium end of
+ * its hue rather than its neon end.
  */
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "cyan-blue", label: "Cyan / Blue", accent: { h: 195, h2: 222, s: 85, l: 55 } },
-  { id: "emerald-teal", label: "Emerald / Teal", accent: { h: 160, h2: 185, s: 72, l: 48 } },
-  { id: "rose-pink", label: "Rose / Pink", accent: { h: 340, h2: 320, s: 82, l: 60 } },
-  { id: "amber-orange", label: "Amber / Orange", accent: { h: 32, h2: 18, s: 92, l: 55 } },
-  { id: "violet-purple", label: "Violet / Purple", accent: { h: 255, h2: 275, s: 82, l: 62 } },
-  { id: "slate-mono", label: "Slate / Mono", accent: { h: 220, h2: 220, s: 14, l: 62 } },
+  { id: "royal-blue", label: "Royal Blue", accent: { h: 224, h2: 250, s: 70, l: 62 } },
+  { id: "indigo", label: "Indigo", accent: { h: 244, h2: 262, s: 62, l: 64 } },
+  { id: "azure", label: "Azure", accent: { h: 205, h2: 226, s: 68, l: 58 } },
+  { id: "teal", label: "Teal", accent: { h: 178, h2: 196, s: 55, l: 50 } },
+  { id: "violet", label: "Violet", accent: { h: 262, h2: 282, s: 58, l: 66 } },
+  { id: "graphite", label: "Graphite", accent: { h: 220, h2: 228, s: 12, l: 64 } },
 ];
 
 function clamp(n: number, lo: number, hi: number): number {

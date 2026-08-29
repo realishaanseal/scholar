@@ -6,28 +6,28 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          985: "#05060b",
-          950: "#080a12",
-          900: "#0d1019",
-          850: "#12151f",
-          800: "#171b28",
-          700: "#222738",
-          600: "#333a52",
+          985: "#08090d",
+          950: "#0b0c11",
+          900: "#101118",
+          850: "#14161d",
+          800: "#191b23",
+          700: "#242732",
+          600: "#343846",
         },
-        // Static fallback shades approximating the new cyan/blue default
+        // Static fallback shades approximating the royal-blue / indigo default
         // accent theme (see globals.css's --accent-* custom properties for
         // the actual, user-overridable brand color). These are used only by
         // the handful of `vx-*` utility classes that Tailwind resolves at
         // build time (e.g. `border-vx-500/70`, `accent-vx-500`) — the live,
         // per-user accent color is driven by CSS vars everywhere else.
         vx: {
-          50: "#e9fbff",
-          200: "#b9edff",
-          300: "#82dcfb",
-          400: "#4bc4ef",
-          500: "#2bbdee",
-          600: "#1f96d6",
-          700: "#1c72b3",
+          50: "#eef3ff",
+          200: "#c8d6fe",
+          300: "#a3bcfb",
+          400: "#7699f6",
+          500: "#5478ee",
+          600: "#3f5cd4",
+          700: "#3548a5",
         },
         // Kept as a selectable preset (see THEME_PRESETS in lib/scholar/theme.ts)
         // for anyone who preferred the old purple/violet brand — no longer
@@ -40,9 +40,9 @@ const config: Config = {
       },
       borderRadius: { "2xl": "1rem", "3xl": "1.5rem" },
       boxShadow: {
-        glow: "0 0 0 1px rgba(43,189,238,0.28), 0 10px 40px -12px rgba(43,189,238,0.5)",
-        lift: "0 18px 50px -20px rgba(0,0,0,0.85)",
-        "inner-top": "inset 0 1px 0 0 rgba(255,255,255,0.06)",
+        glow: "0 0 0 1px rgba(84,120,238,0.14), 0 10px 30px -14px rgba(0,0,0,0.7)",
+        lift: "0 16px 44px -22px rgba(0,0,0,0.8)",
+        "inner-top": "inset 0 1px 0 0 rgba(255,255,255,0.05)",
       },
       keyframes: {
         drift: {

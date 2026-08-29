@@ -63,7 +63,7 @@ export default function Backdrop() {
             top: "-10%", left: "-6%", width: "62vw", height: "62vw",
             x: reduce ? 0 : near.x, y: reduce ? 0 : near.y,
             background:
-              "radial-gradient(circle at 30% 30%, hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.92), transparent 60%)",
+              "radial-gradient(circle at 30% 30%, hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.55), transparent 60%)",
           }}
           {...(reduce ? {} : DRIFT.a)}
         />
@@ -73,7 +73,7 @@ export default function Backdrop() {
             top: "-4%", right: "-10%", width: "56vw", height: "56vw",
             x: reduce ? 0 : mid.x, y: reduce ? 0 : mid.y,
             background:
-              "radial-gradient(circle at 60% 40%, hsl(var(--accent-h-2) var(--accent-s) var(--accent-l) / 0.78), transparent 60%)",
+              "radial-gradient(circle at 60% 40%, hsl(var(--accent-h-2) var(--accent-s) var(--accent-l) / 0.45), transparent 60%)",
           }}
           {...(reduce ? {} : DRIFT.b)}
         />
@@ -83,7 +83,7 @@ export default function Backdrop() {
             bottom: "-18%", left: "20%", width: "64vw", height: "52vw",
             x: reduce ? 0 : far.x, y: reduce ? 0 : far.y,
             background:
-              "radial-gradient(circle at 50% 50%, hsl(calc(var(--accent-h) - 20) var(--accent-s) calc(var(--accent-l) - 5%) / 0.5), transparent 62%)",
+              "radial-gradient(circle at 50% 50%, hsl(calc(var(--accent-h) - 18) var(--accent-s) calc(var(--accent-l) - 6%) / 0.3), transparent 62%)",
           }}
           {...(reduce ? {} : DRIFT.c)}
         />
