@@ -47,8 +47,6 @@ import { hslToHex } from "@/lib/scholar/themeClient";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
 const EXPO_IN_OUT = [0.65, 0, 0.35, 1] as const;
-/** Slow-in, long glide — the curve the light sweeps ride. */
-const GLIDE = [0.4, 0.05, 0.2, 1] as const;
 
 const WORDS = ["Varaxis", "Scholar"];
 const TAGLINE = "Every deadline, one clear picture.";
@@ -131,19 +129,35 @@ const LETTERS = (() => {
  * of hardcoding the brand blue. Resolved once on mount — an `hsl(var(--x))`
  * string can't be interpolated, and neither endpoint may be a CSS variable.
  */
-function useAccentInk(): string {
-  const [ink, setInk] = useState(() => hslToHex(224, 70, 70));
+type Accent = { h: number; h2: number; s: number; l: number };
+const ACCENT_FALLBACK: Accent = { h: 224, h2: 250, s: 70, l: 62 };
+
+function useAccent(): Accent {
+  const [accent, setAccent] = useState<Accent>(ACCENT_FALLBACK);
   useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
-    const h = parseFloat(cs.getPropertyValue("--accent-h"));
-    const sat = parseFloat(cs.getPropertyValue("--accent-s"));
-    const l = parseFloat(cs.getPropertyValue("--accent-l"));
-    if (!Number.isFinite(h) || !Number.isFinite(sat) || !Number.isFinite(l)) return;
-    // Lifted a little off the stored lightness: the accent is tuned to carry
-    // white text on top of it, which is too dark to *be* text on near-black.
-    setInk(hslToHex(h, sat, Math.min(78, l + 8)));
+    const num = (name: string) => parseFloat(cs.getPropertyValue(name));
+    const next = { h: num("--accent-h"), h2: num("--accent-h-2"), s: num("--accent-s"), l: num("--accent-l") };
+    if (Object.values(next).every((v) => Number.isFinite(v))) setAccent(next);
   }, []);
-  return ink;
+  return accent;
+}
+
+/**
+ * The colour a tinted glyph settles on, sampled at `t` (0 → 1) across the
+ * word.
+ *
+ * A single flat accent read as a solid block of colour; running the word
+ * along the same two hues the brand gradient uses gives it depth. It has to
+ * be per-glyph solid colours rather than one `background-clip: text`
+ * gradient — these letters carry a 3D rotateX, and Chromium drops a clipped
+ * background when both land on the same element.
+ *
+ * Lightness lifts along the ramp too: the stored accent is tuned to carry
+ * white text on top of it, which is too dark to *be* text on near-black.
+ */
+function rampInk(a: Accent, t: number): string {
+  return hslToHex(a.h + (a.h2 - a.h) * t, a.s, Math.min(80, a.l + 6 + 9 * t));
 }
 
 /**
@@ -207,7 +221,7 @@ export default function IntroCinematic({
   const done = useRef(false);
 
   // One progress value drives the crest and every letter's tint together.
-  const ink = useAccentInk();
+  const accent = useAccent();
   const wave = useMotionValue(0);
   const waveBodyX = useTransform(wave, [0, 1], [`${WAVE_X0 * 100}%`, `${WAVE_X1 * 100}%`]);
   const waveCoreX = useTransform(wave, [0, 1], ["-420%", "1180%"]);
@@ -215,7 +229,10 @@ export default function IntroCinematic({
 
   useEffect(() => {
     if (reduce || phase < 2) return;
-    const controls = animate(wave, 1, { duration: 1.5, ease: GLIDE });
+    // Linear on purpose: an eased sweep visibly loafs through the middle of
+    // the wordmark, which is exactly where the eye is. Constant rate reads
+    // as a wavefront passing rather than a highlight being placed.
+    const controls = animate(wave, 1, { duration: 1.6, ease: "linear" });
     return () => controls.stop();
   }, [phase, reduce, wave]);
 
@@ -477,7 +494,7 @@ export default function IntroCinematic({
                          "paints" Scholar as it sweeps through. */
                       tint={letter.wordIndex > 0}
                       wave={wave}
-                      ink={ink}
+                      ink={rampInk(accent, word.length > 1 ? j / (word.length - 1) : 0)}
                       shown={wordIn || !!reduce}
                       reduce={reduce}
                       delay={(start + j) * 0.045}
