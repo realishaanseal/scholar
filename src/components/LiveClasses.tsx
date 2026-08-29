@@ -8,58 +8,20 @@ import { fetchJson } from "@/lib/fetchJson";
 import ClassList, { type ClassSlot } from "./ClassList";
 import TimetableImport from "./TimetableImport";
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const pad = (n: number) => String(n).padStart(2, "0");
-const WEEK_MINS = 7 * 24 * 60;
-
-function startMinsOf(c: ClassSlot) { return c.dayOfWeek * 1440 + c.startHour * 60 + c.startMin; }
-function endMinsOf(c: ClassSlot) { return c.dayOfWeek * 1440 + c.endHour * 60 + c.endMin; }
-/** Minute-of-day only (no week offset) — what the day timeline plots against. */
-function dayStartMins(c: ClassSlot) { return c.startHour * 60 + c.startMin; }
-function dayEndMins(c: ClassSlot) { return c.endHour * 60 + c.endMin; }
-
-function timeRange(c: ClassSlot) {
-  return `${pad(c.startHour)}:${pad(c.startMin)}–${pad(c.endHour)}:${pad(c.endMin)}`;
-}
-
-function untilLabel(mins: number): string {
-  if (mins < 1) return "starting now";
-  if (mins < 60) return `in ${mins}m`;
-  if (mins < 24 * 60) return `in ${Math.floor(mins / 60)}h ${mins % 60}m`;
-  return `in ${Math.floor(mins / 1440)}d`;
-}
-
-function mmss(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${pad(r)}`;
-}
-
-function clockTime(mins: number): string {
-  const m = ((mins % 1440) + 1440) % 1440;
-  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
-}
-
-/** Visual identity per period kind — a class, a break, or a library period. */
-const KIND_META = {
-  class: {
-    label: "Class", dot: "bg-emerald-400", ring: "text-emerald-400", text: "text-emerald-300",
-    glow: "bg-emerald-500/25", seg: "bg-emerald-400/70", border: "border-emerald-500/25",
-  },
-  break: {
-    label: "Break", dot: "bg-amber-400", ring: "text-amber-400", text: "text-amber-300",
-    glow: "bg-amber-500/25", seg: "bg-amber-400/70", border: "border-amber-500/25",
-  },
-  library: {
-    label: "Library", dot: "bg-sky-400", ring: "text-sky-400", text: "text-sky-300",
-    glow: "bg-sky-500/25", seg: "bg-sky-400/70", border: "border-sky-500/25",
-  },
-} as const;
-
-function meta(kind: string) {
-  return KIND_META[kind as keyof typeof KIND_META] ?? KIND_META.class;
-}
+import {
+  DAYS,
+  WEEK_MINS,
+  clockTime,
+  dayEndMins,
+  dayStartMins,
+  endMinsOf,
+  meta,
+  mmss,
+  pad,
+  startMinsOf,
+  timeRange,
+  untilLabel,
+} from "@/lib/scholar/timetableView";
 
 type Upcoming = { c: ClassSlot; until: number };
 

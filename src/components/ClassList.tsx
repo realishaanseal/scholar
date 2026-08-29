@@ -3,30 +3,11 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchJson } from "@/lib/fetchJson";
+import { DAYS, meta as kindMeta, pad, type ClassSlot } from "@/lib/scholar/timetableView";
 
-export type ClassSlot = {
-  id: string;
-  title: string;
-  subjectName: string | null;
-  dayOfWeek: number;
-  startHour: number;
-  startMin: number;
-  endHour: number;
-  endMin: number;
-  location: string | null;
-  teacherName: string | null;
-  kind: "class" | "break" | "library";
-};
-
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const pad = (n: number) => String(n).padStart(2, "0");
-
-const KIND_META: Record<string, { label: string; dot: string }> = {
-  class: { label: "Class", dot: "bg-emerald-400" },
-  break: { label: "Break", dot: "bg-amber-400" },
-  library: { label: "Library", dot: "bg-sky-400" },
-};
-const kindMeta = (k: string) => KIND_META[k] ?? KIND_META.class;
+/* Re-exported so the many importers of `ClassList`'s slot type keep working
+   now that the shape lives alongside the rest of the timetable helpers. */
+export type { ClassSlot };
 
 /**
  * The list of classes already in the timetable, with per-row edit and
