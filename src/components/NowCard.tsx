@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING_SOFT } from "@/components/motion";
 import type { HomeworkDTO } from "@/lib/clientTypes";
 
 export type NowPayload = {
@@ -74,8 +76,12 @@ export default function NowCard({
   const accent = recommendation ? LEVEL_ACCENT[recommendation.risk.level] ?? "#5b7cfa" : "#64748b";
 
   return (
-    <section
-      className="card animate-riseIn overflow-hidden p-5 sm:p-6 xl:p-7"
+    <motion.section
+      layout
+      initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.05 }}
+      className="card overflow-hidden p-5 sm:p-6 xl:p-7"
       style={{ boxShadow: `0 18px 50px -20px rgba(0,0,0,0.85), inset 0 0 90px -50px ${accent}33` }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -87,7 +93,13 @@ export default function NowCard({
         <p className="mt-5 text-sm text-slate-400">{emptyReason}</p>
       ) : (
         <>
-          <div className="mt-5">
+          <motion.div
+            key={recommendation.task.id}
+            className="mt-5"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: EASE_OUT }}
+          >
             <div className="flex items-center gap-2">
               <span
                 className="rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
@@ -105,10 +117,13 @@ export default function NowCard({
             <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-slate-400">
               {recommendation.rationale}
             </p>
-          </div>
+          </motion.div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.025, y: -1 }}
+              whileTap={{ scale: 0.97 }}
+              transition={SPRING_SOFT}
               className="btn-primary w-full px-6 py-3 sm:w-auto sm:py-2.5"
               onClick={() => {
                 const hw = homework.find((h) => h.id === recommendation.task.id);
@@ -119,7 +134,7 @@ export default function NowCard({
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
-            </button>
+            </motion.button>
 
             {alternatives.length > 0 && (
               <button className="btn-ghost px-4 py-2.5 text-xs" onClick={() => setShowAlts((v) => !v)}>
@@ -128,34 +143,48 @@ export default function NowCard({
             )}
           </div>
 
-          {showAlts && (
-            <div className="mt-4 space-y-1.5 animate-fadeIn">
-              {alternatives.map((alt) => (
-                <button
-                  key={alt.task.id}
-                  onClick={() => {
-                    const hw = homework.find((h) => h.id === alt.task.id);
-                    if (hw) onStart(hw);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]
-                             px-3 py-2.5 text-left text-[13px] text-slate-300 transition-colors
-                             hover:border-white/12 hover:bg-white/[0.05]"
-                >
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ background: LEVEL_ACCENT[alt.risk.level] ?? "#64748b" }}
-                  />
-                  <span className="truncate">{alt.task.title}</span>
-                  <span className="ml-auto shrink-0 text-[11px] text-slate-600">{alt.task.subject}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence initial={false}>
+            {showAlts && (
+              <motion.div
+                key="alts"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: EASE_OUT }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 space-y-1.5">
+                  {alternatives.map((alt, i) => (
+                    <motion.button
+                      key={alt.task.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0, transition: { delay: i * 0.05 } }}
+                      whileHover={{ x: 3 }}
+                      onClick={() => {
+                        const hw = homework.find((h) => h.id === alt.task.id);
+                        if (hw) onStart(hw);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]
+                                 px-3 py-2.5 text-left text-[13px] text-slate-300 transition-colors
+                                 hover:border-white/12 hover:bg-white/[0.05]"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: LEVEL_ACCENT[alt.risk.level] ?? "#64748b" }}
+                      />
+                      <span className="truncate">{alt.task.title}</span>
+                      <span className="ml-auto shrink-0 text-[11px] text-slate-600">{alt.task.subject}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 
       <WorkloadStrip workload={data.workload} />
-    </section>
+    </motion.section>
   );
 }
 
@@ -197,7 +226,7 @@ function WorkloadStrip({ workload }: { workload: NowPayload["workload"] }) {
       <p className="text-[13px] text-slate-400">{workload.headline}</p>
 
       <div className="mt-4 flex items-end gap-1.5">
-        {week.map((d) => {
+        {week.map((d, di) => {
           const h = Math.max(3, (d.workMins / maxMins) * 56);
           const capH = (d.capacityMins / maxMins) * 56;
           return (
@@ -208,10 +237,13 @@ function WorkloadStrip({ workload }: { workload: NowPayload["workload"] }) {
                   className="absolute inset-x-0 border-t border-dashed border-white/15"
                   style={{ bottom: `${capH}px` }}
                 />
-                <div
-                  className="absolute inset-x-0 bottom-0 rounded-t-[3px] transition-all duration-500"
+                <motion.div
+                  className="absolute inset-x-0 bottom-0 origin-bottom rounded-t-[3px]"
+                  initial={{ height: 0 }}
+                  whileInView={{ height: `${h}px` }}
+                  viewport={{ once: true, amount: 0.5 }}
+                  transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.04 * di }}
                   style={{
-                    height: `${h}px`,
                     background: d.overloaded
                       ? "linear-gradient(180deg,#ef4444,#b91c1c)"
                       : d.workMins > 0

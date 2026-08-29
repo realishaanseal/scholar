@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import type { HomeworkDTO } from "@/lib/clientTypes";
 import type { TaskRiskDTO } from "./NowCard";
 import {
@@ -69,7 +71,13 @@ export default function HomeworkItem({
 
   if (editing) {
     return (
-      <div ref={editCardRef} className="card-aurora animate-popIn">
+      <motion.div
+        ref={editCardRef}
+        initial={{ opacity: 0, scale: 0.97, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={SPRING}
+        className="card-aurora"
+      >
         <div className="p-5">
           <div className="space-y-3.5">
             <div>
@@ -128,26 +136,47 @@ export default function HomeworkItem({
             <button className="btn-primary px-5" onClick={save}>Save changes</button>
             <button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
 
-            {confirmDelete ? (
-              <span className="ml-auto flex animate-popIn items-center gap-2">
-                <span className="text-xs text-slate-400">Delete this?</span>
-                <button className="btn-danger px-3 py-2" onClick={() => onDelete(hw.id)}>Yes, delete</button>
-                <button className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>No</button>
-              </span>
-            ) : (
-              <button className="btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>Delete</button>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {confirmDelete ? (
+                <motion.span
+                  key="confirm"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 12 }}
+                  transition={{ duration: 0.2, ease: EASE_OUT }}
+                  className="ml-auto flex items-center gap-2"
+                >
+                  <span className="text-xs text-slate-400">Delete this?</span>
+                  <button className="btn-danger px-3 py-2" onClick={() => onDelete(hw.id)}>Yes, delete</button>
+                  <button className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>No</button>
+                </motion.span>
+              ) : (
+                <motion.button
+                  key="delete"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="btn-danger ml-auto"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  Delete
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div
+    <motion.div
       className={`card card-hover group relative overflow-hidden p-4 xl:p-[18px] ${style.ring} ${
-        done ? "opacity-45" : ""
-      } ${urgency === "overdue" ? "urgent-halo" : ""}`}
+        urgency === "overdue" ? "urgent-halo" : ""
+      }`}
+      whileHover={{ y: -2 }}
+      transition={SPRING}
     >
       {/* subject colour spine */}
       <span
@@ -160,22 +189,44 @@ export default function HomeworkItem({
       />
 
       <div className="flex items-start gap-3.5 pl-2">
-        <button
+        <motion.button
           onClick={() => onUpdate(hw.id, { status: done ? "todo" : "done" })}
           aria-label={done ? "Mark as not done" : "Mark as done"}
-          className={`tap-44 mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-lg border
-                      transition-all duration-200 ease-spring hover:scale-110 active:scale-95 ${
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.88 }}
+          transition={SPRING}
+          className={`tap-44 mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-lg border ${
             done
               ? "border-emerald-500/60 bg-emerald-500/25 text-emerald-300"
               : "border-white/20 hover:border-vx-400 hover:bg-vx-500/10"
           }`}
         >
-          {done && (
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 animate-popIn" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-              <path d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-        </button>
+          <AnimatePresence>
+            {done && (
+              <motion.svg
+                key="check"
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={SPRING}
+              >
+                <motion.path
+                  d="M5 13l4 4L19 7"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.28, ease: EASE_OUT, delay: 0.05 }}
+                />
+              </motion.svg>
+            )}
+          </AnimatePresence>
+        </motion.button>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -292,6 +343,6 @@ export default function HomeworkItem({
           </svg>
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

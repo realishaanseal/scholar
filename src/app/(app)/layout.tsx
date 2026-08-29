@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import ThemeLoader from "@/components/ThemeLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell userEmail={session.user.email ?? null} userImage={session.user.image ?? null}>
-      <ThemeLoader />
       {children}
     </AppShell>
   );

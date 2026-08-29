@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING_SOFT } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 
 export type RiskSignal = {
@@ -53,13 +55,18 @@ export default function AlertsFeed({ onAction }: { onAction?: (signal: RiskSigna
 
   return (
     <div className="space-y-2.5">
+      <AnimatePresence initial={true}>
       {signals.slice(0, 4).map((s, i) => {
         const tone = SEVERITY[s.severity] ?? SEVERITY.low;
         return (
-          <div
+          <motion.div
             key={s.key}
-            className="card animate-riseIn stagger relative overflow-hidden p-4"
-            style={{ ["--i" as any]: i, borderColor: `${tone.accent}33` }}
+            layout
+            initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...SPRING_SOFT, delay: i * 0.06 } }}
+            exit={{ opacity: 0, x: 40, filter: "blur(4px)", transition: { duration: 0.25, ease: EASE_OUT } }}
+            className="card relative overflow-hidden p-4"
+            style={{ borderColor: `${tone.accent}33` }}
           >
             <span
               className="absolute inset-y-0 left-0 w-[3px]"
@@ -103,9 +110,10 @@ export default function AlertsFeed({ onAction }: { onAction?: (signal: RiskSigna
                 </svg>
               </button>
             </div>
-          </div>
+          </motion.div>
         );
       })}
+      </AnimatePresence>
     </div>
   );
 }

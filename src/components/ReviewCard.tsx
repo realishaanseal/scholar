@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT } from "@/components/motion";
 import type { DraftHomework } from "@/lib/clientTypes";
 import { toLocalInputValue, fromLocalInputValue, formatDue } from "@/lib/format";
 
@@ -32,7 +34,7 @@ export default function ReviewCard({
   const confidencePct = d.aiConfidence != null ? Math.round(d.aiConfidence * 100) : null;
 
   return (
-    <div className="card-aurora animate-popIn">
+    <div className="card-aurora">
       <div className="p-5 xl:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -50,11 +52,19 @@ export default function ReviewCard({
         </button>
       </div>
 
-      {showRaw && (
-        <p className="mb-4 rounded-xl border border-white/[0.07] bg-ink-950/60 p-3 text-xs italic leading-relaxed text-slate-500">
-          "{d.rawInput}"
-        </p>
-      )}
+      <AnimatePresence initial={false}>
+        {showRaw && (
+          <motion.p
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.28, ease: EASE_OUT }}
+            className="overflow-hidden rounded-xl border border-white/[0.07] bg-ink-950/60 p-3 text-xs italic leading-relaxed text-slate-500"
+          >
+            "{d.rawInput}"
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {d.degraded && (
         <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-3.5 py-3 text-xs leading-relaxed text-amber-200/90">
@@ -199,9 +209,12 @@ function ConfidenceMeter({ pct }: { pct: number }) {
   return (
     <span className="inline-flex items-center gap-1.5" title={`${pct}% confident`}>
       <span className="h-1.5 w-14 overflow-hidden rounded-full bg-white/[0.07]">
-        <span
-          className="block h-full rounded-full transition-all duration-700 ease-smooth"
-          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${tone}, ${tone}99)` }}
+        <motion.span
+          className="block h-full rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.2 }}
+          style={{ background: `linear-gradient(90deg, ${tone}, ${tone}99)` }}
         />
       </span>
       <span className="text-[11px] tabular-nums text-slate-500">{pct}%</span>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 
 type Group = {
@@ -97,13 +99,16 @@ export default function GroupsPanel() {
         <CreateOrJoin onDone={load} />
       </section>
 
+      <AnimatePresence>
       {openId && (
         <GroupDetailOverlay
+          key="group-overlay"
           detail={detail}
           onClose={() => { setOpenId(null); setDetail(null); load(); }}
           onChanged={() => openGroup(openId)}
         />
       )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -208,8 +213,20 @@ function GroupDetailOverlay({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-      <div className="card animate-riseIn flex h-full w-full max-w-[880px] flex-col overflow-hidden sm:h-[min(88vh,880px)] sm:rounded-2xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ duration: 0.32, ease: EASE_OUT }}
+        className="card flex h-full w-full max-w-[880px] flex-col overflow-hidden sm:h-[min(88vh,880px)] sm:rounded-2xl"
+      >
         {!detail ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="skeleton-shimmer h-8 w-40 rounded-lg" />
@@ -217,8 +234,8 @@ function GroupDetailOverlay({
         ) : (
           <GroupDetail detail={detail} onClose={onClose} onChanged={onChanged} />
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

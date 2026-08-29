@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import AISettingsPanel from "./AISettingsPanel";
 import StudySettingsPanel from "./StudySettingsPanel";
 import PreferencesPanel from "./PreferencesPanel";
@@ -84,19 +86,26 @@ export default function SettingsNav({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
-      <nav className="card animate-riseIn p-2 lg:sticky lg:top-24">
+      <nav className="card p-2 lg:sticky lg:top-24">
         {SECTIONS.map((s) => {
           const on = section === s.id;
           return (
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
-              className={`group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-200 ${
-                on ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
+              className={`group relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-200 ${
+                on ? "" : "hover:bg-white/[0.03]"
               }`}
             >
+              {on && (
+                <motion.span
+                  layoutId="settings-active"
+                  className="absolute inset-0 rounded-xl bg-white/[0.06]"
+                  transition={SPRING}
+                />
+              )}
               <span
-                className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border transition-colors"
+                className="relative z-[1] mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border transition-colors"
                 style={
                   on
                     ? { background: "var(--grad-brand)", borderColor: "transparent" }
@@ -108,7 +117,7 @@ export default function SettingsNav({
                   <path d={s.icon} />
                 </svg>
               </span>
-              <span className="min-w-0">
+              <span className="relative z-[1] min-w-0">
                 <span className={`block text-sm font-medium ${on ? "text-white" : "text-slate-300"}`}>
                   {s.label}
                 </span>
@@ -120,14 +129,24 @@ export default function SettingsNav({
       </nav>
 
       <div ref={panelRef} className="min-w-0 scroll-mt-24">
-        {section === "ai" && <AISettingsPanel />}
-        {section === "study" && <StudySettingsPanel />}
-        {section === "preferences" && <PreferencesPanel />}
-        {section === "appearance" && <ThemePanel />}
-        {section === "sharing" && <SharingPanel />}
-        {section === "account" && (
-          <AccountPanel name={name} email={email} enabledOAuthProviders={enabledOAuthProviders} />
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={section}
+            initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+            transition={{ duration: 0.28, ease: EASE_OUT }}
+          >
+            {section === "ai" && <AISettingsPanel />}
+            {section === "study" && <StudySettingsPanel />}
+            {section === "preferences" && <PreferencesPanel />}
+            {section === "appearance" && <ThemePanel />}
+            {section === "sharing" && <SharingPanel />}
+            {section === "account" && (
+              <AccountPanel name={name} email={email} enabledOAuthProviders={enabledOAuthProviders} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

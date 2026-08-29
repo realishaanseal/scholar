@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import Logo from "./Logo";
 import SignOutButton from "./SignOutButton";
 import LiveClasses from "./LiveClasses";
+import ThemeLoader from "./ThemeLoader";
 
 type NavItem = {
   href: string;
@@ -81,27 +84,36 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       aria-label={item.label}
       title={item.label}
-      className={`group relative grid h-11 w-11 place-items-center rounded-xl border transition-all duration-200 ease-spring ${
+      className={`group relative grid h-11 w-11 place-items-center rounded-xl border transition-colors duration-200 ${
         active
           ? "border-transparent text-white"
-          : "border-white/[0.08] bg-white/[0.03] text-slate-500 hover:-translate-y-[1px] hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+          : "border-white/[0.08] bg-white/[0.03] text-slate-500 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
       }`}
-      style={active ? { background: "var(--grad-brand)" } : undefined}
     >
-      <svg
+      {active && (
+        <motion.span
+          layoutId="nav-active-rail"
+          aria-hidden
+          className="absolute inset-0 rounded-xl"
+          style={{ background: "var(--grad-brand)", boxShadow: "0 8px 26px -10px hsl(var(--accent-h-2) var(--accent-s) 45% / 0.7)" }}
+          transition={SPRING}
+        />
+      )}
+      <motion.svg
         viewBox="0 0 24 24"
-        className="h-[19px] w-[19px]"
+        className="relative z-[1] h-[19px] w-[19px]"
         fill={item.filled ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
+        whileHover={{ scale: 1.15, y: -1 }}
+        whileTap={{ scale: 0.9 }}
+        transition={SPRING}
       >
         <path d={item.icon} />
-      </svg>
-      {/* Tooltip-style label for the icon rail (desktop only — mobile's bottom
-          bar shows the label inline instead, see below). */}
-      <span className="pointer-events-none absolute start-full ms-3 whitespace-nowrap rounded-lg border border-white/10 bg-ink-950 px-2.5 py-1.5 text-[11.5px] font-medium text-white opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 max-lg:hidden">
+      </motion.svg>
+      <span className="pointer-events-none absolute start-full ms-3 z-10 whitespace-nowrap rounded-lg border border-white/10 bg-ink-950 px-2.5 py-1.5 text-[11.5px] font-medium text-white opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 max-lg:hidden">
         {item.label}
       </span>
     </Link>
@@ -112,8 +124,7 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
  * The app's persistent navigation shell: an icon rail on the left (desktop)
  * that collapses to a bottom tab bar (mobile), plus a slim top bar with
  * brand, current user, and sign-out. Every authenticated route renders
- * inside this, so moving a page in or out of "Settings" is just adding or
- * removing it from NAV rather than restructuring layout per page.
+ * inside this, and each route change cross-fades through <AnimatePresence>.
  */
 export default function AppShell({
   children,
@@ -125,14 +136,18 @@ export default function AppShell({
   userImage?: string | null;
 }) {
   const pathname = usePathname();
+  const reduce = useReducedMotion();
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
   return (
     <div className="min-h-screen lg:flex">
+      <ThemeLoader />
       {/* Desktop rail */}
       <aside className="fixed inset-y-0 start-0 z-40 hidden w-[76px] flex-col items-center gap-1.5 border-e border-white/[0.06] bg-ink-985/80 py-4 backdrop-blur-xl lg:flex">
         <Link href="/dashboard" className="mb-3">
-          <Logo size={34} />
+          <motion.span className="block" whileHover={{ rotate: -8, scale: 1.06 }} whileTap={{ scale: 0.94 }} transition={SPRING}>
+            <Logo size={34} />
+          </motion.span>
         </Link>
         <nav className="flex flex-1 flex-col items-center gap-1.5">
           {NAV.map((item) => (
@@ -169,7 +184,17 @@ export default function AppShell({
         </header>
 
         <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pb-24 pt-6 sm:px-6 sm:pb-8 xl:px-10">
-          {children}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12, filter: "blur(6px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, filter: "blur(4px)" }}
+              transition={{ duration: 0.32, ease: EASE_OUT }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* Mobile bottom tab bar — the rail's small-screen equivalent */}
@@ -181,11 +206,20 @@ export default function AppShell({
                 key={item.href}
                 href={item.href}
                 aria-label={item.label}
-                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition-colors ${
+                className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition-colors ${
                   active ? "text-white" : "text-slate-500"
                 }`}
               >
-                <svg
+                {active && (
+                  <motion.span
+                    layoutId="nav-active-mobile"
+                    aria-hidden
+                    className="absolute inset-x-2 top-0 h-[2px] rounded-full"
+                    style={{ background: "var(--grad-brand)" }}
+                    transition={SPRING}
+                  />
+                )}
+                <motion.svg
                   viewBox="0 0 24 24"
                   className="h-5 w-5"
                   fill={item.filled ? "currentColor" : "none"}
@@ -193,9 +227,11 @@ export default function AppShell({
                   strokeWidth="1.7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  animate={active ? { y: -1, scale: 1.08 } : { y: 0, scale: 1 }}
+                  transition={SPRING}
                 >
                   <path d={item.icon} />
-                </svg>
+                </motion.svg>
                 <span className="truncate text-[9.5px] font-medium leading-none">{item.label}</span>
               </Link>
             );

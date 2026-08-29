@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import type { HomeworkDTO } from "@/lib/clientTypes";
 import { formatDue } from "@/lib/format";
 
@@ -98,7 +100,12 @@ export default function FocusMode({
   const color = hw.subject?.color ?? "#5b7cfa";
 
   return (
-    <div className="card animate-riseIn overflow-hidden p-6 xl:p-7">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }}
+      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+      transition={{ duration: 0.5, ease: EASE_OUT }}
+      className="card overflow-hidden p-6 xl:p-7"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -118,12 +125,14 @@ export default function FocusMode({
 
       {/* Timer */}
       <div className="mt-7 flex flex-col items-center">
-        <div
+        <motion.div
           className="text-6xl font-semibold tabular-nums tracking-tight"
           style={{ color: over ? "#fbbf24" : "#fff" }}
+          animate={running ? { opacity: [1, 0.82, 1] } : { opacity: 1 }}
+          transition={running ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
         >
           {formatClock(elapsed)}
-        </div>
+        </motion.div>
 
         <p className="mt-2 text-xs text-slate-500">
           {hw.estimateMins
@@ -135,10 +144,11 @@ export default function FocusMode({
 
         {hw.estimateMins ? (
           <div className="mt-4 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-white/[0.06]">
-            <div
-              className="h-full rounded-full transition-all duration-1000 ease-out"
+            <motion.div
+              className="h-full rounded-full"
+              animate={{ width: `${Math.max(2, progress * 100)}%` }}
+              transition={{ duration: 0.8, ease: EASE_OUT }}
               style={{
-                width: `${Math.max(2, progress * 100)}%`,
                 background: over ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "var(--grad-brand)",
               }}
             />
@@ -146,12 +156,12 @@ export default function FocusMode({
         ) : null}
 
         <div className="mt-6 flex items-center gap-3">
-          <button onClick={toggle} className={running ? "btn-ghost px-6 py-2.5" : "btn-primary px-6 py-2.5"}>
+          <motion.button whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }} transition={SPRING} onClick={toggle} className={running ? "btn-ghost px-6 py-2.5" : "btn-primary px-6 py-2.5"}>
             {running ? "Pause" : "Resume"}
-          </button>
-          <button onClick={complete} className="btn-primary px-6 py-2.5" disabled={saving}>
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }} transition={SPRING} onClick={complete} className="btn-primary px-6 py-2.5" disabled={saving}>
             Mark complete
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -170,7 +180,7 @@ export default function FocusMode({
         Time is recorded when you finish, and used to make future estimates for{" "}
         {hw.subject?.name ?? "this subject"} more accurate.
       </p>
-    </div>
+    </motion.div>
   );
 }
 

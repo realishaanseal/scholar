@@ -2,6 +2,8 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { motion } from "motion/react";
+import { SPRING_SOFT } from "@/components/motion";
 
 type Props = {
   enabled: { google: boolean; github: boolean };
@@ -51,7 +53,7 @@ export default function OAuthButtons({ enabled }: Props) {
   return (
     <div className="space-y-2.5">
       {active.map((p, i) => (
-        <button
+        <motion.button
           key={p}
           type="button"
           disabled={busy !== null}
@@ -59,12 +61,16 @@ export default function OAuthButtons({ enabled }: Props) {
             setBusy(p);
             signIn(p, { callbackUrl: "/dashboard" });
           }}
-          className="btn-oauth animate-riseIn stagger"
-          style={{ ["--i" as any]: i }}
+          className="btn-oauth"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...SPRING_SOFT, delay: 0.1 + i * 0.08 }}
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
         >
           {ICONS[p]}
           <span>{busy === p ? "Redirecting…" : LABELS[p]}</span>
-        </button>
+        </motion.button>
       ))}
     </div>
   );

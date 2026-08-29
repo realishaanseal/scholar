@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, enabledOAuthProviders } from "@/lib/auth";
+import PageHeading from "@/components/PageHeading";
 import SettingsNav from "@/components/SettingsNav";
 
 export const dynamic = "force-dynamic";
@@ -10,14 +11,10 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <div className="mb-7 animate-riseIn">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          <span className="gradient-text">Settings</span>
-        </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
-          Choose which AI reads your homework, how much time you have to study, and how Scholar looks and talks to you.
-        </p>
-      </div>
+      <PageHeading
+        title="Settings"
+        subtitle="Choose which AI reads your homework, how much time you have to study, and how Scholar looks and talks to you."
+      />
 
       <SettingsNav
         name={session.user.name ?? null}

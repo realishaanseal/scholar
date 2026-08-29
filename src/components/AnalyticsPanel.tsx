@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { EASE_OUT } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 
 type SubjectStat = {
@@ -172,12 +174,14 @@ function WeeklyChart({ weeks }: { weeks: WeekPoint[] }) {
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
               >
-                <div
-                  className="mx-auto w-full transition-all duration-200"
+                <motion.div
+                  className="mx-auto w-full"
+                  initial={{ height: 0 }}
+                  whileInView={{ height: Math.max(w.minutes > 0 ? 3 : 0, h) }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ duration: 0.6, ease: EASE_OUT, delay: i * 0.02 }}
                   style={{
-                    height: Math.max(w.minutes > 0 ? 3 : 0, h),
                     maxWidth: 24,
-                    // Rounded data-end, square at the baseline.
                     borderRadius: "4px 4px 0 0",
                     background: on ? RAMP.light : RAMP.base,
                     marginBottom: 26,
@@ -279,9 +283,13 @@ function EstimateAccuracy({ subjects }: { subjects: SubjectStat[] }) {
 
 function Dot({ left, color }: { left: number; color: string }) {
   return (
-    <span
-      className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
-      style={{ left: `${left}%`, background: color, boxShadow: `0 0 0 2px ${SURFACE}` }}
+    <motion.span
+      className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full"
+      style={{ left: `${left}%`, x: "-50%", background: color, boxShadow: `0 0 0 2px ${SURFACE}` }}
+      initial={{ scale: 0, opacity: 0 }}
+      whileInView={{ scale: 1, opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
     />
   );
 }
@@ -295,13 +303,13 @@ function OnTimeBars({ subjects }: { subjects: SubjectStat[] }) {
         <div key={s.subject} className="flex items-center gap-3">
           <span className="w-24 shrink-0 truncate text-[12.5px] text-slate-300">{s.subject}</span>
           <div className="relative h-5 flex-1 overflow-hidden rounded-[4px] bg-white/[0.04]">
-            <div
-              className="h-full transition-all duration-500"
-              style={{
-                width: `${Math.max(2, s.onTimeRate * 100)}%`,
-                background: RAMP.base,
-                borderRadius: "0 4px 4px 0",
-              }}
+            <motion.div
+              className="h-full"
+              initial={{ width: 0 }}
+              whileInView={{ width: `${Math.max(2, s.onTimeRate * 100)}%` }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.7, ease: EASE_OUT }}
+              style={{ background: RAMP.base, borderRadius: "0 4px 4px 0" }}
             />
           </div>
           <span className="w-24 shrink-0 text-right text-[11px] tabular-nums text-slate-500">

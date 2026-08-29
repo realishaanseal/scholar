@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 
 type Turn = { role: "user" | "assistant"; content: string };
@@ -72,7 +74,13 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <section className="card animate-riseIn flex h-[520px] flex-col overflow-hidden">
+    <motion.section
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 16, scale: 0.98 }}
+      transition={{ duration: 0.4, ease: EASE_OUT }}
+      className="card flex h-[520px] flex-col overflow-hidden"
+    >
       <header className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
         <div>
           <h2 className="text-sm font-semibold text-white">Study coach</h2>
@@ -110,7 +118,13 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
         )}
 
         {turns.map((t, i) => (
-          <div key={i} className={t.role === "user" ? "flex justify-end" : ""}>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10, x: t.role === "user" ? 12 : -12 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            transition={SPRING}
+            className={t.role === "user" ? "flex justify-end" : ""}
+          >
             <div
               className={
                 t.role === "user"
@@ -123,23 +137,31 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
                 <p key={j} className={j > 0 ? "mt-2" : ""}>{line}</p>
               ))}
             </div>
-          </div>
+          </motion.div>
         ))}
 
-        {busy && (
-          <div className="flex items-center gap-2 text-[12px] text-slate-500">
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-1.5 w-1.5 rounded-full bg-slate-500"
-                  style={{ animation: `breathe 1s ease-in-out ${i * 0.15}s infinite` }}
-                />
-              ))}
-            </span>
-            Thinking
-          </div>
-        )}
+        <AnimatePresence>
+          {busy && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 text-[12px] text-slate-500"
+            >
+              <span className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-slate-500"
+                    animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}
+                  />
+                ))}
+              </span>
+              Thinking
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {error && (
           <div className="rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2.5 text-xs text-red-300">
@@ -170,6 +192,6 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
           </svg>
         </button>
       </form>
-    </section>
+    </motion.section>
   );
 }

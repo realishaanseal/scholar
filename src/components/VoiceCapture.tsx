@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { pickRecordingMime, toWav } from "@/lib/audio/wav";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -220,16 +221,19 @@ export function MicButton({
   const busy = transcribing && !listening;
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
       disabled={!supported || busy}
       title={
         busy ? "Transcribing…" : listening ? "Stop dictation" : "Dictate homework"
       }
+      whileHover={{ scale: 1.06 }}
+      whileTap={{ scale: 0.94 }}
+      animate={listening ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+      transition={listening ? { duration: 1.4, repeat: Infinity, ease: "easeInOut" } : { type: "spring", stiffness: 400, damping: 25 }}
       className="group relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl
-                 transition-all duration-300 ease-spring disabled:opacity-60
-                 disabled:hover:scale-100 hover:scale-105 active:scale-95"
+                 disabled:opacity-60"
       style={{
         background: listening
           ? "linear-gradient(135deg,#ef4444,#f97316)"
@@ -267,7 +271,7 @@ export function MicButton({
           <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
         </svg>
       )}
-    </button>
+    </motion.button>
   );
 }
 
@@ -276,13 +280,12 @@ export function ListeningBars() {
   return (
     <span className="inline-flex items-end gap-[3px]" aria-hidden>
       {[0, 1, 2, 3, 4].map((i) => (
-        <span
+        <motion.span
           key={i}
           className="w-[3px] rounded-full bg-red-400"
-          style={{
-            height: `${6 + ((i * 7) % 12)}px`,
-            animation: `breathe ${0.7 + i * 0.13}s ease-in-out ${i * 0.08}s infinite`,
-          }}
+          style={{ height: 14, originY: 1 }}
+          animate={{ scaleY: [0.35, 1, 0.5, 0.85, 0.35] }}
+          transition={{ duration: 0.7 + i * 0.13, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
         />
       ))}
     </span>

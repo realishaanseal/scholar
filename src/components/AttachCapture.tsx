@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { fetchJson } from "@/lib/fetchJson";
 
 export type PendingAttachment = {
@@ -118,9 +119,15 @@ export function AttachmentChips({
   return (
     <>
     <div className="mt-3 flex flex-wrap gap-2">
+      <AnimatePresence initial={false}>
       {attachments.map((a) => (
-        <span
+        <motion.span
           key={a.localId}
+          layout
+          initial={{ opacity: 0, scale: 0.8, y: 6 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: -6 }}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
           className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-slate-300"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -137,8 +144,9 @@ export function AttachmentChips({
           >
             ✕
           </button>
-        </span>
+        </motion.span>
       ))}
+      </AnimatePresence>
     </div>
 
     {/* Reading the file is an explicit action: it costs an API call, and the

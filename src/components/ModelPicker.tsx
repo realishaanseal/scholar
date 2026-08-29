@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT } from "@/components/motion";
 import type { ProviderInfo } from "@/lib/ai/catalog";
 
 export type ModelOption = { id: string; label: string; score: number; note?: string };
@@ -129,8 +131,15 @@ export default function ModelPicker({
             </div>
           </button>
 
+          <AnimatePresence>
           {open && (
-            <div className="absolute left-0 right-0 top-full z-20 mt-2 animate-popIn overflow-hidden rounded-xl border border-white/[0.10] bg-ink-900/95 shadow-lift backdrop-blur-xl">
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ duration: 0.18, ease: EASE_OUT }}
+              className="absolute left-0 right-0 top-full z-20 mt-2 origin-top overflow-hidden rounded-xl border border-white/[0.10] bg-ink-900/95 shadow-lift backdrop-blur-xl"
+            >
               <div className="border-b border-white/[0.07] p-2">
                 <input
                   autoFocus
@@ -214,8 +223,9 @@ export default function ModelPicker({
                   </p>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </div>
 

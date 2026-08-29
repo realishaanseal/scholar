@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { fetchJson } from "@/lib/fetchJson";
 
 export type ClassSlot = {
@@ -99,7 +100,8 @@ export default function ClassList({
         )}
       </div>
 
-      {classes.map((c) =>
+      <AnimatePresence initial={false}>
+      {classes.map((c, i) =>
         editing === c.id ? (
           <EditRow
             key={c.id}
@@ -108,8 +110,12 @@ export default function ClassList({
             onCancel={() => setEditing(null)}
           />
         ) : (
-          <div
+          <motion.div
             key={c.id}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: Math.min(i, 15) * 0.02 } }}
+            exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
             className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
           >
             <span className="w-20 shrink-0 text-[11px] text-slate-500">{DAYS[c.dayOfWeek].slice(0, 3)}</span>
@@ -143,9 +149,10 @@ export default function ClassList({
             >
               ✕
             </button>
-          </div>
+          </motion.div>
         )
       )}
+      </AnimatePresence>
     </div>
   );
 }

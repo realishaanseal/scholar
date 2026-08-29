@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "motion/react";
+import { EASE_OUT, SPRING_SOFT } from "@/components/motion";
 import type { HomeworkDTO, SubjectDTO } from "@/lib/clientTypes";
 import { formatDue, urgencyOf } from "@/lib/format";
 
@@ -32,7 +34,12 @@ export default function SubjectRail({
   return (
     <aside className="space-y-5 lg:sticky lg:top-24">
       {/* Progress ring */}
-      <div className="card animate-riseIn p-5">
+      <motion.div
+        className="card p-5"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: EASE_OUT }}
+      >
         <div className="flex items-center gap-4">
           <ProgressRing pct={pct} />
           <div className="min-w-0">
@@ -43,10 +50,15 @@ export default function SubjectRail({
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Subject spread */}
-      <div className="card animate-riseIn stagger p-5" style={{ ["--i" as any]: 1 }}>
+      <motion.div
+        className="card p-5"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.08 }}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">By subject</h3>
           {selected && (
@@ -87,10 +99,12 @@ export default function SubjectRail({
                     <span className="shrink-0 text-[11px] tabular-nums text-slate-500">{count}</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-smooth"
+                    <motion.div
+                      className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(count / maxCount) * 100}%` }}
+                      transition={{ ...SPRING_SOFT, delay: 0.05 * i }}
                       style={{
-                        width: `${(count / maxCount) * 100}%`,
                         background: `linear-gradient(90deg, ${s.color}, ${s.color}77)`,
                         boxShadow: isOn ? `0 0 14px ${s.color}aa` : "none",
                       }}
@@ -101,10 +115,15 @@ export default function SubjectRail({
             })}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Up next */}
-      <div className="card animate-riseIn stagger p-5" style={{ ["--i" as any]: 2 }}>
+      <motion.div
+        className="card p-5"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.16 }}
+      >
         <h3 className="mb-4 text-sm font-semibold text-white">Up next</h3>
 
         {upNext.length === 0 ? (
@@ -113,26 +132,35 @@ export default function SubjectRail({
           </p>
         ) : (
           <ol className="relative space-y-4 border-l border-white/[0.08] pl-4">
-            {upNext.map((h) => {
+            {upNext.map((h, i) => {
               const u = urgencyOf(h.dueAt);
               const dot =
                 u === "overdue" ? "#ef4444" : u === "today" ? "#f97316" : u === "tomorrow" ? "#f59e0b" : h.subject?.color ?? "#5b7cfa";
               return (
-                <li key={h.id} className="relative">
-                  <span
+                <motion.li
+                  key={h.id}
+                  className="relative"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, ease: EASE_OUT, delay: 0.06 * i }}
+                >
+                  <motion.span
                     className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-ink-985"
                     style={{ background: dot, boxShadow: `0 0 10px ${dot}` }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ ...SPRING_SOFT, delay: 0.06 * i + 0.1 }}
                   />
                   <div className="text-xs font-medium leading-snug text-slate-200 line-clamp-2">{h.title}</div>
                   <div className="mt-0.5 text-[11px]" style={{ color: dot }}>
                     {formatDue(h.dueAt)}
                   </div>
-                </li>
+                </motion.li>
               );
             })}
           </ol>
         )}
-      </div>
+      </motion.div>
     </aside>
   );
 }
@@ -153,11 +181,13 @@ function ProgressRing({ pct }: { pct: number }) {
           </linearGradient>
         </defs>
         <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="6" />
-        <circle
+        <motion.circle
           cx="34" cy="34" r={r} fill="none"
           stroke="url(#ringGrad)" strokeWidth="6" strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 900ms cubic-bezier(0.22,1,0.36,1)" }}
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.1, ease: EASE_OUT, delay: 0.15 }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-sm font-semibold tabular-nums text-white">

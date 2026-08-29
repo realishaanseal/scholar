@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT } from "@/components/motion";
 import { PROVIDER_MAP } from "@/lib/ai/catalog";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -29,11 +31,18 @@ export default function AISetupBanner() {
     })();
   }, []);
 
-  if (!needsSetup || dismissed) return null;
-
   return (
-    <div className="card animate-riseIn relative overflow-hidden border-amber-500/25 p-5"
-      style={{ boxShadow: "0 18px 50px -20px rgba(0,0,0,0.85), inset 0 0 80px -40px rgba(245,158,11,0.22)" }}>
+    <AnimatePresence>
+      {needsSetup && !dismissed && (
+        <motion.div
+          initial={{ opacity: 0, height: 0, y: -8 }}
+          animate={{ opacity: 1, height: "auto", y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -8, marginBottom: 0 }}
+          transition={{ duration: 0.4, ease: EASE_OUT }}
+          className="overflow-hidden"
+        >
+          <div className="card relative overflow-hidden border-amber-500/25 p-5"
+            style={{ boxShadow: "0 18px 50px -20px rgba(0,0,0,0.85), inset 0 0 80px -40px rgba(245,158,11,0.22)" }}>
       <div className="flex flex-wrap items-center gap-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-500/25 bg-amber-500/[0.10]">
           <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-300" fill="currentColor">
@@ -72,6 +81,9 @@ export default function AISetupBanner() {
           </button>
         </div>
       </div>
-    </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

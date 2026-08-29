@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING_SOFT } from "@/components/motion";
 import { ListeningBars, MicButton, useDictation } from "./VoiceCapture";
 import { AttachButton, AttachmentChips, type PendingAttachment } from "./AttachCapture";
 import type { DraftHomework } from "@/lib/clientTypes";
@@ -148,7 +150,7 @@ export default function Capture({
 
   return (
     <div
-      className="card card-hover animate-riseIn overflow-hidden p-5 xl:p-6"
+      className="card card-hover overflow-hidden p-5 xl:p-6"
       style={
         focused || speech.listening
           ? { borderColor: speech.listening ? "rgba(239,68,68,0.30)" : "rgba(91,124,250,0.30)" }
@@ -217,34 +219,57 @@ export default function Capture({
           built-in speech recognition isn&apos;t available.
         </p>
       )}
-      {error && (
-        <p className="mt-2.5 animate-popIn rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">
-          {error}
-        </p>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: "auto", marginTop: 10 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
+            className="overflow-hidden rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300"
+          >
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {/* Example prompts — one tap to try it out */}
-      {!text && !speech.listening && (
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          {EXAMPLES.map((ex, i) => (
-            <button
-              key={ex}
-              onClick={() => setText(ex)}
-              className="chip-btn animate-fadeIn stagger border border-white/[0.07] bg-white/[0.025]
-                         text-[11px] text-slate-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-slate-300"
-              style={{ ["--i" as any]: i }}
-            >
-              {ex.length > 44 ? ex.slice(0, 44) + "…" : ex}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {!text && !speech.listening && (
+          <motion.div
+            className="mt-3.5 flex flex-wrap gap-2"
+            initial="hidden"
+            animate="show"
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+          >
+            {EXAMPLES.map((ex) => (
+              <motion.button
+                key={ex}
+                variants={{
+                  hidden: { opacity: 0, y: 8, scale: 0.95 },
+                  show: { opacity: 1, y: 0, scale: 1, transition: SPRING_SOFT },
+                }}
+                whileHover={{ y: -2 }}
+                onClick={() => setText(ex)}
+                className="chip-btn border border-white/[0.07] bg-white/[0.025]
+                           text-[11px] text-slate-500 hover:border-white/15 hover:bg-white/[0.06] hover:text-slate-300"
+              >
+                {ex.length > 44 ? ex.slice(0, 44) + "…" : ex}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-        <button
+        <motion.button
           className="btn-primary min-w-[150px] px-5 py-2.5"
           onClick={analyze}
           disabled={disabled || analyzing || text.trim().length < 3}
+          whileHover={{ scale: 1.03, y: -1 }}
+          whileTap={{ scale: 0.97 }}
+          transition={SPRING_SOFT}
         >
           {analyzing ? (
             <>
@@ -259,7 +284,7 @@ export default function Capture({
               </svg>
             </>
           )}
-        </button>
+        </motion.button>
       </div>
     </div>
   );

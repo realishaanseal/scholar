@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE_OUT, SPRING } from "@/components/motion";
 import { COST_LABEL, PROVIDERS, PROVIDER_MAP, type ProviderId } from "@/lib/ai/catalog";
 import { fetchJson } from "@/lib/fetchJson";
 import ModelPicker, { type ModelListState } from "./ModelPicker";
@@ -240,16 +242,20 @@ export default function AISettingsPanel() {
           {PROVIDERS.map((p, i) => {
             const selected = provider === p.id;
             return (
-              <button
+              <motion.button
                 key={p.id}
                 onClick={() => pickProvider(p.id)}
-                className={`card card-hover animate-riseIn stagger p-4 text-left ${selected ? "border-vx-500/50" : ""}`}
-                style={{
-                  ["--i" as any]: i,
-                  ...(selected
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...SPRING, delay: Math.min(i, 8) * 0.04 }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.98 }}
+                className={`card card-hover p-4 text-left ${selected ? "border-vx-500/50" : ""}`}
+                style={
+                  selected
                     ? { boxShadow: `0 0 0 1px ${p.accent}55, 0 18px 50px -20px rgba(0,0,0,0.85)` }
-                    : {}),
-                }}
+                    : undefined
+                }
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
@@ -266,14 +272,19 @@ export default function AISettingsPanel() {
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-400">{p.blurb}</p>
-              </button>
+              </motion.button>
             );
           })}
         </div>
       </div>
 
       {/* Key + model */}
-      <div className="card-aurora animate-popIn">
+      <motion.div
+        className="card-aurora"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: EASE_OUT, delay: 0.15 }}
+      >
         <div className="p-5 xl:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-white">{info.label} settings</h3>
@@ -372,8 +383,15 @@ export default function AISettingsPanel() {
             </div>
           )}
 
+          <AnimatePresence>
           {test.state !== "idle" && (
-            <div className="mt-5 animate-popIn">
+            <motion.div
+              className="mt-5"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: EASE_OUT }}
+            >
               {test.state === "running" && (
                 <p className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5 text-xs text-slate-400">
                   <Spinner /> Sending a test note to {info.label}…
@@ -396,18 +414,27 @@ export default function AISettingsPanel() {
                   {test.error}
                 </p>
               )}
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
+          <AnimatePresence>
           {message && (
-            <p className={`mt-5 animate-popIn rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed ${
-              message.tone === "ok"
-                ? "border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-200"
-                : "border-red-500/25 bg-red-500/[0.08] text-red-300"
-            }`}>
+            <motion.p
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: 20 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.25, ease: EASE_OUT }}
+              className={`overflow-hidden rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed ${
+                message.tone === "ok"
+                  ? "border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-200"
+                  : "border-red-500/25 bg-red-500/[0.08] text-red-300"
+              }`}
+            >
               {message.text}
-            </p>
+            </motion.p>
           )}
+          </AnimatePresence>
 
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
             <button className="btn-primary px-5" onClick={save} disabled={saving}>
@@ -435,7 +462,7 @@ export default function AISettingsPanel() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

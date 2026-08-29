@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
+import { SPRING_SOFT } from "@/components/motion";
 import { fetchJson } from "@/lib/fetchJson";
 
 export type PlannedSession = {
@@ -92,7 +94,7 @@ export default function PlanReview({
   const dated = syllabus.assessments.filter((a) => a.dueAt);
 
   return (
-    <div className="card-aurora animate-popIn">
+    <div className="card-aurora">
       <div className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -179,13 +181,17 @@ export default function PlanReview({
               {plan.map((s, i) => {
                 const on = selected.has(i);
                 return (
-                  <button
+                  <motion.button
                     key={i}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: on ? 1 : 0.5, x: 0 }}
+                    transition={{ ...SPRING_SOFT, delay: Math.min(i, 12) * 0.03 }}
+                    whileHover={{ x: 2 }}
                     onClick={() => toggle(i)}
-                    className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${
+                    className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                       on
                         ? "border-white/12 bg-white/[0.05]"
-                        : "border-white/[0.05] bg-transparent opacity-50"
+                        : "border-white/[0.05] bg-transparent"
                     }`}
                   >
                     <span
@@ -194,9 +200,12 @@ export default function PlanReview({
                       }`}
                     >
                       {on && (
-                        <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round">
+                        <motion.svg
+                          viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+                          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING_SOFT}
+                        >
                           <path d="M5 13l4 4L19 7" />
-                        </svg>
+                        </motion.svg>
                       )}
                     </span>
 
@@ -209,7 +218,7 @@ export default function PlanReview({
                         {" · "}{s.estimateMins}m
                       </span>
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>

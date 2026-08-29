@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import Backdrop from "@/components/Backdrop";
 import PwaSetup from "@/components/PwaSetup";
+import { MotionProvider } from "@/components/motion";
 import { RTL_LOCALES } from "@/i18n/request";
 import "./globals.css";
 
@@ -45,9 +46,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} dir={dir}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Backdrop />
-          <PwaSetup />
-          {children}
+          <MotionProvider>
+            <Backdrop />
+            <PwaSetup />
+            {children}
+          </MotionProvider>
         </NextIntlClientProvider>
       </body>
     </html>
