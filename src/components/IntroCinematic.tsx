@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
+import { hslToHex } from "@/lib/scholar/themeClient";
 
 /**
  * Cinematic title sequence shown over the landing page for signed-out
@@ -74,6 +82,118 @@ const MOTES = [
  */
 const TYPE_FILL = "#eef2fb";
 
+/* ── Wavefront geometry ────────────────────────────────────────────────────
+   The crest and the letter tint are driven by one shared 0 → 1 progress
+   value rather than two independently-timed animations, so the colour can
+   never drift out of step with the light no matter what easing the sweep
+   uses. These constants describe where the crest's centre sits, as a
+   fraction of the wordmark's width, at each end of that progress: the body
+   layer is WAVE_W wide, positioned at left:0, and translated from
+   WAVE_X0 to WAVE_X1 of its own width. */
+const WAVE_W = 0.42;
+const WAVE_X0 = -1.7;
+const WAVE_X1 = 4.1;
+const CREST_AT_0 = WAVE_X0 * WAVE_W + WAVE_W / 2;
+const CREST_AT_1 = WAVE_X1 * WAVE_W + WAVE_W / 2;
+
+/** Progress at which the crest's centre reaches `frac` across the wordmark. */
+function crestReaches(frac: number): number {
+  return (frac - CREST_AT_0) / (CREST_AT_1 - CREST_AT_0);
+}
+
+/**
+ * The wordmark flattened to a list of glyphs, each with the fraction of the
+ * wordmark's width it sits at. Widths are approximated by advance units (one
+ * per glyph, plus the inter-word gap) rather than measured: the crest is a
+ * ~160px blurred glow, so it comfortably covers the small error, and this
+ * avoids a layout read on every frame.
+ */
+const WORD_GAP = 0.32;
+const LETTERS = (() => {
+  const total = WORDS.reduce((n, w) => n + w.length, 0) + WORD_GAP * (WORDS.length - 1);
+  const out: { ch: string; wordIndex: number; frac: number }[] = [];
+  let advance = 0;
+  WORDS.forEach((word, wordIndex) => {
+    for (const ch of word) {
+      out.push({ ch, wordIndex, frac: (advance + 0.5) / total });
+      advance += 1;
+    }
+    advance += WORD_GAP;
+  });
+  return out;
+})();
+
+/**
+ * The live accent, as a hex string Motion can interpolate towards.
+ *
+ * Read from the same `--accent-*` custom properties the rest of the theme
+ * uses, so the tint follows whatever accent the visitor has picked instead
+ * of hardcoding the brand blue. Resolved once on mount — an `hsl(var(--x))`
+ * string can't be interpolated, and neither endpoint may be a CSS variable.
+ */
+function useAccentInk(): string {
+  const [ink, setInk] = useState(() => hslToHex(224, 70, 70));
+  useEffect(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const h = parseFloat(cs.getPropertyValue("--accent-h"));
+    const sat = parseFloat(cs.getPropertyValue("--accent-s"));
+    const l = parseFloat(cs.getPropertyValue("--accent-l"));
+    if (!Number.isFinite(h) || !Number.isFinite(sat) || !Number.isFinite(l)) return;
+    // Lifted a little off the stored lightness: the accent is tuned to carry
+    // white text on top of it, which is too dark to *be* text on near-black.
+    setInk(hslToHex(h, sat, Math.min(78, l + 8)));
+  }, []);
+  return ink;
+}
+
+/**
+ * One glyph of the wordmark. Split out because the tint is a per-letter
+ * `useTransform` — hooks can't be called from inside the render loop.
+ *
+ * Letters in the second word cross-fade from the off-white fill to the
+ * accent as the crest reaches them, keyed off the crest's position rather
+ * than a delay, so the colour lands exactly under the light.
+ */
+function IntroLetter({
+  ch,
+  frac,
+  tint,
+  wave,
+  ink,
+  shown,
+  reduce,
+  delay,
+}: {
+  ch: string;
+  frac: number;
+  tint: boolean;
+  wave: MotionValue<number>;
+  ink: string;
+  shown: boolean;
+  reduce: boolean | null;
+  delay: number;
+}) {
+  const cross = crestReaches(frac);
+  const tinted = useTransform(wave, [cross - 0.06, cross + 0.02], [TYPE_FILL, ink]);
+
+  return (
+    <span className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+      <motion.span
+        className="inline-block will-change-transform"
+        style={{
+          transformOrigin: "50% 100%",
+          color: tint && !reduce ? tinted : tint ? ink : TYPE_FILL,
+        }}
+        initial={reduce ? { y: "0%", rotateX: 0 } : { y: "125%", rotateX: -38 }}
+        animate={{ y: shown ? "0%" : "125%", rotateX: shown ? 0 : -38 }}
+        transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 220, damping: 28, delay }}
+      >
+        {ch}
+      </motion.span>
+    </span>
+  );
+}
+
 export default function IntroCinematic({
   onExitStart,
   onDone,
@@ -85,6 +205,19 @@ export default function IntroCinematic({
   const [phase, setPhase] = useState<0 | 1 | 2 | 3 | 4>(reduce ? 4 : 0);
   const [exiting, setExiting] = useState(false);
   const done = useRef(false);
+
+  // One progress value drives the crest and every letter's tint together.
+  const ink = useAccentInk();
+  const wave = useMotionValue(0);
+  const waveBodyX = useTransform(wave, [0, 1], [`${WAVE_X0 * 100}%`, `${WAVE_X1 * 100}%`]);
+  const waveCoreX = useTransform(wave, [0, 1], ["-420%", "1180%"]);
+  const waveFade = useTransform(wave, [0, 0.16, 0.7, 1], [0, 1, 1, 0]);
+
+  useEffect(() => {
+    if (reduce || phase < 2) return;
+    const controls = animate(wave, 1, { duration: 1.5, ease: GLIDE });
+    return () => controls.stop();
+  }, [phase, reduce, wave]);
 
   useEffect(() => {
     if (reduce) {
@@ -111,11 +244,8 @@ export default function IntroCinematic({
   }
 
   const wordIn = phase >= 1;
-  const sheenIn = phase >= 2;
   const ruleIn = phase >= 3;
   const tagIn = phase >= 4;
-
-  let li = -1; // running letter index, for the rise stagger
 
   return (
     <motion.div
@@ -330,42 +460,32 @@ export default function IntroCinematic({
               perspective: 820,
             }}
           >
-            {WORDS.map((word, wi) => (
-              <span
-                key={wi}
-                className="inline-block whitespace-nowrap"
-                style={{ marginRight: wi < WORDS.length - 1 ? "0.32em" : 0 }}
-              >
-                {word.split("").map((ch) => {
-                  li += 1;
-                  const idx = li;
-                  return (
-                    <span
-                      key={idx}
-                      className="inline-block overflow-hidden"
-                      style={{ verticalAlign: "bottom" }}
-                    >
-                      <motion.span
-                        className="inline-block will-change-transform"
-                        style={{ transformOrigin: "50% 100%", color: TYPE_FILL }}
-                        initial={reduce ? { y: "0%", rotateX: 0 } : { y: "125%", rotateX: -38 }}
-                        animate={{
-                          y: wordIn || reduce ? "0%" : "125%",
-                          rotateX: wordIn || reduce ? 0 : -38,
-                        }}
-                        transition={
-                          reduce
-                            ? { duration: 0 }
-                            : { type: "spring", stiffness: 220, damping: 28, delay: idx * 0.045 }
-                        }
-                      >
-                        {ch}
-                      </motion.span>
-                    </span>
-                  );
-                })}
-              </span>
-            ))}
+            {WORDS.map((word, wi) => {
+              const start = LETTERS.findIndex((l) => l.wordIndex === wi);
+              return (
+                <span
+                  key={wi}
+                  className="inline-block whitespace-nowrap"
+                  style={{ marginRight: wi < WORDS.length - 1 ? `${WORD_GAP}em` : 0 }}
+                >
+                  {LETTERS.slice(start, start + word.length).map((letter, j) => (
+                    <IntroLetter
+                      key={start + j}
+                      ch={letter.ch}
+                      frac={letter.frac}
+                      /* Only the second word takes the accent — the crest
+                         "paints" Scholar as it sweeps through. */
+                      tint={letter.wordIndex > 0}
+                      wave={wave}
+                      ink={ink}
+                      shown={wordIn || !!reduce}
+                      reduce={reduce}
+                      delay={(start + j) * 0.045}
+                    />
+                  ))}
+                </span>
+              );
+            })}
           </h1>
 
           {/* ── Wavefront ──────────────────────────────────────────────
@@ -384,12 +504,8 @@ export default function IntroCinematic({
                     "radial-gradient(ellipse 46% 52% at 50% 50%, hsl(var(--accent-h) 92% 74% / 0.5) 0%, hsl(var(--accent-h-2) 88% 66% / 0.22) 42%, transparent 74%)",
                   filter: "blur(16px)",
                   mixBlendMode: "screen",
-                }}
-                initial={{ x: "-170%", opacity: 0 }}
-                animate={sheenIn ? { x: "410%", opacity: [0, 1, 1, 0] } : { opacity: 0 }}
-                transition={{
-                  x: { duration: 1.5, ease: GLIDE },
-                  opacity: { duration: 1.5, ease: "linear", times: [0, 0.16, 0.7, 1] },
+                  x: waveBodyX,
+                  opacity: waveFade,
                 }}
               />
               <motion.span
@@ -400,12 +516,8 @@ export default function IntroCinematic({
                     "radial-gradient(ellipse 40% 55% at 50% 50%, hsl(var(--accent-h) 100% 90% / 0.62) 0%, hsl(var(--accent-h) 96% 78% / 0.28) 45%, transparent 75%)",
                   filter: "blur(7px)",
                   mixBlendMode: "screen",
-                }}
-                initial={{ x: "-420%", opacity: 0 }}
-                animate={sheenIn ? { x: "1180%", opacity: [0, 1, 1, 0] } : { opacity: 0 }}
-                transition={{
-                  x: { duration: 1.5, ease: GLIDE },
-                  opacity: { duration: 1.5, ease: "linear", times: [0, 0.18, 0.68, 1] },
+                  x: waveCoreX,
+                  opacity: waveFade,
                 }}
               />
             </>
