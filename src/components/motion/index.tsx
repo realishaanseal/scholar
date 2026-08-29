@@ -39,6 +39,24 @@ import {
   type ReactNode,
 } from "react";
 
+/**
+ * Resolve `<X as="section">` to the matching `motion.section` once, from a
+ * module-level cache. Calling `motion(tag)` inline in render (the old
+ * approach) minted a fresh component identity every render, which made React
+ * tear down and rebuild the animated subtree on any parent update — the
+ * source of the landing-page jank. `motion[tag]` is a stable reference.
+ */
+const motionTagCache = new Map<string, any>();
+function motionTag(as: ElementType) {
+  if (typeof as !== "string") return (motion as any).create(as);
+  let c = motionTagCache.get(as);
+  if (!c) {
+    c = (motion as any)[as] ?? (motion as any).create(as);
+    motionTagCache.set(as, c);
+  }
+  return c;
+}
+
 /* ── Timing ─────────────────────────────────────────────────────────────── */
 
 /** Matches the app's existing `ease-smooth` (globals.css). */
@@ -116,7 +134,7 @@ export function Reveal({
   const ref = useRef<HTMLElement | null>(null);
   const inView = useInView(ref, { once, amount });
   const reduce = useReducedMotion();
-  const MotionTag = motion(as as any);
+  const MotionTag = motionTag(as);
 
   return (
     <MotionTag
@@ -166,7 +184,7 @@ export function Stagger({
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const inView = useInView(ref, { once, amount });
-  const MotionTag = motion(as as any);
+  const MotionTag = motionTag(as);
 
   return (
     <StaggerCtx.Provider value={true}>
@@ -198,7 +216,7 @@ export function StaggerItem({
   as?: ElementType;
   y?: number;
 } & MotionProps) {
-  const MotionTag = motion(as as any);
+  const MotionTag = motionTag(as);
   return (
     <MotionTag
       className={className}

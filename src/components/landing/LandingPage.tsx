@@ -66,22 +66,22 @@ const HEAD_WORDS = ["Homework,", "sorted", "before"];
 
 const container: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.06 } },
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.12 } },
 };
 
 const rise: Variants = {
-  hidden: { opacity: 0, y: 22, filter: "blur(8px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 26 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE_OUT } },
 };
 
 const dropIn: Variants = {
-  hidden: { opacity: 0, y: -16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: -14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE_OUT } },
 };
 
 const shotIn: Variants = {
-  hidden: { opacity: 0, y: 44, rotateX: 10, scale: 0.96 },
-  show: { opacity: 1, y: 0, rotateX: 0, scale: 1, transition: { duration: 0.9, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 48, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 1.0, ease: EASE_OUT } },
 };
 
 export default function LandingPage({ revealed = true }: { revealed?: boolean }) {
