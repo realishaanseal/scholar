@@ -1,6 +1,6 @@
 import { db, newId } from "@/lib/db";
 import type { Actor } from "@/lib/authz";
-import { toActor, type MembershipRow } from "./actor";
+import { toActor, type EnrollmentRow, type MembershipRow, type TeachingRow } from "./actor";
 import type {
   AcademicYear, AcademicYearInput, AddMemberInput, CreateOrganizationInput,
   Department, Organization, OrganizationMembership, Term, TermInput,
@@ -132,28 +132,50 @@ function mapMembership(r: any): OrganizationMembership {
 /* ── Actor resolution ──────────────────────────────────────────────────── */
 
 /**
- * Everything the policy engine needs about one person, in a single round trip.
+ * Everything the policy engine needs about one person, in one round trip.
  *
  * Resolved once per request and passed down, never re-queried per check —
  * `can()` is synchronous precisely so that guarding every branch of a handler
  * is free.
  *
- * Teaching assignments and enrollments come from tables that do not exist yet
- * (course sections and enrollment arrive with the course infrastructure), so
- * they resolve empty for now. That fails closed: with no teaching rows, every
- * course-bound permission is denied, which is the correct behaviour for a
- * database that has no courses in it.
+ * The three reads are independent, so they run concurrently. Each is indexed
+ * on user_id because this runs on essentially every authenticated request.
  */
 export async function resolveActor(userId: string): Promise<Actor> {
-  const memberships = (await db
-    .prepare(
-      `SELECT organization_id, role, department_id, status
-       FROM organization_memberships
-       WHERE user_id = ?`
-    )
-    .all(userId)) as MembershipRow[];
+  const [memberships, teaching, enrollments] = await Promise.all([
+    db
+      .prepare(
+        `SELECT organization_id, role, department_id, status
+         FROM organization_memberships
+         WHERE user_id = ?`
+      )
+      .all(userId) as Promise<MembershipRow[]>,
 
-  return toActor(userId, { memberships });
+    // course_id comes from the section rather than being stored twice, so a
+    // course-level permission check resolves without the caller naming a
+    // section.
+    db
+      .prepare(
+        `SELECT st.organization_id, cs.course_id, st.course_section_id
+         FROM section_teachers st
+         JOIN course_sections cs ON cs.id = st.course_section_id
+         WHERE st.user_id = ?`
+      )
+      .all(userId) as Promise<TeachingRow[]>,
+
+    // Only active enrollment counts. A dropped student keeps the row so their
+    // record and submitted work survive, but it must grant nothing.
+    db
+      .prepare(
+        `SELECT e.organization_id, cs.course_id, e.course_section_id
+         FROM enrollments e
+         JOIN course_sections cs ON cs.id = e.course_section_id
+         WHERE e.user_id = ? AND e.status = 'active'`
+      )
+      .all(userId) as Promise<EnrollmentRow[]>,
+  ]);
+
+  return toActor(userId, { memberships, teaching, enrollments });
 }
 
 /* ── Academic structure ────────────────────────────────────────────────── */
