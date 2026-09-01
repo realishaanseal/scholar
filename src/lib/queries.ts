@@ -98,8 +98,15 @@ export async function listExternalIds(userId: string, externalSource: string): P
 }
 
 export async function listHomework(userId: string): Promise<HomeworkDTO[]> {
+  // Archived rows are tasks projected from coursework that has since been
+  // cancelled. They are kept rather than deleted — the student may have logged
+  // real time against them — but they should not sit in the list as though
+  // they were still owed. Only the projection ever sets this, so a task the
+  // student typed themselves is never affected.
   const rows = (await db
-    .prepare(`${SELECT_HOMEWORK} WHERE h.userId = ? ORDER BY h.createdAt DESC`)
+    .prepare(
+      `${SELECT_HOMEWORK} WHERE h.userId = ? AND h.archived_at IS NULL ORDER BY h.createdAt DESC`
+    )
     .all(userId)) as HomeworkRow[];
   return rows.map(toDTO);
 }
