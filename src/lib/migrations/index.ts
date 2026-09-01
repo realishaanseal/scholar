@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { quoteCamelIdentifiers } from "../sqlCase";
 import { sql as baseline } from "./0001_baseline";
+import { sql as organizations } from "./0002_organizations";
 
 /**
  * Versioned schema migrations.
@@ -37,6 +38,7 @@ export type Migration = {
 
 export const MIGRATIONS: Migration[] = [
   { id: "0001_baseline", sql: baseline, legacyCamelCase: true },
+  { id: "0002_organizations", sql: organizations },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */

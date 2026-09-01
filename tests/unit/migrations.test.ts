@@ -92,7 +92,9 @@ describe("runMigrations on a fresh database", () => {
     const { pool, log } = fakePool({ usersTableExists: false });
     const result = await runMigrations(pool);
 
-    expect(result.applied).toEqual(["0001_baseline"]);
+    // Asserted against the list rather than a literal, so adding a migration
+    // does not fail a test about how a fresh database is treated.
+    expect(result.applied).toEqual(MIGRATIONS.map((m) => m.id));
     expect(result.adopted).toEqual([]);
     expect(ran(log, /CREATE TABLE IF NOT EXISTS users/)).toBe(true);
     expect(ran(log, /ledger 0001_baseline adopted=false/)).toBe(true);
@@ -104,8 +106,10 @@ describe("runMigrations on a database that predates the ledger", () => {
     const { pool, log } = fakePool({ usersTableExists: true });
     const result = await runMigrations(pool);
 
+    // Only the baseline is adopted; everything after it is genuinely new to
+    // this database and must actually run.
     expect(result.adopted).toEqual(["0001_baseline"]);
-    expect(result.applied).toEqual([]);
+    expect(result.applied).toEqual(MIGRATIONS.slice(1).map((m) => m.id));
     // The distinction that matters: the schema was not touched.
     expect(ran(log, /CREATE TABLE IF NOT EXISTS users/)).toBe(false);
     expect(ran(log, /ledger 0001_baseline adopted=true/)).toBe(true);
