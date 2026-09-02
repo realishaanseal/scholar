@@ -20,6 +20,7 @@
  *     --course PHY101 --course-title "Physics I" --section A \
  *     --students alice@example.com,bob@example.com
  */
+import { requireDatabaseUrl } from "./loadEnv";
 import { db, newId } from "../src/lib/db";
 import {
   addMember, createAcademicYear, createOrganization, getOrganizationBySlug,
@@ -75,10 +76,8 @@ async function findUser(email: string): Promise<{ id: string; email: string } | 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL is not set.\n");
-    process.exit(1);
-  }
+  requireDatabaseUrl();
+
   if (!args.org || !args.slug || !args.admin) {
     console.error(USAGE);
     process.exit(1);

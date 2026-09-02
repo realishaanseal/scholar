@@ -9,13 +9,10 @@
  */
 import { Pool } from "pg";
 import { runMigrations, MIGRATIONS } from "../src/lib/migrations";
+import { requireDatabaseUrl } from "./loadEnv";
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("DATABASE_URL is not set. Point it at your Postgres connection string.");
-    process.exit(1);
-  }
+  const connectionString = requireDatabaseUrl();
 
   const pool = new Pool({
     connectionString,
