@@ -6,3 +6,5 @@
  * estimate, priority, scheduling and logged time. See ./projection.ts.
  */
 export * from "./projection";
+export * from "./types";
+export * from "./repository";
