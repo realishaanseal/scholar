@@ -293,3 +293,114 @@ export async function listLessons(moduleId: string): Promise<Lesson[]> {
     estimatedMins: r.estimated_mins ?? null,
   }));
 }
+
+/* ── Teaching surfaces ─────────────────────────────────────────────────── */
+
+/** A section as a teacher sees it in their own list. */
+export type TeachingSection = {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  courseId: string;
+  courseCode: string;
+  courseTitle: string;
+  termName: string;
+  name: string;
+  role: string;
+  enrolledCount: number;
+  openAssignments: number;
+  ungradedSubmissions: number;
+};
+
+/**
+ * Every section this person teaches, with the two counts that decide what they
+ * do next.
+ *
+ * The counts are computed in the query rather than by fetching rosters and
+ * counting in JavaScript: a teacher with eight sections would otherwise cost
+ * seventeen round trips to render one list.
+ */
+export async function listSectionsForTeacher(userId: string): Promise<TeachingSection[]> {
+  const rows = await db
+    .prepare(
+      `SELECT cs.id, cs.name, cs.organization_id, cs.course_id,
+              o.name AS organization_name,
+              c.code AS course_code, c.title AS course_title,
+              t.name AS term_name,
+              st.role,
+              (SELECT COUNT(*)::int FROM enrollments e
+                WHERE e.course_section_id = cs.id AND e.status = 'active') AS enrolled_count,
+              (SELECT COUNT(*)::int FROM assignments a
+                WHERE a.course_section_id = cs.id AND a.status = 'published') AS open_assignments,
+              (SELECT COUNT(*)::int FROM assignment_submissions s
+                 JOIN assignments a2 ON a2.id = s.assignment_id
+                WHERE a2.course_section_id = cs.id
+                  AND s.status = 'submitted') AS ungraded_submissions
+         FROM section_teachers st
+         JOIN course_sections cs ON cs.id = st.course_section_id
+         JOIN courses c ON c.id = cs.course_id
+         JOIN organizations o ON o.id = cs.organization_id
+         JOIN terms t ON t.id = cs.term_id
+        WHERE st.user_id = ?
+        ORDER BY o.name, c.code, cs.name`
+    )
+    .all(userId);
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    organizationId: r.organization_id,
+    organizationName: r.organization_name,
+    courseId: r.course_id,
+    courseCode: r.course_code,
+    courseTitle: r.course_title,
+    termName: r.term_name,
+    name: r.name,
+    role: r.role,
+    enrolledCount: r.enrolled_count,
+    openAssignments: r.open_assignments,
+    ungradedSubmissions: r.ungraded_submissions,
+  }));
+}
+
+/** Does this person teach anything at all? Cheap enough for a nav decision. */
+export async function teachesAnything(userId: string): Promise<boolean> {
+  const r = await db
+    .prepare(`SELECT 1 AS present FROM section_teachers WHERE user_id = ? LIMIT 1`)
+    .get(userId);
+  return Boolean(r);
+}
+
+/** One section, with the course and term names a header needs. */
+export async function getSectionDetail(sectionId: string): Promise<TeachingSection | null> {
+  const r = await db
+    .prepare(
+      `SELECT cs.id, cs.name, cs.organization_id, cs.course_id,
+              o.name AS organization_name,
+              c.code AS course_code, c.title AS course_title,
+              t.name AS term_name,
+              (SELECT COUNT(*)::int FROM enrollments e
+                WHERE e.course_section_id = cs.id AND e.status = 'active') AS enrolled_count
+         FROM course_sections cs
+         JOIN courses c ON c.id = cs.course_id
+         JOIN organizations o ON o.id = cs.organization_id
+         JOIN terms t ON t.id = cs.term_id
+        WHERE cs.id = ?`
+    )
+    .get(sectionId);
+
+  if (!r) return null;
+  return {
+    id: r.id,
+    organizationId: r.organization_id,
+    organizationName: r.organization_name,
+    courseId: r.course_id,
+    courseCode: r.course_code,
+    courseTitle: r.course_title,
+    termName: r.term_name,
+    name: r.name,
+    role: "TEACHER",
+    enrolledCount: r.enrolled_count,
+    openAssignments: 0,
+    ungradedSubmissions: 0,
+  };
+}

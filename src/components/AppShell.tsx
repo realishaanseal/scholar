@@ -69,6 +69,20 @@ const NAV: NavItem[] = [
   },
 ];
 
+/**
+ * Shown only to people who actually teach a section.
+ *
+ * A nav item that leads to an empty page for almost every user is worse than
+ * no nav item: it makes the product feel like it is about something the
+ * person is not doing. Whether to show it is resolved server-side from real
+ * teaching assignments, not from a role string.
+ */
+const TEACHING_ITEM: NavItem = {
+  href: "/teach",
+  label: "Teaching",
+  icon: "M22 10v6M2 10l10-5 10 5-10 5zM6 12v5c3 3 9 3 12 0v-5",
+};
+
 const SETTINGS_ITEM: NavItem = {
   href: "/settings",
   label: "Settings",
@@ -130,14 +144,21 @@ export default function AppShell({
   children,
   userEmail,
   userImage,
+  showTeaching = false,
 }: {
   children: React.ReactNode;
   userEmail?: string | null;
   userImage?: string | null;
+  /** True when this person teaches at least one section. */
+  showTeaching?: boolean;
 }) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+  // Teaching sits after the personal destinations: Scholar is a student's tool
+  // first, and a teacher is a student's teacher second.
+  const items = showTeaching ? [...NAV, TEACHING_ITEM] : NAV;
 
   return (
     <div className="min-h-screen lg:flex">
@@ -150,7 +171,7 @@ export default function AppShell({
           </motion.span>
         </Link>
         <nav className="flex flex-1 flex-col items-center gap-1.5">
-          {NAV.map((item) => (
+          {items.map((item) => (
             <NavIcon key={item.href} item={item} active={isActive(item.href)} />
           ))}
         </nav>
@@ -199,7 +220,7 @@ export default function AppShell({
 
         {/* Mobile bottom tab bar — the rail's small-screen equivalent */}
         <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-white/[0.07] bg-ink-985/90 px-1 py-1.5 backdrop-blur-xl lg:hidden">
-          {[...NAV, SETTINGS_ITEM].map((item) => {
+          {[...items, SETTINGS_ITEM].map((item) => {
             const active = isActive(item.href);
             return (
               <Link
