@@ -1,4 +1,7 @@
 import { db, newId } from "@/lib/db";
+// Imported as well as re-exported: `export { x } from "./y"` forwards the name
+// without binding it locally, so validateUpload below could not see it.
+import { sniff } from "./sniff";
 
 /**
  * Where uploaded bytes live.
@@ -26,11 +29,19 @@ export type StoredFile = {
   size: number;
 };
 
-/** Postgres holds bytes inline, so its ceiling is deliberately low. */
-export const POSTGRES_MAX_BYTES = 8 * 1024 * 1024;
+/**
+ * Postgres holds bytes inline, so its ceiling stays conservative.
+ *
+ * Raised from 8MB to 32MB, which covers the great majority of set texts and
+ * scanned worksheets. It is not raised further because base64 inflates by a
+ * third — a 32MB PDF occupies about 43MB of row — and a database is a poor
+ * filesystem however large you let the column grow. Real textbooks want the
+ * object-storage path below.
+ */
+export const POSTGRES_MAX_BYTES = 32 * 1024 * 1024;
 
 /** Object storage can take a real textbook. */
-export const BLOB_MAX_BYTES = 200 * 1024 * 1024;
+export const BLOB_MAX_BYTES = 500 * 1024 * 1024;
 
 export function activeProvider(): StorageProvider {
   return process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : "postgres";
@@ -87,17 +98,30 @@ export async function putBytes(
 
 /* ── Reading ───────────────────────────────────────────────────────────── */
 
-export type Retrieved =
-  | { kind: "bytes"; bytes: Buffer }
-  /** The caller should redirect rather than proxy — object storage serves it. */
-  | { kind: "redirect"; url: string };
+export type Retrieved = { kind: "bytes"; bytes: Buffer };
 
+/**
+ * Fetch the bytes, wherever they are.
+ *
+ * Object-storage content is proxied rather than redirected to, and that is a
+ * deliberate cost. A Vercel Blob URL is public and permanent: it is only
+ * unguessable, not protected. Redirecting to it would authorize the request
+ * once and then hand over a link that keeps working forever — after the
+ * assignment is withdrawn, after the student leaves the course, for anyone
+ * they forward it to. Streaming through this process means every single
+ * download is authorized, at the price of the bandwidth passing through.
+ *
+ * If that cost ever becomes the problem, the fix is signed short-lived URLs,
+ * not an unguarded redirect.
+ */
 export async function getBytes(file: {
   storageProvider: string;
   storageKey: string;
 }): Promise<Retrieved | null> {
   if (file.storageProvider === "vercel-blob") {
-    return { kind: "redirect", url: file.storageKey };
+    const res = await fetch(file.storageKey);
+    if (!res.ok) return null;
+    return { kind: "bytes", bytes: Buffer.from(await res.arrayBuffer()) };
   }
 
   const row = await db
@@ -148,7 +172,9 @@ export const ALLOWED_MIME_TYPES: Record<string, string> = {
   "image/jpeg": "Image",
   "image/webp": "Image",
   "image/gif": "Image",
-  "image/svg+xml": "Image",
+  // SVG is deliberately absent. It is an image everywhere else and a
+  // scriptable document here: served from this application's origin, a script
+  // inside one would run with the viewer's session. See sniff.ts.
   "audio/mpeg": "Audio",
   "audio/mp4": "Audio",
   "video/mp4": "Video",
@@ -178,4 +204,44 @@ export function safeFilename(raw: string): string {
     .replace(/^\.+/, "")
     .trim();
   return cleaned.slice(0, 180) || "file";
+}
+
+export { sniff, canRenderInline, type SniffResult } from "./sniff";
+
+/**
+ * Validate an upload end to end.
+ *
+ * Gathers every refusal reason into one place so the two upload routes cannot
+ * drift apart on what they accept — the usual way an allowlist develops a hole
+ * is by existing in two copies.
+ */
+export function validateUpload(
+  file: { name: string; size: number; type: string },
+  bytes: Buffer
+): { ok: true; mimeType: string } | { ok: false; message: string } {
+  const name = safeFilename(file.name);
+
+  if (file.size === 0) return { ok: false, message: "That file is empty." };
+  if (file.size > maxUploadBytes()) {
+    return { ok: false, message: `${name} is too large. ${describeLimit()}` };
+  }
+
+  const declared = file.type || "application/octet-stream";
+  if (!isAllowedType(declared)) {
+    return {
+      ok: false,
+      message:
+        `${name} is not a type that can be handed out (${declared}). ` +
+        "PDFs, EPUBs, documents, slides and images are fine.",
+    };
+  }
+
+  // The declared type came from the browser, which derived it from the file
+  // extension. The bytes are the only part the uploader cannot rename.
+  const verdict = sniff(bytes, declared);
+  if (!verdict.ok) {
+    return { ok: false, message: `${name} was rejected because ${verdict.reason}.` };
+  }
+
+  return { ok: true, mimeType: verdict.detected };
 }

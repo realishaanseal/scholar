@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { BadRequest, institutionalRoute, NotFound } from "@/lib/api/guard";
 import { scopeOfAssignment, type ResourceScope } from "@/domains/assessment";
 import { attachToAssignment, createFile, listAssignmentFiles } from "@/domains/library";
-import {
-  describeLimit, isAllowedType, maxUploadBytes, safeFilename,
-} from "@/lib/storage";
+import { validateUpload } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -54,30 +52,19 @@ export const POST = institutionalRoute<Params, ResourceScope>(
       throw new BadRequest("Attach a file to upload.");
     }
 
-    const limit = maxUploadBytes();
-    if (file.size > limit) {
-      throw new BadRequest(
-        `${safeFilename(file.name)} is too large. ${describeLimit()}`
-      );
-    }
-    if (file.size === 0) {
-      throw new BadRequest("That file is empty.");
-    }
+    const bytes = Buffer.from(await file.arrayBuffer());
 
-    // An allowlist: these are handed to students, so the question is whether
-    // it is coursework, not whether it is dangerous.
-    const mime = file.type || "application/octet-stream";
-    if (!isAllowedType(mime)) {
-      throw new BadRequest(
-        `${safeFilename(file.name)} is not a type that can be handed out ` +
-          `(${mime}). PDFs, documents, slides, images and EPUBs are fine.`
-      );
-    }
+    // One validator for both upload routes, so the allowlist cannot develop a
+    // hole by existing in two copies. It checks size, the declared type, and
+    // then the actual bytes — the declared type came from the browser and is
+    // the one part an uploader can rename freely.
+    const check = validateUpload(file, bytes);
+    if (!check.ok) throw new BadRequest(check.message);
 
     const record = await createFile(scope.organizationId, userId, {
       filename: file.name,
-      mimeType: mime,
-      bytes: Buffer.from(await file.arrayBuffer()),
+      mimeType: check.mimeType,
+      bytes,
     });
     await attachToAssignment(scope.organizationId, params.assignmentId, record.id);
 

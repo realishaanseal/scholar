@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { institutionalRouteAny, NotFound } from "@/lib/api/guard";
 import { coursesReferencingFile, getFile, scopeOfFile } from "@/domains/library";
-import { getBytes } from "@/lib/storage";
+import { canRenderInline, getBytes } from "@/lib/storage";
 import type { Scope } from "@/lib/authz";
 
 export const runtime = "nodejs";
@@ -15,9 +15,8 @@ type Params = { fileId: string };
  * URL, and that is the whole point. On object storage the stored key is a
  * public URL; handing it to the client would create a permanent link that
  * bypasses every permission check, survives a student leaving the course, and
- * cannot be revoked. So the URL is never returned — the route reads the file
- * and answers with the bytes, or redirects to a URL only after deciding the
- * caller is allowed to have it.
+ * cannot be revoked. So the URL is never returned and never redirected to: the
+ * route reads the bytes and answers with them, every time, for everyone.
  *
  * Reachability is a question about a set of scopes: the same PDF can be
  * attached to an assignment in one course and published as a material in
@@ -50,18 +49,24 @@ export const GET = institutionalRouteAny<Params, Scope>(
     const payload = await getBytes(file);
     if (!payload) throw new NotFound();
 
-    if (payload.kind === "redirect") {
-      // Only reached after the permission check above.
-      return NextResponse.redirect(payload.url);
-    }
+    // Rendered in the browser only for types that cannot carry a script.
+    // Everything else downloads, which is a mild inconvenience rather than
+    // giving an uploaded file the run of this application's origin.
+    const disposition = canRenderInline(file.mimeType) ? "inline" : "attachment";
 
     return new NextResponse(new Uint8Array(payload.bytes), {
       headers: {
         "content-type": file.mimeType,
         // The filename is already stripped of quotes, separators and control
         // characters on the way in, so it cannot break out of this header.
-        "content-disposition": `inline; filename="${file.filename}"`,
+        "content-disposition": `${disposition}; filename="${file.filename}"`,
         "content-length": String(file.sizeBytes),
+        // Without this a browser may decide a text file is HTML and run it,
+        // which would make the content type above decorative.
+        "x-content-type-options": "nosniff",
+        // Belt and braces: even if something scriptable did get served, this
+        // origin grants it nothing.
+        "content-security-policy": "default-src 'none'; sandbox",
         // Private: this response was authorized for one person, and a shared
         // cache handing it to the next requester would undo that.
         "cache-control": "private, max-age=300",

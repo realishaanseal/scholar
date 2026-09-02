@@ -5,9 +5,7 @@ import {
   createFile, createMaterial, listMaterials, materialInputSchema, scopeOfCourse,
   type MaterialKind,
 } from "@/domains/library";
-import {
-  describeLimit, isAllowedType, maxUploadBytes, safeFilename,
-} from "@/lib/storage";
+import { validateUpload } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -71,24 +69,15 @@ export const POST = institutionalRoute<Params, CourseScope>(
     const file = form.get("file");
     if (!(file instanceof File)) throw new BadRequest("Choose a file to upload.");
 
-    const limit = maxUploadBytes();
-    if (file.size > limit) {
-      throw new BadRequest(`${safeFilename(file.name)} is too large. ${describeLimit()}`);
-    }
-    if (file.size === 0) throw new BadRequest("That file is empty.");
+    const bytes = Buffer.from(await file.arrayBuffer());
 
-    const mime = file.type || "application/octet-stream";
-    if (!isAllowedType(mime)) {
-      throw new BadRequest(
-        `${safeFilename(file.name)} is not a type that can be handed out (${mime}). ` +
-          "PDFs, EPUBs, documents, slides and images are fine."
-      );
-    }
+    const check = validateUpload(file, bytes);
+    if (!check.ok) throw new BadRequest(check.message);
 
     const record = await createFile(scope.organizationId, userId, {
       filename: file.name,
-      mimeType: mime,
-      bytes: Buffer.from(await file.arrayBuffer()),
+      mimeType: check.mimeType,
+      bytes,
     });
 
     // The title defaults to the filename, because being made to type "Chapter
