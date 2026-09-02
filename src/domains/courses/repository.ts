@@ -404,3 +404,67 @@ export async function getSectionDetail(sectionId: string): Promise<TeachingSecti
     ungradedSubmissions: 0,
   };
 }
+
+/**
+ * What is waiting on this teacher, across every section they teach.
+ *
+ * The landing page used to lead with the institution's structure — course
+ * code, term, department, organization name. A teacher already knows which
+ * school they work at; repeating it on every row is noise dressed as
+ * information. What they do not know at a glance is what needs them today, so
+ * that is what this returns.
+ */
+export type TeacherInbox = {
+  ungraded: number;
+  dueThisWeek: number;
+  draftsWaiting: number;
+  nextDeadline: { title: string; courseCode: string; dueAt: string } | null;
+};
+
+export async function teacherInbox(userId: string): Promise<TeacherInbox> {
+  const counts = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*)::int
+            FROM assignment_submissions s
+            JOIN assignments a ON a.id = s.assignment_id
+            JOIN section_teachers st ON st.course_section_id = a.course_section_id
+           WHERE st.user_id = ? AND s.status = 'submitted') AS ungraded,
+         (SELECT COUNT(*)::int
+            FROM assignments a
+            JOIN section_teachers st ON st.course_section_id = a.course_section_id
+           WHERE st.user_id = ? AND a.status = 'published'
+             AND a.due_at BETWEEN now() AND now() + interval '7 days') AS due_this_week,
+         (SELECT COUNT(*)::int
+            FROM assignments a
+            JOIN section_teachers st ON st.course_section_id = a.course_section_id
+           WHERE st.user_id = ? AND a.status = 'draft') AS drafts_waiting`
+    )
+    .get(userId, userId, userId);
+
+  const next = await db
+    .prepare(
+      `SELECT a.title, a.due_at, c.code AS course_code
+         FROM assignments a
+         JOIN section_teachers st ON st.course_section_id = a.course_section_id
+         JOIN course_sections cs ON cs.id = a.course_section_id
+         JOIN courses c ON c.id = cs.course_id
+        WHERE st.user_id = ? AND a.status = 'published' AND a.due_at > now()
+        ORDER BY a.due_at
+        LIMIT 1`
+    )
+    .get(userId);
+
+  return {
+    ungraded: counts?.ungraded ?? 0,
+    dueThisWeek: counts?.due_this_week ?? 0,
+    draftsWaiting: counts?.drafts_waiting ?? 0,
+    nextDeadline: next
+      ? {
+          title: next.title,
+          courseCode: next.course_code,
+          dueAt: next.due_at instanceof Date ? next.due_at.toISOString() : String(next.due_at),
+        }
+      : null,
+  };
+}
