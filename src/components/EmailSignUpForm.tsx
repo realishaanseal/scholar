@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { EASE_OUT, SPRING } from "@/components/motion";
 
-export default function EmailSignUpForm() {
+export default function EmailSignUpForm({ intent }: { intent?: string }) {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function EmailSignUpForm() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, intent }),
     });
 
     if (!res.ok) {

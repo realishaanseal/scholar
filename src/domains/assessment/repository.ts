@@ -417,3 +417,63 @@ function iso(v: unknown): string | null {
 function numeric(v: unknown): number | null {
   return v === null || v === undefined ? null : Number(v);
 }
+
+/* ── The marking queue ─────────────────────────────────────────────────── */
+
+export type PendingSubmission = {
+  id: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  courseCode: string;
+  sectionName: string;
+  sectionId: string;
+  studentUserId: string;
+  attempt: number;
+  submittedAt: string | null;
+  isLate: boolean;
+  points: number | null;
+  body: string;
+  url: string | null;
+};
+
+/**
+ * Everything waiting on this teacher, across every section they teach.
+ *
+ * The single most useful question a teacher can ask the system, and it spans
+ * sections — which is why it cannot live on a section page. Ordered oldest
+ * first, because the work someone has been waiting longest for is the work
+ * that should be marked next.
+ */
+export async function listPendingMarking(userId: string): Promise<PendingSubmission[]> {
+  const rows = await db
+    .prepare(
+      `SELECT s.id, s.assignment_id, s.user_id, s.attempt, s.submitted_at, s.is_late,
+              s.body, s.url,
+              a.title AS assignment_title, a.points,
+              c.code AS course_code, cs.name AS section_name, cs.id AS section_id
+         FROM assignment_submissions s
+         JOIN assignments a ON a.id = s.assignment_id
+         JOIN course_sections cs ON cs.id = a.course_section_id
+         JOIN courses c ON c.id = cs.course_id
+         JOIN section_teachers st ON st.course_section_id = cs.id
+        WHERE st.user_id = ? AND s.status = 'submitted'
+        ORDER BY s.submitted_at NULLS LAST`
+    )
+    .all(userId);
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    assignmentId: r.assignment_id,
+    assignmentTitle: r.assignment_title,
+    courseCode: r.course_code,
+    sectionName: r.section_name,
+    sectionId: r.section_id,
+    studentUserId: r.user_id,
+    attempt: r.attempt,
+    submittedAt: iso(r.submitted_at),
+    isLate: Boolean(r.is_late),
+    points: numeric(r.points),
+    body: r.body ?? "",
+    url: r.url ?? null,
+  }));
+}

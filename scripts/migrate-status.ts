@@ -25,6 +25,7 @@ const EXPECTED: Record<string, string[]> = {
   ],
   "0004_assignments": ["assignments", "assignment_submissions"],
   "0005_files": ["files", "file_bytes", "assignment_files", "course_materials"],
+  "0006_account_intent": [],
 };
 
 async function main() {

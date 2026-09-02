@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { jsonRoute } from "@/lib/apiRoute";
 import { createUserWithPassword, findUserByEmail } from "@/lib/queries";
+import { db } from "@/lib/db";
+import { ACCOUNT_INTENTS } from "@/lib/accountIntent";
 
 export const runtime = "nodejs";
 
@@ -10,6 +12,13 @@ const Body = z.object({
   name: z.string().trim().min(1).max(80),
   email: z.string().trim().email(),
   password: z.string().min(8, "Password must be at least 8 characters").max(200),
+  /**
+   * Which door they came through. Recorded, never trusted: roles are granted
+   * by an institution, and nothing downstream reads this to decide what
+   * anyone may do. If it did, "Teacher" on a signup form would be a
+   * privilege-escalation button.
+   */
+  intent: z.enum(ACCOUNT_INTENTS).optional(),
 });
 
 // Postgres SQLSTATE for a unique-constraint violation — thrown by the
@@ -40,6 +49,15 @@ export const POST = jsonRoute(async (req: Request) => {
 
   try {
     await createUserWithPassword(parsed.data.name, email, passwordHash);
+
+    // Separate statement rather than a wider createUserWithPassword: that
+    // function is shared with OAuth account creation, and this is only ever
+    // known when someone chose a door on the signup form.
+    if (parsed.data.intent) {
+      await db
+        .prepare(`UPDATE users SET account_intent = ? WHERE LOWER(email) = LOWER(?)`)
+        .run(parsed.data.intent, email);
+    }
   } catch (err: any) {
     if (err?.code === UNIQUE_VIOLATION) {
       return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });

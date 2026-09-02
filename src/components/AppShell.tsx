@@ -8,6 +8,8 @@ import Logo from "./Logo";
 import SignOutButton from "./SignOutButton";
 import LiveClasses from "./LiveClasses";
 import ThemeLoader from "./ThemeLoader";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import { WORKSPACES, workspaceForPath, type WorkspaceId } from "@/lib/workspaces";
 
 type NavItem = {
   href: string;
@@ -19,13 +21,14 @@ type NavItem = {
 };
 
 /**
- * Top-level destinations, each a full page rather than a tab hidden inside
- * Settings — these are things a student actually comes back to look at
- * (today's classes, what's due, an import), not configuration they set once
- * and forget. Settings itself is still here, last, for the handful of
- * sections that really are settings (AI provider, alerts, appearance...).
+ * Navigation, per workspace.
+ *
+ * These used to be one flat list, which meant a teacher signing in was offered
+ * Homework, Import and Focus — features for doing coursework, shown to the
+ * person who sets it. Each workspace now carries only the destinations that
+ * belong to its job, so nothing in view is someone else's tool.
  */
-const NAV: NavItem[] = [
+const PERSONAL_NAV: NavItem[] = [
   {
     href: "/dashboard",
     label: "Homework",
@@ -39,23 +42,17 @@ const NAV: NavItem[] = [
   {
     href: "/import",
     label: "Import",
-    // A graduation cap — "bring in work from school" (LMS/notice import) —
-    // rather than a generic download arrow, which read as "download a file"
-    // instead of "import from your school."
-    icon: "M12 3L2 8l10 5 8-4v6M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5",
+    icon: "M12 3v12M7 10l5 5 5-5M5 21h14",
   },
   {
     href: "/calendar",
     label: "Calendar",
-    // A refresh/sync glyph rather than another grid — Timetable is the
-    // schedule itself, this page is about exporting/syncing it elsewhere,
-    // so the two need to read as clearly different destinations at a glance.
-    icon: "M4 4v6h6M20 20v-6h-6M4.5 10a8 8 0 0 1 14.6-3.5M19.5 14a8 8 0 0 1-14.6 3.5",
+    icon: "M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM9 14h2v2H9z",
   },
   {
     href: "/extension",
     label: "Extension",
-    icon: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l1.3-1.3a4 4 0 1 1-5.6 5.6l-6.3 6.3a2.1 2.1 0 0 1-3-3l6.3-6.3a4 4 0 1 1 5.6-5.6z",
+    icon: "M14 7h4a2 2 0 0 1 2 2v4M10 17H6a2 2 0 0 1-2-2v-4M7 4h4v4H7zM13 16h4v4h-4z",
   },
   {
     href: "/insights",
@@ -69,18 +66,43 @@ const NAV: NavItem[] = [
   },
 ];
 
-/**
- * Shown only to people who actually teach a section.
- *
- * A nav item that leads to an empty page for almost every user is worse than
- * no nav item: it makes the product feel like it is about something the
- * person is not doing. Whether to show it is resolved server-side from real
- * teaching assignments, not from a role string.
- */
-const TEACHING_ITEM: NavItem = {
-  href: "/teach",
-  label: "Teaching",
-  icon: "M22 10v6M2 10l10-5 10 5-10 5zM6 12v5c3 3 9 3 12 0v-5",
+/** What a teacher does: classes, and the marking waiting in them. */
+const TEACHING_NAV: NavItem[] = [
+  {
+    href: "/teach",
+    label: "Classes",
+    icon: "M22 10v6M2 10l10-5 10 5-10 5zM6 12v5c3 3 9 3 12 0v-5",
+  },
+  {
+    href: "/teach/marking",
+    label: "Marking",
+    icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
+  },
+];
+
+/** What an administrator does: people, and the shape of the year. */
+const ADMIN_NAV: NavItem[] = [
+  {
+    href: "/admin",
+    label: "Overview",
+    icon: "M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z",
+  },
+  {
+    href: "/admin/people",
+    label: "People",
+    icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87",
+  },
+  {
+    href: "/admin/courses",
+    label: "Courses",
+    icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+  },
+];
+
+const WORKSPACE_NAV: Record<WorkspaceId, NavItem[]> = {
+  personal: PERSONAL_NAV,
+  teaching: TEACHING_NAV,
+  admin: ADMIN_NAV,
 };
 
 const SETTINGS_ITEM: NavItem = {
@@ -144,28 +166,30 @@ export default function AppShell({
   children,
   userEmail,
   userImage,
-  showTeaching = false,
+  workspaces = ["personal"],
 }: {
   children: React.ReactNode;
   userEmail?: string | null;
   userImage?: string | null;
-  /** True when this person teaches at least one section. */
-  showTeaching?: boolean;
+  /** Every workspace this person has a real relationship for. */
+  workspaces?: WorkspaceId[];
 }) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
-  // Teaching sits after the personal destinations: Scholar is a student's tool
-  // first, and a teacher is a student's teacher second.
-  const items = showTeaching ? [...NAV, TEACHING_ITEM] : NAV;
+  // Read from the route rather than stored, so following a link into a class
+  // puts you in Teaching without anything having to remember to set it.
+  const active = workspaceForPath(pathname ?? "") ?? workspaces[0] ?? "personal";
+  const workspace: WorkspaceId = workspaces.includes(active) ? active : workspaces[0] ?? "personal";
+  const items = WORKSPACE_NAV[workspace];
 
   return (
     <div className="min-h-screen lg:flex">
       <ThemeLoader />
       {/* Desktop rail */}
       <aside className="fixed inset-y-0 start-0 z-40 hidden w-[76px] flex-col items-center gap-1.5 border-e border-white/[0.06] bg-ink-985/80 py-4 backdrop-blur-xl lg:flex">
-        <Link href="/dashboard" className="mb-3">
+        <Link href={WORKSPACES[workspace].home} className="mb-3">
           <motion.span className="block" whileHover={{ rotate: -8, scale: 1.06 }} whileTap={{ scale: 0.94 }} transition={SPRING}>
             <Logo size={34} />
           </motion.span>
@@ -184,13 +208,18 @@ export default function AppShell({
         {/* Top bar — brand on mobile (rail replaces it on desktop), user info, sign out */}
         <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-985/70 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5 xl:px-10">
-            <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5 lg:hidden">
+            <Link href={WORKSPACES[workspace].home} className="flex min-w-0 items-center gap-2.5 lg:hidden">
               <Logo size={30} />
               <span className="truncate text-sm font-semibold tracking-tight text-white">
                 Varaxis <span className="text-vx-300">Scholar</span>
               </span>
             </Link>
-            <div className="hidden lg:block" />
+            {/* Where "which hat am I wearing" belongs: leading edge, before
+                anything about the account. Renders nothing for the common
+                case of a person with one workspace. */}
+            <div className="hidden min-w-0 lg:block">
+              <WorkspaceSwitcher current={workspace} available={workspaces} />
+            </div>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               {userImage && (
@@ -198,7 +227,10 @@ export default function AppShell({
                 <img src={userImage} alt="" className="h-8 w-8 rounded-full border border-white/15 shadow-lift" />
               )}
               {userEmail && <span className="hidden text-xs text-slate-400 md:block">{userEmail}</span>}
-              <LiveClasses />
+              {/* The student's own next-class popover. Meaningless to
+                  someone in Teaching or Administration, so it is not shown
+                  there. */}
+              {workspace === "personal" && <LiveClasses />}
               <SignOutButton />
             </div>
           </div>

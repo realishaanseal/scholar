@@ -303,3 +303,106 @@ function toDateOnly(value: unknown): string {
   }
   return String(value).slice(0, 10);
 }
+
+/* ── Administration ────────────────────────────────────────────────────── */
+
+/** Organizations this person administers. Empty for everyone else. */
+export async function administeredOrganizations(userId: string): Promise<Organization[]> {
+  const rows = await db
+    .prepare(
+      `SELECT o.id, o.name, o.slug, o.timezone, o.locale, o.created_at
+         FROM organization_memberships m
+         JOIN organizations o ON o.id = m.organization_id
+        WHERE m.user_id = ? AND m.status = 'active'
+          AND m.role IN ('INSTITUTION_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN')
+        ORDER BY o.name`
+    )
+    .all(userId);
+  return rows.map(mapOrganization);
+}
+
+export type OrganizationSummary = {
+  students: number;
+  teachers: number;
+  courses: number;
+  sections: number;
+  publishedAssignments: number;
+  awaitingMarking: number;
+};
+
+/**
+ * The numbers an administrator opens the page for.
+ *
+ * One round trip rather than six, because a dashboard that takes six queries
+ * to render is a dashboard nobody leaves open.
+ */
+export async function organizationSummary(
+  organizationId: string
+): Promise<OrganizationSummary> {
+  const r = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(DISTINCT user_id)::int FROM organization_memberships
+           WHERE organization_id = $1 AND role = 'STUDENT' AND status = 'active') AS students,
+         (SELECT COUNT(DISTINCT user_id)::int FROM organization_memberships
+           WHERE organization_id = $1 AND role IN ('TEACHER','TEACHING_ASSISTANT')
+             AND status = 'active') AS teachers,
+         (SELECT COUNT(*)::int FROM courses WHERE organization_id = $1) AS courses,
+         (SELECT COUNT(*)::int FROM course_sections WHERE organization_id = $1) AS sections,
+         (SELECT COUNT(*)::int FROM assignments
+           WHERE organization_id = $1 AND status = 'published') AS published_assignments,
+         (SELECT COUNT(*)::int FROM assignment_submissions
+           WHERE organization_id = $1 AND status = 'submitted') AS awaiting_marking`
+    )
+    .get(organizationId);
+
+  return {
+    students: r.students,
+    teachers: r.teachers,
+    courses: r.courses,
+    sections: r.sections,
+    publishedAssignments: r.published_assignments,
+    awaitingMarking: r.awaiting_marking,
+  };
+}
+
+export type MemberRow = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  roles: string[];
+  status: string;
+  joinedAt: string;
+};
+
+/**
+ * People in the institution, one row per person rather than per membership.
+ *
+ * Someone who teaches and studies holds two rows in the table and is one
+ * person on this page; showing them twice would make the list a report about
+ * the schema rather than about the school.
+ */
+export async function listPeople(organizationId: string): Promise<MemberRow[]> {
+  const rows = await db
+    .prepare(
+      `SELECT m.user_id, u.email, u.name,
+              ARRAY_AGG(m.role ORDER BY m.role) AS roles,
+              MIN(m.created_at) AS joined_at,
+              BOOL_OR(m.status = 'active') AS any_active
+         FROM organization_memberships m
+         JOIN users u ON u.id = m.user_id
+        WHERE m.organization_id = ?
+        GROUP BY m.user_id, u.email, u.name
+        ORDER BY u.email`
+    )
+    .all(organizationId);
+
+  return rows.map((r: any) => ({
+    userId: r.user_id,
+    email: r.email ?? null,
+    name: r.name ?? null,
+    roles: r.roles ?? [],
+    status: r.any_active ? "active" : "suspended",
+    joinedAt: toISO(r.joined_at),
+  }));
+}

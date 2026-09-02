@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import { teachesAnything } from "@/domains/courses";
+import { availableWorkspaces } from "@/lib/workspaces.server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +15,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  // One indexed lookup, and it decides whether the Teaching destination is
-  // offered at all rather than leading everyone to an empty page.
-  const showTeaching = session.user.id ? await teachesAnything(session.user.id) : false;
+  // Which sides of the product this person actually has a relationship for.
+  // Read from the database, never from a role someone claimed at signup.
+  const workspaces = session.user.id
+    ? await availableWorkspaces(session.user.id)
+    : (["personal"] as const).slice();
 
   return (
     <AppShell
       userEmail={session.user.email ?? null}
       userImage={session.user.image ?? null}
-      showTeaching={showTeaching}
+      workspaces={workspaces}
     >
       {children}
     </AppShell>
