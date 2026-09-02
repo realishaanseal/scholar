@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { EASE_OUT, SPRING } from "@/components/motion";
@@ -244,6 +245,23 @@ export default function HomeworkItem({
               </svg>
               {formatDue(hw.dueAt)}
             </span>
+
+            {/* Set only on tasks projected from coursework. Until now such a
+                task announced its course and then went nowhere; this is the
+                way back to the brief, the attachments and handing it in. */}
+            {hw.courseLink && (
+              <Link
+                href={`/learn/${hw.courseLink.sectionId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="chip border border-white/[0.1] text-slate-400 transition-colors hover:border-white/[0.2] hover:text-slate-200"
+              >
+                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor"
+                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+                Open in {hw.courseLink.courseCode}
+              </Link>
+            )}
 
             {hw.priority === "high" && !done && (
               <span className={`chip ${PRIORITY_STYLES.high}`}>

@@ -30,16 +30,28 @@ export default function SectionTabs({
   materials,
   students,
   counts,
+  labels,
 }: {
   work: React.ReactNode;
   materials: React.ReactNode;
-  students: React.ReactNode;
+  /**
+   * Omitted on the student view: a roster is a teacher's tool, and a class
+   * list is not a student's to browse.
+   */
+  students?: React.ReactNode;
   counts?: Partial<Record<TabKey, number>>;
+  /**
+   * The same shelf is "Materials" to whoever fills it and "Library" to
+   * whoever reads from it.
+   */
+  labels?: Partial<Record<TabKey, string>>;
 }) {
+  const tabs = students === undefined ? TABS.filter((t) => t.key !== "students") : TABS;
+
   const [active, setActive] = useState<TabKey>(() => {
     if (typeof window === "undefined") return "work";
     const fromHash = window.location.hash.replace("#", "");
-    return TABS.some((t) => t.key === fromHash) ? (fromHash as TabKey) : "work";
+    return tabs.some((t) => t.key === fromHash) ? (fromHash as TabKey) : "work";
   });
 
   function select(key: TabKey) {
@@ -56,7 +68,7 @@ export default function SectionTabs({
         aria-label="Class sections"
         className="mb-5 flex gap-1 border-b border-white/[0.07]"
       >
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const selected = active === tab.key;
           const count = counts?.[tab.key];
           return (
@@ -71,7 +83,7 @@ export default function SectionTabs({
                 selected ? "text-slate-100" : "text-slate-500 hover:text-slate-300"
               )}
             >
-              {tab.label}
+              {labels?.[tab.key] ?? tab.label}
               {count !== undefined && count > 0 && (
                 <span className="ms-1.5 text-[11px] tabular-nums text-slate-500">
                   {count}
@@ -97,7 +109,9 @@ export default function SectionTabs({
       */}
       <div role="tabpanel" hidden={active !== "work"}>{work}</div>
       <div role="tabpanel" hidden={active !== "materials"}>{materials}</div>
-      <div role="tabpanel" hidden={active !== "students"}>{students}</div>
+      {students !== undefined && (
+        <div role="tabpanel" hidden={active !== "students"}>{students}</div>
+      )}
     </div>
   );
 }

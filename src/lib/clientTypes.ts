@@ -15,6 +15,13 @@ export type TimetableSlotDTO = {
 };
 
 export type HomeworkDTO = {
+  /**
+   * Set when this task was projected from institutional coursework. The
+   * dashboard uses it to link back to the brief — a task reading
+   * "PHY101 — Problem set 4" that goes nowhere is the most obvious dead end
+   * in the product.
+   */
+  courseLink?: { assignmentId: string; sectionId: string; courseCode: string } | null;
   id: string;
   title: string;
   details: string;

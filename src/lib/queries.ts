@@ -1,6 +1,7 @@
 import { db, newId, nowISO } from "./db";
 import { recordTaskEvent } from "./scholar/memory";
 import type { HomeworkDTO, SubjectDTO, TimetableSlotDTO } from "./clientTypes";
+import { EXTERNAL_SOURCE } from "@/domains/assessment/projection";
 
 const PALETTE = [
   "#5b7cfa", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4",
@@ -41,6 +42,11 @@ function toDTO(r: HomeworkRow): HomeworkDTO {
     subject: r.subjectId
       ? { id: r.subjectId, name: r.subjectName ?? "General", color: r.subjectColor ?? "#5b7cfa" }
       : null,
+    // Resolved separately by listHomework: the row knows the assignment id,
+    // but turning it into a link needs the section, and joining that into
+    // every homework read would cost a join for the majority of tasks that
+    // are not projected at all.
+    courseLink: null,
   };
 }
 
@@ -108,7 +114,44 @@ export async function listHomework(userId: string): Promise<HomeworkDTO[]> {
       `${SELECT_HOMEWORK} WHERE h.userId = ? AND h.archived_at IS NULL ORDER BY h.createdAt DESC`
     )
     .all(userId)) as HomeworkRow[];
-  return rows.map(toDTO);
+
+  const tasks = rows.map(toDTO);
+
+  // Tasks projected from coursework get a link back to the brief. Resolved in
+  // one extra query over just those rows rather than joining three
+  // institutional tables into every homework read — most people have no
+  // projected tasks at all, and they should not pay for the ones who do.
+  const assignmentIds = rows
+    .filter((r) => r.externalSource === EXTERNAL_SOURCE && r.externalId)
+    .map((r) => r.externalId as string);
+
+  if (assignmentIds.length > 0) {
+    const links = (await db
+      .prepare(
+        `SELECT a.id AS assignment_id, cs.id AS section_id, c.code AS course_code
+           FROM assignments a
+           JOIN course_sections cs ON cs.id = a.course_section_id
+           JOIN courses c ON c.id = cs.course_id
+          WHERE a.id = ANY(?)`
+      )
+      .all(assignmentIds)) as {
+      assignment_id: string; section_id: string; course_code: string;
+    }[];
+
+    const byId = new Map(links.map((l) => [l.assignment_id, l]));
+    for (let i = 0; i < rows.length; i++) {
+      const link = rows[i].externalId ? byId.get(rows[i].externalId as string) : undefined;
+      if (link) {
+        tasks[i].courseLink = {
+          assignmentId: link.assignment_id,
+          sectionId: link.section_id,
+          courseCode: link.course_code,
+        };
+      }
+    }
+  }
+
+  return tasks;
 }
 
 export async function getHomework(userId: string, id: string): Promise<HomeworkDTO | null> {

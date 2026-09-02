@@ -66,6 +66,18 @@ const PERSONAL_NAV: NavItem[] = [
   },
 ];
 
+/**
+ * Offered inside the personal workspace only to people actually enrolled.
+ * A student's courses are not a different job from their own work — it is the
+ * same person doing the same week — so this belongs beside Homework rather
+ * than in a workspace of its own.
+ */
+const COURSES_ITEM: NavItem = {
+  href: "/learn",
+  label: "Courses",
+  icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+};
+
 /** What a teacher does: classes, and the marking waiting in them. */
 const TEACHING_NAV: NavItem[] = [
   {
@@ -167,12 +179,15 @@ export default function AppShell({
   userEmail,
   userImage,
   workspaces = ["personal"],
+  enrolled = false,
 }: {
   children: React.ReactNode;
   userEmail?: string | null;
   userImage?: string | null;
   /** Every workspace this person has a real relationship for. */
   workspaces?: WorkspaceId[];
+  /** True when this person is actively enrolled in at least one course. */
+  enrolled?: boolean;
 }) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
@@ -182,7 +197,12 @@ export default function AppShell({
   // puts you in Teaching without anything having to remember to set it.
   const active = workspaceForPath(pathname ?? "") ?? workspaces[0] ?? "personal";
   const workspace: WorkspaceId = workspaces.includes(active) ? active : workspaces[0] ?? "personal";
-  const items = WORKSPACE_NAV[workspace];
+  // Courses sits second in the personal list: after the work itself, before
+  // the tools for organising it.
+  const items =
+    workspace === "personal" && enrolled
+      ? [PERSONAL_NAV[0], COURSES_ITEM, ...PERSONAL_NAV.slice(1)]
+      : WORKSPACE_NAV[workspace];
 
   return (
     <div className="min-h-screen lg:flex">

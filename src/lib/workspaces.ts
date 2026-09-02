@@ -37,7 +37,10 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
     id: "personal",
     label: "My work",
     home: "/dashboard",
-    owns: ["/dashboard", "/timetable", "/import", "/calendar", "/insights", "/groups", "/extension"],
+    owns: [
+      "/dashboard", "/learn", "/timetable", "/import",
+      "/calendar", "/insights", "/groups", "/extension",
+    ],
   },
   teaching: {
     id: "teaching",
