@@ -12,8 +12,12 @@ import { sniff } from "./sniff";
  *                  which matters because a fresh clone should be able to
  *                  upload a worksheet without provisioning anything. Capped
  *                  low on purpose; Postgres is not a filesystem.
- *   vercel-blob  — real object storage. Used the moment
- *                  BLOB_READ_WRITE_TOKEN exists, with no code change.
+ *   vercel-blob  — real object storage, in a PRIVATE store. Used the moment
+ *                  BLOB_READ_WRITE_TOKEN exists, with no code change. Private
+ *                  matters: a public blob URL is permanent and only
+ *                  unguessable, so issuing one would outlive the permission
+ *                  that justified it. Here the bytes are unreachable without
+ *                  the server's token.
  *
  * The provider is recorded per file rather than assumed globally, so turning
  * object storage on does not orphan everything uploaded before it. Old rows
@@ -79,14 +83,23 @@ export async function putBytes(
     // Imported dynamically so the SDK is not a hard dependency of every build
     // that never uploads anything.
     const { put } = await import("@vercel/blob");
-    // Scoped by organization, and suffixed with a random component by the SDK
-    // so two teachers uploading "notes.pdf" do not collide.
+    // Private, not public. A public blob URL is permanent and merely
+    // unguessable: once issued it keeps working after the assignment is
+    // withdrawn, after the student leaves the course, and for anyone they
+    // forward it to. Private means the bytes can only be read with the store
+    // token, which lives on the server, so the authorization check in the
+    // download route is the only way in.
+    //
+    // Scoped by organization, and given a random suffix so two teachers
+    // uploading "notes.pdf" do not collide.
     const result = await put(`org/${organizationId}/${filename}`, bytes, {
-      access: "public",
+      access: "private",
       contentType,
       addRandomSuffix: true,
     });
-    return { provider, key: result.url, size: bytes.byteLength };
+    // The pathname, not the URL: `get()` resolves a pathname against the store
+    // and a private URL is not fetchable on its own anyway.
+    return { provider, key: result.pathname, size: bytes.byteLength };
   }
 
   const key = newId();
@@ -103,25 +116,32 @@ export type Retrieved = { kind: "bytes"; bytes: Buffer };
 /**
  * Fetch the bytes, wherever they are.
  *
- * Object-storage content is proxied rather than redirected to, and that is a
- * deliberate cost. A Vercel Blob URL is public and permanent: it is only
- * unguessable, not protected. Redirecting to it would authorize the request
- * once and then hand over a link that keeps working forever — after the
- * assignment is withdrawn, after the student leaves the course, for anyone
- * they forward it to. Streaming through this process means every single
- * download is authorized, at the price of the bandwidth passing through.
+ * Object-storage content is read with the store token and proxied, never
+ * redirected to. The store is private, so there is no URL that would work on
+ * its own — which is the point: the authorization check in the download route
+ * is the only path to the bytes, and it runs on every single request rather
+ * than once when a link was first handed out.
  *
- * If that cost ever becomes the problem, the fix is signed short-lived URLs,
- * not an unguarded redirect.
+ * The cost is that the bytes pass through this process. If that ever becomes
+ * the problem, the answer is a short-lived signed URL, not a permanent one.
  */
 export async function getBytes(file: {
   storageProvider: string;
   storageKey: string;
 }): Promise<Retrieved | null> {
   if (file.storageProvider === "vercel-blob") {
-    const res = await fetch(file.storageKey);
-    if (!res.ok) return null;
-    return { kind: "bytes", bytes: Buffer.from(await res.arrayBuffer()) };
+    const { get } = await import("@vercel/blob");
+
+    // Keys written before the store was private are full URLs rather than
+    // pathnames. `get` accepts either, so both keep working.
+    const result = await get(file.storageKey, { access: "private" });
+    if (!result?.stream) return null;
+
+    const chunks: Buffer[] = [];
+    // @ts-expect-error the SDK types the stream as a web ReadableStream, which
+    // is async-iterable at runtime on Node 18+.
+    for await (const chunk of result.stream) chunks.push(Buffer.from(chunk));
+    return { kind: "bytes", bytes: Buffer.concat(chunks) };
   }
 
   const row = await db
