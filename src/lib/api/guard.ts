@@ -137,3 +137,64 @@ export async function readBody<T extends z.ZodTypeAny>(
   }
   return parsed.data;
 }
+
+/**
+ * A route whose subject is reachable through more than one relationship.
+ *
+ * A file can be attached to an assignment in one course and published as a
+ * material in another, so "may this person read it" is a question about a set
+ * of scopes rather than one. Permitting on the first scope that passes is
+ * correct here and not a weakening: each candidate is a real relationship the
+ * subject genuinely has, and every one of them is checked by the same policy
+ * engine as any other route.
+ *
+ * An empty candidate list denies. A subject nothing references is reachable by
+ * nobody, which is the safe reading and also the true one.
+ */
+export function institutionalRouteAny<
+  P extends Record<string, string> = Record<string, string>,
+  S extends Scope = Scope,
+>(
+  spec: {
+    permission: Permission;
+    scopes: (args: RouteArgs<P>) => S[] | Promise<S[]>;
+  },
+  handler: (args: AuthorizedArgs<P, S>) => Promise<Response>
+) {
+  return async (req: Request, ctx: { params: Promise<P> }): Promise<Response> => {
+    try {
+      const session = await auth();
+      const userId = session?.user?.id;
+      if (!userId) throw new Unauthenticated();
+
+      const params = await ctx.params;
+      const base: RouteArgs<P> = { req, params, url: new URL(req.url) };
+
+      const actor = await resolveActor(userId);
+      const candidates = await spec.scopes(base);
+
+      for (const scope of candidates) {
+        if (explain(actor, spec.permission, scope).allowed) {
+          return await handler({ ...base, actor, userId, scope });
+        }
+      }
+
+      console.warn(
+        "[authz] denied",
+        JSON.stringify({
+          userId,
+          permission: spec.permission,
+          candidates: candidates.length,
+          reason: candidates.length ? "no candidate scope permitted" : "nothing references it",
+        })
+      );
+      throw new Forbidden(
+        spec.permission,
+        candidates[0] ?? {},
+        candidates.length ? "no candidate scope permitted" : "nothing references it"
+      );
+    } catch (err) {
+      return errorResponse(err);
+    }
+  };
+}

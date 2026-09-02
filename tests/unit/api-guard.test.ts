@@ -94,19 +94,30 @@ describe("every institutional route goes through the guard", () => {
 
       // Every exported HTTP method must be wrapped. A bare `export const GET =
       // async (...)` would reach the database with no check at all.
+      //
+      // institutionalRouteAny is the multi-scope variant, for a subject
+      // reachable through more than one relationship. It runs the same policy
+      // engine over every candidate, so it belongs on this list; anything else
+      // does not.
+      const GUARDS = ["institutionalRoute", "institutionalRouteAny"];
       const methods = [...src.matchAll(/export const (GET|POST|PATCH|PUT|DELETE)\s*=\s*(\w+)/g)];
       expect(methods.length).toBeGreaterThan(0);
       for (const [, method, wrapper] of methods) {
         expect(
-          wrapper,
-          `${method} must be wrapped in institutionalRoute`
-        ).toBe("institutionalRoute");
+          GUARDS,
+          `${method} is wrapped in ${wrapper}, which is not a guard`
+        ).toContain(wrapper);
       }
 
       // The scope must be resolved, not asserted. A route that reads an
-      // organization id out of the request could be pointed at any tenant.
+      // organization id out of the request could be pointed at any tenant, so
+      // what is required is a resolver that goes to the database — named
+      // scopeOfX or scopesForX by convention.
       expect(src).toMatch(/permission:\s*"[a-z]+:[a-z]+"/);
-      expect(src).toMatch(/scopeOf(Section|Assignment|Submission)/);
+      expect(
+        src,
+        "must resolve scope from the database via a scopeOf/scopesFor helper"
+      ).toMatch(/(scopeOf|scopesFor)[A-Z]\w*/);
       expect(
         src,
         "organizationId must never be read from params or the query string"
