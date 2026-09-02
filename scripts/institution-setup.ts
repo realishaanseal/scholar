@@ -29,20 +29,37 @@ import { assignTeacher, createCourse, createSection, enroll } from "../src/domai
 
 type Args = Record<string, string>;
 
+/**
+ * Parse --flag value pairs, tolerating a shell that ate the quotes.
+ *
+ * `npm run x -- --org "Varaxis Demo School"` forwards the arguments through
+ * npm, which on Windows strips the quotes — the script then receives three
+ * separate tokens and a naive parser would take only "Varaxis" and silently
+ * create an institution with the wrong name. So a value is every token up to
+ * the next flag, rejoined. `--org Varaxis Demo School` and `--org "Varaxis
+ * Demo School"` therefore mean the same thing, which is what someone typing
+ * either of them intended.
+ */
 function parseArgs(argv: string[]): Args {
   const out: Args = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith("--")) continue;
-    const key = a.slice(2);
-    const next = argv[i + 1];
-    if (next && !next.startsWith("--")) {
-      out[key] = next;
-      i++;
-    } else {
-      out[key] = "true";
+  let key: string | null = null;
+  let value: string[] = [];
+
+  const flush = () => {
+    if (key) out[key] = value.length ? value.join(" ") : "true";
+  };
+
+  for (const token of argv) {
+    if (token.startsWith("--")) {
+      flush();
+      key = token.slice(2);
+      value = [];
+    } else if (key) {
+      value.push(token);
     }
   }
+  flush();
+
   return out;
 }
 
