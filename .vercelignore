@@ -1,0 +1,19 @@
+# What never needs uploading to a deployment.
+#
+# `vercel --prod` uploads the working directory, and this one holds a 703MB
+# copy of an older version of the project — complete with its own node_modules
+# and a zip of itself — which alone exceeds Vercel's 100MB limit and fails the
+# deploy before it starts. Ignoring it here rather than deleting it, because
+# whether that backup is still wanted is not a build-tool decision.
+_old_backup_to_delete/
+_to_delete/
+
+# Rebuilt on the server; uploading them wastes the limit on bytes that are
+# discarded on arrival.
+node_modules/
+.next/
+
+# Local only.
+.env*
+coverage/
+*.tsbuildinfo

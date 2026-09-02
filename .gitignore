@@ -13,3 +13,7 @@ next-env.d.ts
 .vercel
 .env*
 *.tsbuildinfo
+
+# Local archives of older versions — large, and not part of the project.
+_old_backup_to_delete/
+_to_delete/
