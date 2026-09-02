@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import Analytics from "@/components/Analytics";
 import Backdrop from "@/components/Backdrop";
 import PwaSetup from "@/components/PwaSetup";
 import { MotionProvider } from "@/components/motion";
@@ -49,6 +50,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <MotionProvider>
             <Backdrop />
             <PwaSetup />
+            {/* Initialised but silent: capturing is opted out until consent. */}
+            <Analytics />
             {children}
           </MotionProvider>
         </NextIntlClientProvider>

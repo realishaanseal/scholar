@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, type Variants } from "motion/react";
 import Logo from "@/components/Logo";
+import SmoothScroll from "@/components/SmoothScroll";
 import { EASE_OUT, Magnetic, Reveal, SPRING, Stagger, StaggerItem, TiltCard } from "@/components/motion";
 
 /**
@@ -89,6 +90,8 @@ export default function LandingPage({ revealed = true }: { revealed?: boolean })
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Inert while the page fits one screen; active the moment it does not. */}
+      <SmoothScroll />
       <motion.div initial="hidden" animate={state} variants={container}>
         {/* ── Header ─────────────────────────────────────────────────── */}
         <motion.header
