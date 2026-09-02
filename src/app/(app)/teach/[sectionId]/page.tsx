@@ -3,12 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import MaterialsPanel from "@/components/teach/MaterialsPanel";
 import SectionTabs from "@/components/teach/SectionTabs";
 import SectionWorkbench from "@/components/teach/SectionWorkbench";
+import Gradebook from "@/components/teach/Gradebook";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authz";
 import { resolveActor } from "@/domains/identity";
 import { getSectionDetail, listRoster } from "@/domains/courses";
 import { listAssignments, scopeOfSection } from "@/domains/assessment";
 import { listMaterials } from "@/domains/library";
+import { sectionGradebook } from "@/domains/grading";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +41,12 @@ export default async function TeachSectionPage({
   const actor = await resolveActor(session.user.id);
   if (!can(actor, "assignment:create", scope)) notFound();
 
-  const [section, assignments, roster, materials] = await Promise.all([
+  const [section, assignments, roster, materials, gradebook] = await Promise.all([
     getSectionDetail(sectionId),
     listAssignments(sectionId),
     listRoster(sectionId),
     listMaterials(scope.courseId),
+    sectionGradebook(sectionId, scope.courseId),
   ]);
   if (!section) notFound();
 
@@ -85,6 +88,7 @@ export default async function TeachSectionPage({
           />
         }
         students={<Roster roster={roster} />}
+        grades={<Gradebook data={gradebook} />}
       />
     </div>
   );

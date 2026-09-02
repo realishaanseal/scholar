@@ -1,5 +1,6 @@
 import { db, newId, nowISO } from "@/lib/db";
 import { ensureSubject } from "@/lib/queries";
+import { recordGradeEvent } from "@/domains/grading";
 import {
   ARCHIVE_TASK_SQL, UPSERT_TASK_SQL,
   projectedFields, shouldProject, type ProjectableAssignment,
@@ -310,8 +311,13 @@ export async function gradeSubmission(
   id: string,
   gradedBy: string,
   score: number | null,
-  feedback: string
+  feedback: string,
+  /** The model that drafted this mark, when one did. Null means unaided. */
+  aiModel: string | null = null
 ): Promise<Submission> {
+  const before = await getSubmission(id);
+  if (!before) throw new Error("That submission no longer exists.");
+
   await db
     .prepare(
       `UPDATE assignment_submissions
@@ -319,6 +325,23 @@ export async function gradeSubmission(
         WHERE id = ?`
     )
     .run(score, feedback, gradedBy, id);
+
+  // Written after the change, in the same request, with the grader attached.
+  // A mark that changed with no record of who changed it is the thing an
+  // appeal cannot answer, so this is not optional and not conditional.
+  await recordGradeEvent({
+    organizationId: before.organizationId,
+    submissionId: id,
+    actorUserId: gradedBy,
+    action:
+      before.gradedAt === null ? "graded" : score === null ? "cleared" : "regraded",
+    previousScore: before.score,
+    newScore: score,
+    previousFeedback: before.feedback || null,
+    newFeedback: feedback || null,
+    aiModel,
+  });
+
   const out = await getSubmission(id);
   if (!out) throw new Error("Submission disappeared during grading.");
   return out;

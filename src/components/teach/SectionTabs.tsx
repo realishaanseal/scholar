@@ -17,18 +17,20 @@ import { cn } from "@/lib/cn";
  * refreshes while marking does not land back on Work.
  */
 
-export type TabKey = "work" | "materials" | "students";
+export type TabKey = "work" | "materials" | "students" | "grades";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "work", label: "Work" },
   { key: "materials", label: "Materials" },
   { key: "students", label: "Students" },
+  { key: "grades", label: "Grades" },
 ];
 
 export default function SectionTabs({
   work,
   materials,
   students,
+  grades,
   counts,
   labels,
 }: {
@@ -39,6 +41,8 @@ export default function SectionTabs({
    * list is not a student's to browse.
    */
   students?: React.ReactNode;
+  /** Omitted on the student view: a class grid is a teacher's tool. */
+  grades?: React.ReactNode;
   counts?: Partial<Record<TabKey, number>>;
   /**
    * The same shelf is "Materials" to whoever fills it and "Library" to
@@ -46,7 +50,13 @@ export default function SectionTabs({
    */
   labels?: Partial<Record<TabKey, string>>;
 }) {
-  const tabs = students === undefined ? TABS.filter((t) => t.key !== "students") : TABS;
+  // A tab with nothing behind it is not shown at all, which is how the same
+  // component serves a teacher and a student without a mode flag.
+  const tabs = TABS.filter(
+    (t) =>
+      !(t.key === "students" && students === undefined) &&
+      !(t.key === "grades" && grades === undefined)
+  );
 
   const [active, setActive] = useState<TabKey>(() => {
     if (typeof window === "undefined") return "work";
@@ -111,6 +121,9 @@ export default function SectionTabs({
       <div role="tabpanel" hidden={active !== "materials"}>{materials}</div>
       {students !== undefined && (
         <div role="tabpanel" hidden={active !== "students"}>{students}</div>
+      )}
+      {grades !== undefined && (
+        <div role="tabpanel" hidden={active !== "grades"}>{grades}</div>
       )}
     </div>
   );
