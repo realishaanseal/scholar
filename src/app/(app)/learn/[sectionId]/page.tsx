@@ -89,7 +89,7 @@ export default async function LearnSectionPage({
       <SectionTabs
         counts={{ work: assignments.length, materials: materials.length, students: 0 }}
         labels={{ work: "Work", materials: "Library" }}
-        work={<CourseWork assignments={assignments} plans={plans} />}
+        work={<CourseWork assignments={assignments} plans={plans} timezone={section.timezone} />}
         materials={
           <StudentMaterials
             materials={materials.map((m) => ({

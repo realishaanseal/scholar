@@ -125,14 +125,46 @@ export async function deleteMemoryEvent(userId: string, eventId: string): Promis
   return (await db.prepare(`DELETE FROM task_events WHERE userId = ? AND id = ?`).run(userId, eventId)).changes > 0;
 }
 
+/**
+ * Rest days are stored as "0,6" rather than an integer array.
+ *
+ * academic_profile is one of the original camelCase tables, and every query
+ * against it passes through the identifier-quoting shim on its way to
+ * Postgres. Keeping the value a plain string means the shim has nothing
+ * unusual to handle, and the parse is four lines here rather than a driver
+ * concern everywhere.
+ */
+function parseRestDays(raw: unknown): number[] {
+  if (typeof raw !== "string" || raw.trim() === "") return DEFAULT_AVAILABILITY.restDays;
+  const days = raw
+    .split(",")
+    .map((d) => Number(d.trim()))
+    .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  // An unparseable or empty value falls back rather than producing a student
+  // with no days off, which is the failure mode that would silently double
+  // every capacity estimate.
+  return days.length > 0 ? [...new Set(days)].sort() : DEFAULT_AVAILABILITY.restDays;
+}
+
 export async function getAvailability(userId: string): Promise<AvailabilityProfile> {
   const row = (await db
     .prepare(
-      `SELECT weekdayMins, weekendMins, studyStartHour, studyEndHour
+      `SELECT weekdayMins, weekendMins, studyStartHour, studyEndHour,
+              "restDays", "timezone"
          FROM academic_profile WHERE userId = ?`
     )
-    .get(userId)) as AvailabilityProfile | undefined;
-  return row ?? DEFAULT_AVAILABILITY;
+    .get(userId)) as Record<string, unknown> | undefined;
+
+  if (!row) return DEFAULT_AVAILABILITY;
+
+  return {
+    weekdayMins: Number(row.weekdayMins ?? DEFAULT_AVAILABILITY.weekdayMins),
+    weekendMins: Number(row.weekendMins ?? DEFAULT_AVAILABILITY.weekendMins),
+    studyStartHour: Number(row.studyStartHour ?? DEFAULT_AVAILABILITY.studyStartHour),
+    studyEndHour: Number(row.studyEndHour ?? DEFAULT_AVAILABILITY.studyEndHour),
+    restDays: parseRestDays(row.restDays),
+    timezone: typeof row.timezone === "string" && row.timezone ? row.timezone : null,
+  };
 }
 
 export async function setAvailability(userId: string, patch: Partial<AvailabilityProfile>): Promise<AvailabilityProfile> {
@@ -147,18 +179,48 @@ export async function setAvailability(userId: string, patch: Partial<Availabilit
   next.studyEndHour = clamp(next.studyEndHour, 1, 24);
   if (next.studyEndHour <= next.studyStartHour) next.studyEndHour = Math.min(24, next.studyStartHour + 1);
 
+  // A student with no days off is almost certainly a bug rather than a
+  // choice, and it would silently inflate every capacity estimate. Seven rest
+  // days is a real answer and left alone.
+  next.restDays = parseRestDays(next.restDays?.join(","));
+  next.timezone = validZone(next.timezone);
+
   await db.prepare(
-    `INSERT INTO academic_profile (userId, weekdayMins, weekendMins, studyStartHour, studyEndHour, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO academic_profile
+       (userId, weekdayMins, weekendMins, studyStartHour, studyEndHour,
+        "restDays", "timezone", updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(userId) DO UPDATE SET
        weekdayMins    = excluded.weekdayMins,
        weekendMins    = excluded.weekendMins,
        studyStartHour = excluded.studyStartHour,
        studyEndHour   = excluded.studyEndHour,
+       "restDays"     = excluded."restDays",
+       "timezone"     = excluded."timezone",
        updatedAt      = excluded.updatedAt`
-  ).run(userId, next.weekdayMins, next.weekendMins, next.studyStartHour, next.studyEndHour, nowISO());
+  ).run(
+    userId, next.weekdayMins, next.weekendMins, next.studyStartHour,
+    next.studyEndHour, next.restDays.join(","), next.timezone, nowISO()
+  );
 
   return next;
+}
+
+/**
+ * Keep an unknown zone out of the database.
+ *
+ * A bad IANA name does not fail on write — it fails much later, inside
+ * Intl.DateTimeFormat, while rendering somebody's deadline. Checking it here
+ * means the error surfaces where it can still be corrected.
+ */
+function validZone(zone: string | null | undefined): string | null {
+  if (!zone) return null;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: zone });
+    return zone;
+  } catch {
+    return null;
+  }
 }
 
 function clamp(n: number, lo: number, hi: number): number {

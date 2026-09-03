@@ -2,14 +2,26 @@ import type { AvailabilityProfile } from "./types";
 
 const MS_PER_MIN = 60_000;
 
-function isWeekend(d: Date): boolean {
-  const day = d.getDay();
-  return day === 0 || day === 6;
+/**
+ * Is this a day off for this particular student?
+ *
+ * Reads the profile rather than assuming Saturday and Sunday. The assumption
+ * held for most of the world and failed for the part of it where the weekend
+ * is Friday-Saturday — and it failed silently, by telling a student in Cairo
+ * to start an essay on a Sunday they spend at school.
+ *
+ * An empty or missing list falls back to the conventional pair rather than
+ * treating every day as a working day, because a profile that has not been
+ * filled in should behave the way it always did.
+ */
+export function isRestDay(d: Date, profile: AvailabilityProfile): boolean {
+  const rest = profile.restDays?.length ? profile.restDays : [0, 6];
+  return rest.includes(d.getDay());
 }
 
 /** Study capacity in minutes for a given calendar day, per the student's profile. */
 export function capacityForDay(day: Date, profile: AvailabilityProfile): number {
-  return isWeekend(day) ? profile.weekendMins : profile.weekdayMins;
+  return isRestDay(day, profile) ? profile.weekendMins : profile.weekdayMins;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/cn";
 import QuizEditor from "./QuizEditor";
+import { wallClockToInstant } from "@/lib/time";
 import type { Assignment } from "@/domains/assessment";
 
 /**
@@ -23,6 +24,13 @@ import type { Assignment } from "@/domains/assessment";
 type Props = {
   sectionId: string;
   courseId: string;
+  /**
+   * The institution's IANA zone — the clock a deadline is written against.
+   *
+   * A deadline belongs to the school that set it, not to wherever the teacher
+   * is sitting when they type it.
+   */
+  timezone: string;
   initialAssignments: Assignment[];
   enrolledCount: number;
 };
@@ -35,6 +43,7 @@ type Clash = { severity: "high" | "medium"; message: string };
 export default function SectionWorkbench({
   sectionId,
   courseId,
+  timezone,
   initialAssignments,
   enrolledCount,
 }: Props) {
@@ -186,6 +195,7 @@ export default function SectionWorkbench({
       <Composer
         open={composing}
         sectionId={sectionId}
+        timezone={timezone}
         onClose={() => setComposing(false)}
         onCreated={(a) => {
           setAssignments((prev) => [a, ...prev]);
@@ -312,10 +322,11 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 /* ── Composer ──────────────────────────────────────────────────────────── */
 
 function Composer({
-  open, sectionId, onClose, onCreated,
+  open, sectionId, timezone, onClose, onCreated,
 }: {
   open: boolean;
   sectionId: string;
+  timezone: string;
   onClose: () => void;
   onCreated: (a: Assignment) => void;
 }) {
@@ -370,9 +381,12 @@ function Composer({
           kind,
           title,
           instructions,
-          // datetime-local has no zone; the browser's own offset is the right
-          // reading of what the teacher typed.
-          dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+          // A datetime-local input carries no zone, and the browser's own
+          // offset is the wrong thing to assume: the rule belongs to the
+          // school, not to wherever the teacher is sitting. Someone setting
+          // Friday 23:59 from an airport is setting 23:59 at their school.
+          dueAt: dueAt ? wallClockToInstant(dueAt, timezone).toISOString() : null,
+          dueTimezone: dueAt ? timezone : null,
           points: points ? Number(points) : null,
           estimatedMins: estimate ? Number(estimate) : null,
         }),

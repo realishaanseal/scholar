@@ -11,6 +11,7 @@ import QuizRunner from "./QuizRunner";
 import { evaluateSubmission } from "@/domains/assessment/projection";
 import type { StudentAssignment } from "@/domains/learning";
 import type { WorkPlan } from "@/domains/insight/plan";
+import { deadlineSentence, deadlineView } from "@/lib/time";
 
 /**
  * Coursework, from the student's side.
@@ -34,10 +35,13 @@ type AttachedFile = {
 export default function CourseWork({
   assignments: initial,
   plans = [],
+  timezone = "UTC",
 }: {
   assignments: StudentAssignment[];
   /** Scholar's view of the same work: how long, and how late it can be left. */
   plans?: WorkPlan[];
+  /** The institution's zone — the clock these deadlines were written against. */
+  timezone?: string;
 }) {
   const [assignments, setAssignments] = useState(initial);
   const planFor = new Map(plans.map((p) => [p.assignmentId, p]));
@@ -61,6 +65,7 @@ export default function CourseWork({
           <AssignmentCard
             assignment={a}
             plan={planFor.get(a.id)}
+            timezone={timezone}
             onSubmitted={(next) =>
               setAssignments((prev) => prev.map((x) => (x.id === next.id ? next : x)))
             }
@@ -74,10 +79,12 @@ export default function CourseWork({
 function AssignmentCard({
   assignment,
   plan,
+  timezone,
   onSubmitted,
 }: {
   assignment: StudentAssignment;
   plan?: WorkPlan;
+  timezone: string;
   onSubmitted: (a: StudentAssignment) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -207,6 +214,8 @@ function AssignmentCard({
               {/* What a course cannot tell you on its own. Shown only while
                   the work is still outstanding: once it is handed in, how long
                   it was going to take stopped being useful advice. */}
+              {assignment.dueAt && <DeadlineLine iso={assignment.dueAt} timezone={timezone} />}
+
               {plan && !handedIn && <PlanLine plan={plan} />}
 
               {assignment.instructions ? (
@@ -359,6 +368,41 @@ function AssignmentCard({
  * entirely, and both are worse than an estimate they can argue with — which
  * is why the reason is written out rather than hidden behind a tooltip.
  */
+/**
+ * The deadline, said the way both people involved would say it.
+ *
+ * Only rendered when the reader's clock disagrees with the school's — which
+ * is almost never, and exactly the case where getting it wrong costs someone
+ * a late mark they did not earn. The reader's own time leads because that is
+ * what they plan against; the school's follows because that is what they are
+ * held to.
+ *
+ * The reader's zone comes from the browser rather than from their saved
+ * profile: it is always right, including for the student who is abroad this
+ * week and has not told anyone.
+ */
+function DeadlineLine({ iso, timezone }: { iso: string; timezone: string }) {
+  const view = deadlineView(
+    iso,
+    timezone,
+    typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : null
+  );
+
+  if (!view.differs) return null;
+
+  return (
+    <p
+      className={
+        view.crossesDay
+          ? "rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-200"
+          : "rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-slate-400"
+      }
+    >
+      {deadlineSentence(view)}
+    </p>
+  );
+}
+
 function PlanLine({ plan }: { plan: WorkPlan }) {
   const { plan: when } = plan;
 

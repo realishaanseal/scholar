@@ -30,6 +30,7 @@ const EXPECTED: Record<string, string[]> = {
   "0008_quizzes": ["questions", "quiz_questions", "quiz_responses"],
   "0009_ai_assistance": ["grade_drafts"],
   "0010_governance": ["audit_log", "rate_limits"],
+  "0011_time": [],
 };
 
 async function main() {

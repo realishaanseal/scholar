@@ -406,3 +406,61 @@ export async function listPeople(organizationId: string): Promise<MemberRow[]> {
     joinedAt: toISO(r.joined_at),
   }));
 }
+
+/* ── Where the institution is, and when it works ───────────────────────── */
+
+export type OrganizationTime = {
+  timezone: string;
+  /** Day numbers, 0 = Sunday through 6 = Saturday. */
+  restDays: number[];
+};
+
+/**
+ * The institution's clock and working week.
+ *
+ * Defaulted rather than nullable: every deadline needs a zone to be written
+ * against, and "unset" would mean every school that has not visited settings
+ * yet has deadlines with no defined meaning.
+ */
+export async function getOrganizationTime(
+  organizationId: string
+): Promise<OrganizationTime> {
+  const r = await db
+    .prepare(`SELECT timezone, rest_days FROM organizations WHERE id = ?`)
+    .get(organizationId);
+
+  const raw = String((r as any)?.rest_days ?? "0,6");
+  const days = raw
+    .split(",")
+    .map((d) => Number(d.trim()))
+    .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+
+  return {
+    timezone: String((r as any)?.timezone || "UTC"),
+    restDays: days.length ? [...new Set(days)].sort() : [0, 6],
+  };
+}
+
+export async function setOrganizationTime(
+  organizationId: string,
+  input: { timezone: string; restDays: number[] }
+): Promise<OrganizationTime> {
+  // An unknown zone does not fail here — it fails later, inside a formatter,
+  // while rendering somebody's deadline. Rejecting it at the boundary keeps
+  // the error where someone can still fix it.
+  let zone = "UTC";
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: input.timezone });
+    zone = input.timezone;
+  } catch {
+    throw new Error(`"${input.timezone}" is not a timezone Scholar recognises.`);
+  }
+
+  const days = [...new Set(input.restDays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+
+  await db
+    .prepare(`UPDATE organizations SET timezone = ?, rest_days = ? WHERE id = ?`)
+    .run(zone, (days.length ? days : [0, 6]).join(","), organizationId);
+
+  return getOrganizationTime(organizationId);
+}

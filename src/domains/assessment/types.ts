@@ -27,6 +27,8 @@ export type Assignment = {
   status: AssignmentStatus;
   publishedAt: string | null;
   estimatedMins: number | null;
+  /** IANA zone the deadline was written against. Null on rows that predate it. */
+  dueTimezone: string | null;
 };
 
 export type Submission = {
@@ -67,6 +69,15 @@ export const assignmentInputSchema = z
     maxAttempts: z.number().int().positive().max(100).nullable().default(null),
     latePolicy: z.enum(["accept", "penalise", "reject"]).default("accept"),
     estimatedMins: z.number().int().positive().max(10_000).nullable().default(null),
+    /**
+     * The IANA zone the deadline was written against.
+     *
+     * The instant above is what the server compares; this is what the sentence
+     * meant. Keeping both is what lets a student abroad be shown the rule in
+     * the school's clock alongside their own, instead of quietly converting
+     * the rule into a different one.
+     */
+    dueTimezone: z.string().trim().max(64).nullable().default(null),
   })
   // Mirrors the CHECK constraints in migration 0004. Validating here as well
   // means a teacher gets a sentence they can act on rather than a constraint

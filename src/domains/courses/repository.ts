@@ -301,6 +301,15 @@ export type TeachingSection = {
   id: string;
   organizationId: string;
   organizationName: string;
+  /**
+   * The institution's IANA zone.
+   *
+   * A deadline belongs to the school that set it rather than to whoever is
+   * reading it, so the zone travels with the section instead of being looked
+   * up wherever a date happens to be rendered — which is how the two come
+   * apart.
+   */
+  timezone: string;
   courseId: string;
   courseCode: string;
   courseTitle: string;
@@ -324,7 +333,7 @@ export async function listSectionsForTeacher(userId: string): Promise<TeachingSe
   const rows = await db
     .prepare(
       `SELECT cs.id, cs.name, cs.organization_id, cs.course_id,
-              o.name AS organization_name,
+              o.name AS organization_name, o.timezone,
               c.code AS course_code, c.title AS course_title,
               t.name AS term_name,
               st.role,
@@ -350,6 +359,7 @@ export async function listSectionsForTeacher(userId: string): Promise<TeachingSe
     id: r.id,
     organizationId: r.organization_id,
     organizationName: r.organization_name,
+    timezone: r.timezone || "UTC",
     courseId: r.course_id,
     courseCode: r.course_code,
     courseTitle: r.course_title,
@@ -393,6 +403,7 @@ export async function getSectionDetail(sectionId: string): Promise<TeachingSecti
     id: r.id,
     organizationId: r.organization_id,
     organizationName: r.organization_name,
+    timezone: r.timezone || "UTC",
     courseId: r.course_id,
     courseCode: r.course_code,
     courseTitle: r.course_title,

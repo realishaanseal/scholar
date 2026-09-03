@@ -27,14 +27,24 @@ export { BadRequest, NotFound, Unauthenticated } from "./errors";
 export type RouteArgs<P> = { req: Request; params: P; url: URL };
 
 /**
+ * What a scope resolver gets: the request, plus who is asking.
+ *
+ * The requester is here and not on RouteArgs because personalRoute shares
+ * that shape and deliberately has no Actor at all. Resolvers need it because
+ * some subjects are identified by the requester rather than by an id in the
+ * path — an administrator's own institution being the obvious one. Without
+ * it, such a route would have to take the organization id from the URL, which
+ * is the exact pattern this guard exists to prevent.
+ */
+export type ScopeArgs<P> = RouteArgs<P> & { actor: Actor; userId: string };
+
+/**
  * The handler receives exactly the scope its resolver returned, not the wide
  * optional Scope. A resolver that reads an organization_id column returns a
  * required string, so the handler can use it without re-checking something
  * authorization has already guaranteed.
  */
-export type AuthorizedArgs<P, S extends Scope = Scope> = RouteArgs<P> & {
-  actor: Actor;
-  userId: string;
+export type AuthorizedArgs<P, S extends Scope = Scope> = ScopeArgs<P> & {
   scope: S;
 };
 
@@ -44,7 +54,7 @@ type Spec<P, S extends Scope> = {
    * Resolve the scope this request acts in, from the database rather than from
    * the request. Throw NotFound if the resource does not exist.
    */
-  scope: (args: RouteArgs<P>) => S | Promise<S>;
+  scope: (args: ScopeArgs<P>) => S | Promise<S>;
 };
 
 /**
@@ -68,11 +78,11 @@ export function institutionalRoute<
 
       const params = await ctx.params;
       const url = new URL(req.url);
-      const base: RouteArgs<P> = { req, params, url };
 
       // Resolved before the scope so a resolver needing to know who is asking
       // does not have to repeat the query.
       const actor = await resolveActor(userId);
+      const base: ScopeArgs<P> = { req, params, url, actor, userId };
       const scope = await spec.scope(base);
 
       const decision = explain(actor, spec.permission, scope);
@@ -104,7 +114,7 @@ export function institutionalRoute<
         throw new Forbidden(spec.permission, scope, decision.reason);
       }
 
-      return await handler({ ...base, actor, userId, scope });
+      return await handler({ ...base, scope });
     } catch (err) {
       return errorResponse(err);
     }
@@ -170,7 +180,7 @@ export function institutionalRouteAny<
 >(
   spec: {
     permission: Permission;
-    scopes: (args: RouteArgs<P>) => S[] | Promise<S[]>;
+    scopes: (args: ScopeArgs<P>) => S[] | Promise<S[]>;
   },
   handler: (args: AuthorizedArgs<P, S>) => Promise<Response>
 ) {
@@ -181,14 +191,13 @@ export function institutionalRouteAny<
       if (!userId) throw new Unauthenticated();
 
       const params = await ctx.params;
-      const base: RouteArgs<P> = { req, params, url: new URL(req.url) };
-
       const actor = await resolveActor(userId);
+      const base: ScopeArgs<P> = { req, params, url: new URL(req.url), actor, userId };
       const candidates = await spec.scopes(base);
 
       for (const scope of candidates) {
         if (explain(actor, spec.permission, scope).allowed) {
-          return await handler({ ...base, actor, userId, scope });
+          return await handler({ ...base, scope });
         }
       }
 

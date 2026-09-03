@@ -15,7 +15,12 @@ const profile: AvailabilityProfile = {
   weekendMins: 240,
   studyStartHour: 16,
   studyEndHour: 22,
+  restDays: [0, 6],
+  timezone: null,
 };
+
+/** A school week as kept in Cairo, Riyadh, Dubai and Amman. */
+const friSatProfile: AvailabilityProfile = { ...profile, restDays: [5, 6] };
 
 const pace = (over: Partial<SubjectPace> = {}): SubjectPace => ({
   subject: "Physics",
@@ -202,5 +207,67 @@ describe("insight reads the institution and never rewrites it", () => {
     // refuse a publish, which is what keeps this advice rather than policy.
     expect(pure).toMatch(/severity: "high" \| "medium"/);
     expect(pure).not.toMatch(/blocked|forbid|reject/i);
+  });
+});
+
+/* ── The working week is not the same everywhere ───────────────────────── */
+
+import { capacityForDay, isRestDay } from "@/lib/scholar/availability";
+
+describe("rest days are the student's, not Saturday and Sunday", () => {
+  // September 2026: 10th is a Thursday, 11th Friday, 12th Saturday,
+  // 13th Sunday, 14th Monday.
+  const thu = new Date(2026, 8, 10);
+  const fri = new Date(2026, 8, 11);
+  const sat = new Date(2026, 8, 12);
+  const sun = new Date(2026, 8, 13);
+
+  it("treats Saturday and Sunday as rest by default", () => {
+    expect(isRestDay(sat, profile)).toBe(true);
+    expect(isRestDay(sun, profile)).toBe(true);
+    expect(isRestDay(thu, profile)).toBe(false);
+  });
+
+  it("treats Friday and Saturday as rest where that is the weekend", () => {
+    // The case that was silently wrong until now: Scholar was allocating a
+    // student in Cairo a full rest day of study on Sunday, a school day, and
+    // demanding a working day's output from them on Friday.
+    expect(isRestDay(fri, friSatProfile)).toBe(true);
+    expect(isRestDay(sat, friSatProfile)).toBe(true);
+    expect(isRestDay(sun, friSatProfile)).toBe(false);
+  });
+
+  it("gives the larger capacity to whichever days are actually free", () => {
+    expect(capacityForDay(sun, profile)).toBe(240);
+    expect(capacityForDay(sun, friSatProfile)).toBe(120);
+    expect(capacityForDay(fri, friSatProfile)).toBe(240);
+  });
+
+  it("falls back rather than leaving a student with no days off", () => {
+    // An empty list would otherwise mean every day is a working day, which
+    // silently halves capacity across a whole term.
+    const empty = { ...profile, restDays: [] };
+    expect(isRestDay(sat, empty)).toBe(true);
+  });
+
+  it("changes the planner's answer, not just a boolean", () => {
+    // The point of all of this. A Friday deadline with work that needs a full
+    // rest day: possible for a Sat-Sun student who has Friday evening plus the
+    // weekend behind them, and a different answer entirely for a Fri-Sat one.
+    const friNight = new Date(2026, 8, 11, 22, 0, 0);
+    const wed = new Date(2026, 8, 9, 16, 0, 0);
+
+    const western = planStart(friNight, 300, profile, wed);
+    const gulf = planStart(friNight, 300, friSatProfile, wed);
+
+    // Same deadline, same work, different weeks — so the advice must differ.
+    expect(JSON.stringify(western)).not.toBe(JSON.stringify(gulf));
+  });
+
+  it("supports a single rest day", () => {
+    // Sunday-only is common in parts of South Asia.
+    const sunOnly = { ...profile, restDays: [0] };
+    expect(isRestDay(sat, sunOnly)).toBe(false);
+    expect(isRestDay(sun, sunOnly)).toBe(true);
   });
 });

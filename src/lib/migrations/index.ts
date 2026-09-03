@@ -10,6 +10,7 @@ import { sql as gradebook } from "./0007_gradebook";
 import { sql as quizzes } from "./0008_quizzes";
 import { sql as aiAssistance } from "./0009_ai_assistance";
 import { sql as governance } from "./0010_governance";
+import { sql as time } from "./0011_time";
 
 /**
  * Versioned schema migrations.
@@ -55,6 +56,7 @@ export const MIGRATIONS: Migration[] = [
   { id: "0008_quizzes", sql: quizzes },
   { id: "0009_ai_assistance", sql: aiAssistance },
   { id: "0010_governance", sql: governance },
+  { id: "0011_time", sql: time },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */
