@@ -142,3 +142,58 @@ describe("the catalogue does not describe features that were removed", () => {
     }
   });
 });
+
+/* ── Keys the code actually asks for ───────────────────────────────────── */
+
+describe("every key the code requests exists", () => {
+  /** Files that call a translator, with the namespace each one bound. */
+  function callers(): Array<{ path: string; namespace: string; keys: string[] }> {
+    const out: Array<{ path: string; namespace: string; keys: string[] }> = [];
+
+    function walk(dir: string) {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) { walk(p); continue; }
+        if (!/\.tsx?$/.test(e.name)) continue;
+
+        const src = readFileSync(p, "utf8");
+        const bind = src.match(/(?:useTranslations|getTranslations)\(\s*"([\w-]+)"\s*\)/);
+        if (!bind) continue;
+
+        // t("key") and t("key", { ... }). A computed key — t(item.labelKey) —
+        // cannot be checked statically and is skipped rather than guessed at.
+        const keys = [...src.matchAll(/\bt\(\s*"([\w.-]+)"/g)].map((m) => m[1]);
+        if (keys.length) {
+          // split/join rather than a regex: a lone backslash in a pattern is
+          // one shell heredoc away from being eaten, and it was.
+          const rel = p.replace(process.cwd(), "").split("\\").join("/");
+          out.push({ path: rel, namespace: bind[1], keys });
+        }
+      }
+    }
+    walk(join(process.cwd(), "src"));
+    return out;
+  }
+
+  it("finds no t() call without a matching entry in en.json", () => {
+    // This is the failure that reaches production: next-intl throws at render
+    // for a missing key, so a typo in a rarely-visited screen is an error
+    // page rather than an English fallback. Catching it here is the whole
+    // reason the catalogue and the code can be edited separately.
+    const missing: string[] = [];
+    for (const c of callers()) {
+      for (const key of c.keys) {
+        if (!enKeys.has(`${c.namespace}.${key}`)) {
+          missing.push(`${c.path} → ${c.namespace}.${key}`);
+        }
+      }
+    }
+    expect(missing, `missing keys:\n  ${missing.join("\n  ")}`).toEqual([]);
+  });
+
+  it("is wired to more than one namespace, so this test is doing something", () => {
+    // A guard against the matcher silently finding nothing and passing.
+    const namespaces = new Set(callers().map((c) => c.namespace));
+    expect(namespaces.size).toBeGreaterThan(1);
+  });
+});
