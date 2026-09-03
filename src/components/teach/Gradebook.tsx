@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import type { Gradebook as GradebookData } from "@/domains/grading";
 import { compareGrades, displayGrade, higherIsBetter, scheme } from "@/domains/grading/schemes";
@@ -24,13 +25,14 @@ export default function Gradebook({
   /** The institution's grading convention. */
   schemeId?: string;
 }) {
+  const t = useTranslations("teach");
   const s = scheme(schemeId);
   const [sortByGrade, setSortByGrade] = useState(false);
 
   if (data.rows.length === 0) {
     return (
       <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
-        <p className="text-[14px] font-medium text-slate-200">Nobody is enrolled</p>
+        <p className="text-[14px] font-medium text-slate-200">{t("gradebookEmptyEnrolled")}</p>
         <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
           Marks appear here once students are added to this class and work has been
           returned to them.
@@ -42,7 +44,7 @@ export default function Gradebook({
   if (data.columns.length === 0) {
     return (
       <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
-        <p className="text-[14px] font-medium text-slate-200">No published work yet</p>
+        <p className="text-[14px] font-medium text-slate-200">{t("gradebookEmptyWork")}</p>
         <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
           Publish an assignment and this becomes a grid of who has done what.
         </p>
@@ -64,23 +66,21 @@ export default function Gradebook({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12.5px] text-slate-500">
-          {data.rows.length} student{data.rows.length === 1 ? "" : "s"} ·{" "}
-          {data.columns.length} published{" "}
-          {data.columns.length === 1 ? "assignment" : "assignments"}
+          {t("gradebookStudents", { count: data.rows.length })} ·{" "}
+          {t("gradebookPublished", { count: data.columns.length })}
         </p>
         <button
           type="button"
           onClick={() => setSortByGrade((v) => !v)}
           className="btn btn-ghost px-3 py-1.5 text-[12.5px]"
         >
-          {sortByGrade ? "Sort by name" : "Sort by grade"}
+          {sortByGrade ? t("gradebookSortByName") : t("gradebookSortByGrade")}
         </button>
       </div>
 
       {incomplete && data.categories.length > 0 && (
         <p className="mb-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] text-amber-200">
-          Category weights do not add up to 100%. Grades are worked out over the
-          weights that exist, so they will change when the rest are set.
+          {t("gradebookWeightsIncomplete")}
         </p>
       )}
 
@@ -90,7 +90,7 @@ export default function Gradebook({
           <thead>
             <tr className="border-b border-white/[0.07]">
               <th className="sticky start-0 z-10 bg-ink-985 px-3.5 py-2.5 text-start font-medium text-slate-400">
-                Student
+                {t("gradebookColumnStudent")}
               </th>
               {data.columns.map((c) => (
                 <th
@@ -107,7 +107,7 @@ export default function Gradebook({
                 </th>
               ))}
               <th className="sticky end-0 z-10 bg-ink-985 px-3.5 py-2.5 text-end font-medium text-slate-400">
-                Grade
+                {t("gradebookColumnGrade")}
               </th>
             </tr>
           </thead>
@@ -157,9 +157,7 @@ export default function Gradebook({
       )}
 
       <p className="mt-2.5 text-[11.5px] leading-relaxed text-slate-600">
-        Unmarked work is left out of the grade rather than counted as zero — a
-        student marked on half of what they have done should not read as 50%. A
-        dash means nothing handed in; a dot means handed in and waiting on you.
+        {t("gradebookUnmarkedNote")}
       </p>
     </div>
   );

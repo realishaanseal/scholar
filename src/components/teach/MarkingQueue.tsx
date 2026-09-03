@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { EASE_OUT } from "@/components/motion";
 import { cn } from "@/lib/cn";
 import type { PendingSubmission } from "@/domains/assessment";
@@ -29,6 +30,7 @@ type Draft = {
  * becomes an hour instead of ten minutes.
  */
 export default function MarkingQueue({ initial }: { initial: PendingSubmission[] }) {
+  const t = useTranslations("teach");
   const [queue, setQueue] = useState(initial);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +55,7 @@ export default function MarkingQueue({ initial }: { initial: PendingSubmission[]
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "Could not save that mark.");
+      setError(data.error ?? t("markSaveError"));
       return false;
     }
     // Leaves the queue as soon as it is marked, so what remains is what is
@@ -65,7 +67,7 @@ export default function MarkingQueue({ initial }: { initial: PendingSubmission[]
   if (queue.length === 0) {
     return (
       <div className="card grid place-items-center rounded-xl px-6 py-16 text-center">
-        <p className="text-[14px] font-medium text-slate-200">Nothing waiting</p>
+        <p className="text-[14px] font-medium text-slate-200">{t("markingEmptyTitle")}</p>
         <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
           Every submission in your classes has been marked and returned.
         </p>
@@ -120,6 +122,7 @@ function MarkingCard({
     draftId: string | null
   ) => Promise<boolean>;
 }) {
+  const t = useTranslations("teach");
   const [open, setOpen] = useState(false);
   const [score, setScore] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -159,13 +162,13 @@ function MarkingCard({
           <p className="mt-0.5 truncate text-[11.5px] text-slate-500">
             {item.courseCode} · {item.sectionName}
             {item.submittedAt && ` · ${relative(item.submittedAt)}`}
-            {item.attempt > 1 && ` · attempt ${item.attempt}`}
+            {item.attempt > 1 && ` · ${t("attemptChip", { n: item.attempt })}`}
           </p>
         </div>
 
         {item.isLate && (
           <span className="shrink-0 rounded-full bg-amber-400/[0.12] px-2 py-0.5 text-[11px] text-amber-300">
-            Late
+            {t("lateChip")}
           </span>
         )}
         {item.points !== null && (
@@ -197,7 +200,7 @@ function MarkingCard({
                   {item.body}
                 </p>
               ) : (
-                <p className="text-[12.5px] italic text-slate-500">No written answer.</p>
+                <p className="text-[12.5px] italic text-slate-500">{t("noWrittenAnswer")}</p>
               )}
 
               {item.url && (
@@ -219,7 +222,7 @@ function MarkingCard({
                 <div className="rounded-lg border border-vx-400/25 bg-vx-400/[0.06] px-3.5 py-3">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="text-[11px] font-medium uppercase tracking-wide text-vx-300">
-                      Suggested by {draft.model}
+                      {t("suggestedBy", { model: draft.model })}
                     </span>
                     {draft.confidence !== null && (
                       <span className="text-[11px] text-slate-500">
@@ -227,13 +230,13 @@ function MarkingCard({
                       </span>
                     )}
                     <span className="text-[11px] text-slate-500">
-                      · not recorded until you return it
+                      · {t("suggestedNotRecorded")}
                     </span>
                   </div>
 
                   <p className="text-[13px] text-slate-200">
                     {draft.suggestedScore === null ? (
-                      <span className="text-slate-400">No score suggested.</span>
+                      <span className="text-slate-400">{t("suggestedNoScore")}</span>
                     ) : (
                       <span className="font-semibold tabular-nums">
                         {draft.suggestedScore}
@@ -251,7 +254,7 @@ function MarkingCard({
                   {draft.rationale && (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-[11.5px] text-slate-500 hover:text-slate-400">
-                        Why it says that
+                        {t("suggestedWhy")}
                       </summary>
                       {/* Written to the teacher about the student. Never sent
                           on, and never copied into feedback automatically. */}
@@ -272,14 +275,14 @@ function MarkingCard({
                       }}
                       className="btn btn-ghost px-2.5 py-1 text-[12px]"
                     >
-                      Use this
+                      {t("suggestedUse")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDraft(null)}
                       className="btn btn-ghost px-2.5 py-1 text-[12px] text-slate-500"
                     >
-                      Dismiss
+                      {t("suggestedDismiss")}
                     </button>
                   </div>
                 </div>
@@ -291,7 +294,7 @@ function MarkingCard({
                     disabled={drafting}
                     className="btn btn-ghost px-3 py-1.5 text-[12.5px]"
                   >
-                    {drafting ? "Reading the work…" : "Suggest a mark"}
+                    {drafting ? t("suggestBusy") : t("suggestMark")}
                   </button>
                   {draftError && (
                     <span className="text-[12px] text-rose-300">{draftError}</span>
@@ -302,7 +305,7 @@ function MarkingCard({
               <div className="flex flex-wrap items-end gap-3">
                 <label className="block">
                   <span className="mb-1 block text-[11.5px] text-slate-400">
-                    Mark {item.points !== null && `(out of ${item.points})`}
+                    {item.points !== null ? t("markOutOf", { points: item.points }) : t("markLabel")}
                   </span>
                   <input
                     type="number"
@@ -316,12 +319,12 @@ function MarkingCard({
                   />
                 </label>
                 <label className="block min-w-[200px] flex-1">
-                  <span className="mb-1 block text-[11.5px] text-slate-400">Feedback</span>
+                  <span className="mb-1 block text-[11.5px] text-slate-400">{t("feedbackLabel")}</span>
                   <input
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                     className="input w-full"
-                    placeholder="Optional"
+                    placeholder={t("feedbackPlaceholder")}
                   />
                 </label>
                 <button
@@ -334,14 +337,14 @@ function MarkingCard({
                   }}
                   className="btn-primary px-3.5 py-2 text-[13px]"
                 >
-                  {saving ? "Saving…" : "Return"}
+                  {saving ? t("returnBusy") : t("returnButton")}
                 </button>
               </div>
 
               {/* A mark can be withheld deliberately; formative work often
                   wants comments and no number. */}
               <p className="text-[11.5px] text-slate-500">
-                Leave the mark empty to return feedback without a score.
+                {t("withholdMarkHint")}
               </p>
             </div>
           </motion.div>
