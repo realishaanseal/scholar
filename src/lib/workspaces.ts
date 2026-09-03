@@ -3,7 +3,7 @@
  *
  * Scholar started as one application with one navigation bar, which was right
  * when everyone using it was a student. It stopped being right the moment a
- * teacher signed in and was offered Homework, Import and Focus — features
+ * teacher signed in and was offered Homework and Focus — features
  * about doing coursework, shown to the person who sets it.
  *
  * So the shell now has workspaces. Each is a coherent job:
@@ -38,8 +38,8 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
     label: "My work",
     home: "/dashboard",
     owns: [
-      "/dashboard", "/learn", "/timetable", "/import",
-      "/calendar", "/insights", "/groups", "/extension",
+      "/dashboard", "/learn", "/timetable",
+      "/insights", "/groups",
     ],
   },
   teaching: {

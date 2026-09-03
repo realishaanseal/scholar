@@ -56,11 +56,11 @@ export const authConfig = {
         "/dashboard",
         "/settings",
         "/timetable",
-        "/import",
-        "/calendar",
-        "/extension",
         "/insights",
         "/groups",
+        "/learn",
+        "/teach",
+        "/admin",
       ];
       const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
       if (isProtected) return Boolean(auth?.user);

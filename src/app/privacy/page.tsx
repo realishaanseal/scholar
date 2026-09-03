@@ -50,9 +50,9 @@ export default function PrivacyPage() {
                 lists, or other social data.
               </li>
               <li>
-                <span className="text-slate-200">Homework data:</span> the tasks, deadlines, subjects, and
-                notes you add — typed, spoken, imported from a Canvas/LMS calendar feed, or synced from
-                Google Calendar if you connect it.
+                <span className="text-slate-200">Coursework data:</span> the tasks, deadlines, subjects,
+                and notes you add — typed or spoken — together with any work set by an institution you
+                belong to, and what you hand in for it.
               </li>
               <li>
                 <span className="text-slate-200">Usage data:</span> basic technical logs (timestamps,
@@ -64,10 +64,10 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-semibold text-white">How we use it</h2>
             <p className="mt-2.5">
-              Solely to run Scholar for you: showing your tasks, sending reminders, generating AI
-              summaries of your own workload, and — if you turn it on — keeping your tasks in sync with
-              Google Calendar. We do not sell your data, share it with advertisers, or use it to train
-              third-party AI models beyond the request needed to answer your own question inside the app.
+              Solely to run Scholar for you: showing your tasks, sending reminders, and generating AI
+              summaries of your own workload. We do not sell your data, share it with advertisers, or
+              use it to train third-party AI models beyond the request needed to answer your own
+              question inside the app.
             </p>
           </section>
 
@@ -91,11 +91,6 @@ export default function PrivacyPage() {
               <li>
                 <span className="text-slate-200">Delete individual tasks</span> any time from your
                 dashboard — this removes them immediately and permanently.
-              </li>
-              <li>
-                <span className="text-slate-200">Disconnect Google Calendar sync</span> from{" "}
-                <span className="text-slate-200">Settings → Calendar</span>, which also revokes
-                Scholar&rsquo;s access token with Google.
               </li>
               <li>
                 <span className="text-slate-200">Delete your whole account</span> by emailing{" "}

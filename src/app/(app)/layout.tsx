@@ -7,7 +7,7 @@ import { isEnrolledAnywhere } from "@/domains/learning";
 export const dynamic = "force-dynamic";
 
 /**
- * Shared shell for every authenticated page — Homework, Timetable, Import,
+ * Shared shell for every authenticated page — Homework, Timetable,
  * Calendar, Extension, Insights, Groups, and Settings all render inside this
  * one layout, so the auth check and the nav rail live in exactly one place
  * rather than being copy-pasted per page (as the old per-page headers were).

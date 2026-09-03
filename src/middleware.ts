@@ -9,10 +9,10 @@ export const config = {
     "/dashboard/:path*",
     "/settings/:path*",
     "/timetable/:path*",
-    "/import/:path*",
-    "/calendar/:path*",
-    "/extension/:path*",
     "/insights/:path*",
     "/groups/:path*",
+    "/learn/:path*",
+    "/teach/:path*",
+    "/admin/:path*",
   ],
 };

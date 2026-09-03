@@ -25,14 +25,9 @@ import {
 import { createGrant, acceptGrant, requireScope } from "../src/lib/sharing/store";
 import { workloadSummaryFor } from "../src/lib/sharing/views";
 import { getProfile, exportEverything, deleteAccount, getSignInMethods, unlinkProviderAccount } from "../src/lib/varaxis/identity";
-import { ensureCaptureToken, userIdForToken, rotateCaptureToken } from "../src/lib/captureToken";
 import { getTheme, setTheme } from "../src/lib/scholar/themeStore";
 import { sanitizeAccent, encodeAccent, decodeAccent, DEFAULT_THEME } from "../src/lib/scholar/theme";
 import { accentFromHex, accentToHex } from "../src/lib/scholar/themeClient";
-import {
-  getConnection, saveConnection, disconnect as disconnectCalendar,
-  upsertLinkPushed, getLinkByHomeworkId, getLinkByEventId, listLinkedHomeworkIds,
-} from "../src/lib/calendar/googleStore";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
@@ -161,16 +156,6 @@ async function main() {
     assert.ok(dismissed.has("sig-1"));
     const cleared = await clearDismissals(userB.id);
     assert.equal(cleared, 1);
-  });
-
-  await test("capture token round-trip + constant-time lookup", async () => {
-    const token = await ensureCaptureToken(userA.id);
-    assert.ok(token.startsWith("vxs_"));
-    const resolved = await userIdForToken(token);
-    assert.equal(resolved, userA.id);
-    const rotated = await rotateCaptureToken(userA.id);
-    assert.notEqual(rotated, token);
-    assert.equal(await userIdForToken(token), null, "old token must stop working after rotation");
   });
 
   await test("buildSnapshot assembles without throwing", async () => {
@@ -372,46 +357,6 @@ async function main() {
       assert.ok(Math.abs(back.s - accent.s) <= 2, `saturation drifted too far: ${back.s} vs ${accent.s}`);
       assert.ok(Math.abs(back.l - accent.l) <= 2, `lightness drifted too far: ${back.l} vs ${accent.l}`);
     }
-  });
-
-  console.log("\nGoogle Calendar connection + link store — Tier 8");
-
-  await test("calendar connection round-trips encrypted tokens and reports connected", async () => {
-    assert.equal(await getConnection(userA.id), null);
-
-    await saveConnection(userA.id, {
-      accessToken: "fake-access-token", refreshToken: "fake-refresh-token",
-      expiresAt: new Date(Date.now() + 3600_000).toISOString(), scope: "https://www.googleapis.com/auth/calendar.events",
-    });
-
-    const conn = await getConnection(userA.id);
-    assert.ok(conn, "connection should now exist");
-    assert.equal(conn!.calendarId, "primary");
-  });
-
-  await test("calendar_links enforces one link per (user, homework) and per (user, event)", async () => {
-    const hw = await createHomework({
-      userId: userA.id, title: "Linked to Google", details: "", subject: "General", dueAt: null,
-      priority: "normal", estimateMins: null, rawInput: "", source: "text", aiConfidence: null, aiNotes: "",
-    });
-
-    await upsertLinkPushed(userA.id, hw.id, "google-event-abc");
-    const byHomework = await getLinkByHomeworkId(userA.id, hw.id);
-    const byEvent = await getLinkByEventId(userA.id, "google-event-abc");
-    assert.equal(byHomework?.externalEventId, "google-event-abc");
-    assert.equal(byEvent?.homeworkId, hw.id);
-
-    // Re-pushing the same task with a new event id should update the existing
-    // link row (ON CONFLICT), not create a second one.
-    await upsertLinkPushed(userA.id, hw.id, "google-event-xyz");
-    const linked = await listLinkedHomeworkIds(userA.id);
-    assert.ok(linked.has(hw.id));
-    assert.equal((await getLinkByEventId(userA.id, "google-event-abc")), null, "stale event id must no longer resolve");
-  });
-
-  await test("disconnect clears both the connection and its links", async () => {
-    await disconnectCalendar(userA.id);
-    assert.equal(await getConnection(userA.id), null);
   });
 
   console.log(`\n${passed} passed`);

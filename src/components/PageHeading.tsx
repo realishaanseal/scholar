@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { EASE_OUT } from "@/components/motion";
 
 /**
- * Shared page title block for the top-level app pages (Timetable, Import,
+ * Shared page title block for the top-level app pages (Timetable,
  * Calendar, Insights, Groups, Settings, Extension). The gradient heading
  * clips in and the subtitle follows a beat later, on top of the route
  * cross-fade the AppShell already runs.

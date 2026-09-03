@@ -23,10 +23,9 @@ type NavItem = {
 /**
  * Navigation, per workspace.
  *
- * These used to be one flat list, which meant a teacher signing in was offered
- * Homework, Import and Focus — features for doing coursework, shown to the
- * person who sets it. Each workspace now carries only the destinations that
- * belong to its job, so nothing in view is someone else's tool.
+ * Each workspace carries only the destinations that belong to its job, so
+ * nothing in view is someone else's tool. Scholar is now a native LMS with
+ * no import from external systems.
  */
 const PERSONAL_NAV: NavItem[] = [
   {
@@ -38,21 +37,6 @@ const PERSONAL_NAV: NavItem[] = [
     href: "/timetable",
     label: "Timetable",
     icon: "M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
-  },
-  {
-    href: "/import",
-    label: "Import",
-    icon: "M12 3v12M7 10l5 5 5-5M5 21h14",
-  },
-  {
-    href: "/calendar",
-    label: "Calendar",
-    icon: "M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM9 14h2v2H9z",
-  },
-  {
-    href: "/extension",
-    label: "Extension",
-    icon: "M14 7h4a2 2 0 0 1 2 2v4M10 17H6a2 2 0 0 1-2-2v-4M7 4h4v4H7zM13 16h4v4h-4z",
   },
   {
     href: "/insights",
