@@ -3,6 +3,7 @@ import { institutionalRouteAny, NotFound } from "@/lib/api/guard";
 import { coursesReferencingFile, getFile, scopeOfFile } from "@/domains/library";
 import { canRenderInline, getBytes } from "@/lib/storage";
 import type { Scope } from "@/lib/authz";
+import { audit } from "@/lib/governance";
 
 export const runtime = "nodejs";
 
@@ -42,12 +43,25 @@ export const GET = institutionalRouteAny<Params, Scope>(
   // the courses they are enrolled in, which is exactly the set of people who
   // should be able to open a set text.
   { permission: "assignment:view", scopes: scopesForFile },
-  async ({ params }) => {
+  async ({ params, userId }) => {
     const file = await getFile(params.fileId);
     if (!file) throw new NotFound();
 
     const payload = await getBytes(file);
     if (!payload) throw new NotFound();
+
+    // Ordinary reading is not logged — a row per page view would be a
+    // surveillance system built accidentally out of a compliance
+    // requirement. This one is, because "who opened this student's work" is a
+    // question a safeguarding lead can be entitled to an answer to.
+    await audit({
+      organizationId: file.organizationId,
+      actorUserId: userId,
+      action: "file:download",
+      subjectType: "file",
+      subjectId: params.fileId,
+      detail: { filename: file.filename },
+    });
 
     // Rendered in the browser only for types that cannot carry a script.
     // Everything else downloads, which is a mild inconvenience rather than

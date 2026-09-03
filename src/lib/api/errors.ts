@@ -39,6 +39,24 @@ export class BadRequest extends Error {
  * which ids are real to anyone willing to try a few. The real reason is logged
  * server-side, where it is useful and not disclosed.
  */
+/**
+ * Thrown when a caller has spent their allowance.
+ *
+ * Here rather than beside the limiter because errorResponse has to know about
+ * it, and errors.ts importing the database to learn about one class would put
+ * a query engine behind every error path in the application.
+ */
+export class RateLimited extends Error {
+  constructor(readonly resetIn: number) {
+    super(
+      resetIn > 60
+        ? `Too many requests. Try again in about ${Math.ceil(resetIn / 60)} minutes.`
+        : `Too many requests. Try again in ${Math.max(1, resetIn)} seconds.`
+    );
+    this.name = "RateLimited";
+  }
+}
+
 export function errorResponse(err: unknown): Response {
   if (err instanceof Unauthenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,6 +66,14 @@ export function errorResponse(err: unknown): Response {
   }
   if (err instanceof BadRequest) {
     return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+  if (err instanceof RateLimited) {
+    // Retry-After is the header a well-behaved client already knows to read,
+    // so the limit is legible to something automated as well as to a person.
+    return NextResponse.json(
+      { error: err.message },
+      { status: 429, headers: { "retry-after": String(Math.max(1, err.resetIn)) } }
+    );
   }
 
   const message = err instanceof Error ? err.message : String(err);

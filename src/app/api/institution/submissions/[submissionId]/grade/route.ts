@@ -5,6 +5,7 @@ import {
   scopeOfSubmission, scoreWithinBounds, type ResourceScope,
 } from "@/domains/assessment";
 import { latestDraft, resolveDraft } from "@/domains/grading/assist";
+import { audit } from "@/lib/governance";
 
 export const runtime = "nodejs";
 
@@ -38,7 +39,7 @@ async function submissionScope({ params }: { params: Params }) {
  */
 export const POST = institutionalRoute<Params, ResourceScope & { studentUserId: string }>(
   { permission: "assignment:grade", scope: submissionScope },
-  async ({ req, params, userId }) => {
+  async ({ req, params, userId, scope }) => {
     const input = await readBody(req, gradeSchema);
 
     const submission = await getSubmission(params.submissionId);
@@ -78,6 +79,17 @@ export const POST = institutionalRoute<Params, ResourceScope & { studentUserId: 
         input.score
       );
     }
+
+    await audit({
+      organizationId: scope.organizationId,
+      actorUserId: userId,
+      action: "submission:grade",
+      subjectType: "submission",
+      subjectId: params.submissionId,
+      // The score, never the feedback: an audit entry describes an action and
+      // is not a second copy of what was written about a student.
+      detail: { score: input.score, aiAssisted: Boolean(usedDraft) },
+    });
 
     return NextResponse.json({ submission: graded });
   }

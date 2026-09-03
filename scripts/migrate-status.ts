@@ -29,6 +29,7 @@ const EXPECTED: Record<string, string[]> = {
   "0007_gradebook": ["grade_categories", "grade_events"],
   "0008_quizzes": ["questions", "quiz_questions", "quiz_responses"],
   "0009_ai_assistance": ["grade_drafts"],
+  "0010_governance": ["audit_log", "rate_limits"],
 };
 
 async function main() {

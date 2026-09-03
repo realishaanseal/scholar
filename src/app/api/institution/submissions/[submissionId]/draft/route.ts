@@ -3,6 +3,7 @@ import { institutionalRoute, NotFound } from "@/lib/api/guard";
 import { getSubmission, scopeOfSubmission, type ResourceScope } from "@/domains/assessment";
 import { draftMark, latestDraft } from "@/domains/grading/assist";
 import { resolveAIConfig } from "@/lib/settings";
+import { enforceRate } from "@/lib/governance";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,11 @@ export const POST = institutionalRoute<Params, ResourceScope & { studentUserId: 
   async ({ params, userId, scope }) => {
     const submission = await getSubmission(params.submissionId);
     if (!submission) throw new NotFound();
+
+    // Every one of these is a paid call to a model. Limited per teacher
+    // rather than per institution, so one person working through a backlog
+    // cannot exhaust the allowance of everyone else in the school.
+    await enforceRate("ai-draft", userId, 60, 3600);
 
     const draft = await draftMark({
       organizationId: scope.organizationId,

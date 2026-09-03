@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { auth } from "@/lib/auth";
 import { explain, Forbidden, type Actor, type Permission, type Scope } from "@/lib/authz";
 import { resolveActor } from "@/domains/identity";
+import { audit } from "@/lib/governance";
 import { BadRequest, errorResponse, NotFound, Unauthenticated } from "./errors";
 
 export { BadRequest, NotFound, Unauthenticated } from "./errors";
@@ -88,6 +89,18 @@ export function institutionalRoute<
             reason: decision.reason,
           })
         );
+        // Durable as well as logged. A refusal is the single most useful thing
+        // in an audit trail: a console line is gone by the time anyone asks
+        // whether someone spent an afternoon guessing at other people's work.
+        if (scope.organizationId) {
+          await audit({
+            organizationId: scope.organizationId,
+            actorUserId: userId,
+            action: "authz:denied",
+            subjectType: spec.permission,
+            detail: { reason: decision.reason },
+          });
+        }
         throw new Forbidden(spec.permission, scope, decision.reason);
       }
 
