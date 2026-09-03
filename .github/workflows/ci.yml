@@ -1,0 +1,58 @@
+# Every check this repository has, run on every push.
+#
+# The Phase 0 audit listed "no automated tests" and "no CI" as blockers. The
+# tests arrived; this did not, which left 467 of them running only when
+# somebody remembered. A test that is not enforced is a comment with a longer
+# runtime — and several of the ones here exist specifically to catch changes
+# that look harmless: an AI draft path that could write a grade, a locale
+# offered without a catalogue, a migration that drops a column in the same
+# release that created its replacement.
+#
+# No database. The unit suite is deliberately free of one, so this runs on a
+# fork with no secrets, and a contributor gets the same answer CI does.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push supersedes a running check on the same branch: nobody needs the
+# result for a commit that has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        # Placeholders, not secrets. Nothing here connects: every page that
+        # reads the database is force-dynamic, so the build never queries. The
+        # values exist because the modules refuse to load without them, which
+        # is the correct behaviour at runtime and merely inconvenient here.
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-placeholder-not-a-real-secret-000000000000
+          NEXTAUTH_URL: http://localhost:3000
+        run: npm run build
