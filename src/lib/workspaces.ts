@@ -25,7 +25,8 @@ export type WorkspaceId = "personal" | "teaching" | "admin";
 
 export type WorkspaceInfo = {
   id: WorkspaceId;
-  label: string;
+  /** Key into the `shell` namespace. */
+  labelKey: string;
   /** Where switching into this workspace lands. */
   home: string;
   /** Route prefixes that belong to it, used to infer the active workspace. */
@@ -35,7 +36,7 @@ export type WorkspaceInfo = {
 export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
   personal: {
     id: "personal",
-    label: "My work",
+    labelKey: "workspacePersonal",
     home: "/dashboard",
     owns: [
       "/dashboard", "/learn", "/timetable",
@@ -44,13 +45,13 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
   },
   teaching: {
     id: "teaching",
-    label: "Teaching",
+    labelKey: "workspaceTeaching",
     home: "/teach",
     owns: ["/teach"],
   },
   admin: {
     id: "admin",
-    label: "Administration",
+    labelKey: "workspaceAdmin",
     home: "/admin",
     owns: ["/admin"],
   },

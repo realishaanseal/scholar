@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/components/motion";
 import { cn } from "@/lib/cn";
+import { useTranslations } from "next-intl";
 import { WORKSPACES, type WorkspaceId } from "@/lib/workspaces";
 
 /**
@@ -26,6 +27,7 @@ export default function WorkspaceSwitcher({
   current: WorkspaceId;
   available: WorkspaceId[];
 }) {
+  const t = useTranslations("shell");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -55,7 +57,7 @@ export default function WorkspaceSwitcher({
         aria-expanded={open}
         className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12.5px] text-slate-300 transition-colors hover:bg-white/[0.06]"
       >
-        <span className="max-w-[110px] truncate">{WORKSPACES[current].label}</span>
+        <span className="max-w-[110px] truncate">{t(WORKSPACES[current].labelKey)}</span>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
             d="M6 9l6 6 6-6"
@@ -90,7 +92,7 @@ export default function WorkspaceSwitcher({
                     : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
                 )}
               >
-                {WORKSPACES[id].label}
+                {t(WORKSPACES[id].labelKey)}
                 {id === current && (
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
                     <path

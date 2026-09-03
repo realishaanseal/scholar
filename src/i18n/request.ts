@@ -1,35 +1,38 @@
 import { getRequestConfig } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { getLanguages, LANGUAGES } from "@/lib/scholar/language";
+import { getLanguages } from "@/lib/scholar/language";
+import { DEFAULT_LOCALE, resolveLocale } from "@/lib/i18n/locales";
 
 /**
- * Scholar has no URL-based locale routing (no "/en/...", "/hi/..." prefixes) —
- * the interface language is a per-user preference stored in
- * academic_profile.interfaceLanguage (see src/lib/scholar/language.ts), read
- * here from the session on every request. Pages with no session yet (login,
- * signup, the public privacy page) fall back to English.
+ * Which language to render this request in.
+ *
+ * Scholar has no URL-based locale routing — no "/en/…", "/hi/…" prefixes. The
+ * interface language is a per-user preference read from the session, because
+ * a student's language is a property of the student rather than of the page
+ * they are on, and a shared link should open in the reader's language rather
+ * than the sender's.
+ *
+ * A stored preference that has no finished catalogue resolves to English
+ * rather than falling through to a missing file. That used to happen silently
+ * for thirteen of the fourteen languages on offer; now the resolution is
+ * explicit and the settings screen explains it.
  */
-
-const SUPPORTED_LOCALES = new Set(LANGUAGES.map((l) => l.code));
-
-export const RTL_LOCALES = new Set(["ar"]);
-
-async function resolveLocale(): Promise<string> {
+async function currentLocale(): Promise<string> {
   try {
     const session = await auth();
-    if (!session?.user?.id) return "en";
+    if (!session?.user?.id) return DEFAULT_LOCALE;
     const langs = await getLanguages(session.user.id);
-    return SUPPORTED_LOCALES.has(langs.interfaceLanguage) ? langs.interfaceLanguage : "en";
+    return resolveLocale(langs.interfaceLanguage);
   } catch {
-    // auth() or the DB call can fail during edge/middleware-adjacent renders
-    // (e.g. no DB configured yet in a fresh checkout) — English is always
-    // safe to fall back to since messages/en.json always exists.
-    return "en";
+    // auth() or the database can be unavailable during an edge-adjacent
+    // render, or on a fresh checkout with no database configured. English is
+    // always safe: its catalogue is the one that always exists.
+    return DEFAULT_LOCALE;
   }
 }
 
 export default getRequestConfig(async () => {
-  const locale = await resolveLocale();
+  const locale = await currentLocale();
 
   let messages;
   try {
@@ -38,8 +41,5 @@ export default getRequestConfig(async () => {
     messages = (await import(`../../messages/en.json`)).default;
   }
 
-  return {
-    locale,
-    messages,
-  };
+  return { locale, messages };
 });

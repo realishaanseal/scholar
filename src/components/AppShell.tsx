@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { EASE_OUT, SPRING } from "@/components/motion";
 import Logo from "./Logo";
@@ -13,7 +14,8 @@ import { WORKSPACES, workspaceForPath, type WorkspaceId } from "@/lib/workspaces
 
 type NavItem = {
   href: string;
-  label: string;
+  /** Key into the `shell` namespace, resolved at render rather than stored. */
+  labelKey: string;
   icon: string;
   /** Filled icons read better at this size than stroked outlines (matches
    *  the AI-settings icon convention already used in SettingsNav). */
@@ -30,22 +32,22 @@ type NavItem = {
 const PERSONAL_NAV: NavItem[] = [
   {
     href: "/dashboard",
-    label: "Homework",
+    labelKey: "navHomework",
     icon: "M4 4h16v4H4zM4 10h10v10H4zM16 10h4v10h-4z",
   },
   {
     href: "/timetable",
-    label: "Timetable",
+    labelKey: "navTimetable",
     icon: "M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
   },
   {
     href: "/insights",
-    label: "Insights",
+    labelKey: "navInsights",
     icon: "M3 3v18h18M7 15l4-4 3 3 5-6",
   },
   {
     href: "/groups",
-    label: "Groups",
+    labelKey: "navGroups",
     icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   },
 ];
@@ -58,7 +60,7 @@ const PERSONAL_NAV: NavItem[] = [
  */
 const COURSES_ITEM: NavItem = {
   href: "/learn",
-  label: "Courses",
+    labelKey: "navCourses",
   icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
 };
 
@@ -66,12 +68,12 @@ const COURSES_ITEM: NavItem = {
 const TEACHING_NAV: NavItem[] = [
   {
     href: "/teach",
-    label: "Classes",
+    labelKey: "navClasses",
     icon: "M22 10v6M2 10l10-5 10 5-10 5zM6 12v5c3 3 9 3 12 0v-5",
   },
   {
     href: "/teach/marking",
-    label: "Marking",
+    labelKey: "navMarking",
     icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
   },
 ];
@@ -80,32 +82,32 @@ const TEACHING_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   {
     href: "/admin",
-    label: "Overview",
+    labelKey: "navOverview",
     icon: "M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z",
   },
   {
     href: "/admin/people",
-    label: "People",
+    labelKey: "navPeople",
     icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87",
   },
   {
     href: "/admin/courses",
-    label: "Courses",
+    labelKey: "navAdminCourses",
     icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
   },
   {
     href: "/admin/health",
-    label: "How it is going",
+    labelKey: "navHealth",
     icon: "M3 3v18h18M7 15l4-4 3 3 5-6",
   },
   {
     href: "/admin/activity",
-    label: "Activity",
+    labelKey: "navActivity",
     icon: "M12 8v4l3 3M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z",
   },
   {
     href: "/admin/settings",
-    label: "Settings",
+    labelKey: "navSettings",
     icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.76 1.02 1.4 1.02H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
   },
 ];
@@ -118,7 +120,7 @@ const WORKSPACE_NAV: Record<WorkspaceId, NavItem[]> = {
 
 const SETTINGS_ITEM: NavItem = {
   href: "/settings",
-  label: "Settings",
+    labelKey: "navSettings",
   // A real gear, not the sparkle glyph the old AI-settings tab used —
   // Settings needs to read unmistakably as configuration at a glance.
   icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.76 1.02 1.4 1.02H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
@@ -126,11 +128,13 @@ const SETTINGS_ITEM: NavItem = {
 };
 
 function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
+  const t = useTranslations("shell");
+  const label = t(item.labelKey);
   return (
     <Link
       href={item.href}
-      aria-label={item.label}
-      title={item.label}
+      aria-label={label}
+      title={label}
       className={`group relative grid h-11 w-11 place-items-center rounded-xl border transition-colors duration-200 ${
         active
           ? "border-transparent text-white"
@@ -161,7 +165,7 @@ function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
         <path d={item.icon} />
       </motion.svg>
       <span className="pointer-events-none absolute start-full ms-3 z-10 whitespace-nowrap rounded-lg border border-white/10 bg-ink-950 px-2.5 py-1.5 text-[11.5px] font-medium text-white opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 max-lg:hidden">
-        {item.label}
+        {label}
       </span>
     </Link>
   );
@@ -190,6 +194,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
+  const t = useTranslations("shell");
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
   // Read from the route rather than stored, so following a link into a class
@@ -277,7 +282,7 @@ export default function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                aria-label={item.label}
+                aria-label={t(item.labelKey)}
                 className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition-colors ${
                   active ? "text-white" : "text-slate-500"
                 }`}
@@ -304,7 +309,7 @@ export default function AppShell({
                 >
                   <path d={item.icon} />
                 </motion.svg>
-                <span className="truncate text-[9.5px] font-medium leading-none">{item.label}</span>
+                <span className="truncate text-[9.5px] font-medium leading-none">{t(item.labelKey)}</span>
               </Link>
             );
           })}

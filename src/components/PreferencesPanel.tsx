@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import { useNotifications } from "./PwaSetup";
+import { offeredLocales, PLANNED_LOCALES } from "@/lib/i18n/locales";
+
+const OFFERED = offeredLocales();
 
 type Prefs = Record<string, boolean>;
 
@@ -15,22 +18,17 @@ const SIGNALS: Array<{ kind: string; label: string; hint: string }> = [
   { kind: "repeated-lateness", label: "Finishing late", hint: "A recent pattern of missing deadlines" },
 ];
 
-const LANGUAGES = [
-  { code: "en", label: "English", native: "English" },
-  { code: "hi", label: "Hindi", native: "हिन्दी" },
-  { code: "bn", label: "Bengali", native: "বাংলা" },
-  { code: "ta", label: "Tamil", native: "தமிழ்" },
-  { code: "te", label: "Telugu", native: "తెలుగు" },
-  { code: "mr", label: "Marathi", native: "मराठी" },
-  { code: "es", label: "Spanish", native: "Español" },
-  { code: "fr", label: "French", native: "Français" },
-  { code: "de", label: "German", native: "Deutsch" },
-  { code: "pt", label: "Portuguese", native: "Português" },
-  { code: "ar", label: "Arabic", native: "العربية" },
-  { code: "zh", label: "Chinese", native: "中文" },
-  { code: "ja", label: "Japanese", native: "日本語" },
-  { code: "id", label: "Indonesian", native: "Bahasa Indonesia" },
-];
+/**
+ * The three pickers below are deliberately not the same list.
+ *
+ * What Scholar can *understand* and what Scholar has been *translated into*
+ * are different questions. Input goes to a multilingual model, which reads
+ * Bengali perfectly well whether or not anyone has translated the settings
+ * screen — so those two keep the full list. The interface picker is gated to
+ * locales that actually exist, because offering one that does not is a
+ * promise the product breaks the moment it is chosen.
+ */
+const UNDERSTOOD = [...OFFERED, ...PLANNED_LOCALES];
 
 export default function PreferencesPanel() {
   const notifications = useNotifications();
@@ -172,13 +170,30 @@ export default function PreferencesPanel() {
           <Field label="Interface">
             <select
               className="input py-2 text-[13px]"
-              value={languages?.interfaceLanguage ?? "en"}
+              value={
+                OFFERED.some((l) => l.code === languages?.interfaceLanguage)
+                  ? languages!.interfaceLanguage
+                  : "en"
+              }
               onChange={(e) => saveLanguage({ interfaceLanguage: e.target.value })}
             >
-              {LANGUAGES.map((l) => (
+              {OFFERED.map((l) => (
                 <option key={l.code} value={l.code}>{l.native}</option>
               ))}
             </select>
+            {/* Said plainly to anyone who picked a language before this list
+                was honest about itself. Their choice is remembered; it is not
+                available yet; that is not a fault of theirs. */}
+            {languages?.interfaceLanguage &&
+              !OFFERED.some((l) => l.code === languages.interfaceLanguage) && (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-amber-300">
+                  You chose{" "}
+                  {PLANNED_LOCALES.find((l) => l.code === languages.interfaceLanguage)
+                    ?.native ?? languages.interfaceLanguage}
+                  , which is not finished yet — Scholar is showing English until it is.
+                  You can still write and get replies in it below.
+                </p>
+              )}
           </Field>
 
           <Field label="You write in">
@@ -188,7 +203,7 @@ export default function PreferencesPanel() {
               onChange={(e) => saveLanguage({ inputLanguage: e.target.value })}
             >
               <option value="auto">Any / mixed</option>
-              {LANGUAGES.map((l) => (
+              {UNDERSTOOD.map((l) => (
                 <option key={l.code} value={l.code}>{l.native}</option>
               ))}
             </select>
@@ -201,7 +216,7 @@ export default function PreferencesPanel() {
               onChange={(e) => saveLanguage({ responseLanguage: e.target.value })}
             >
               <option value="match">Match what I wrote</option>
-              {LANGUAGES.map((l) => (
+              {UNDERSTOOD.map((l) => (
                 <option key={l.code} value={l.code}>{l.native}</option>
               ))}
             </select>

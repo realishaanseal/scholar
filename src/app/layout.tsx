@@ -5,7 +5,7 @@ import Analytics from "@/components/Analytics";
 import Backdrop from "@/components/Backdrop";
 import PwaSetup from "@/components/PwaSetup";
 import { MotionProvider } from "@/components/motion";
-import { RTL_LOCALES } from "@/i18n/request";
+import { isRTL } from "@/lib/i18n/locales";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
-  const dir = RTL_LOCALES.has(locale) ? "rtl" : "ltr";
+  const dir = isRTL(locale) ? "rtl" : "ltr";
 
   return (
     <html lang={locale} dir={dir}>
