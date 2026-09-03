@@ -54,10 +54,16 @@ export function decodeCursor(cursor: string | null | undefined): string | null {
   if (!cursor) return null;
   try {
     const out = Buffer.from(cursor, "base64url").toString("utf8");
-    // A cursor that decodes to nothing is a cursor that was mangled in a URL.
-    // Treating it as "start from the beginning" is friendlier than an error
-    // and cannot leak anything.
-    return out.length > 0 ? out : null;
+    if (out.length === 0) return null;
+
+    // Buffer.from does not throw on invalid base64 — it silently discards
+    // characters it does not recognise. So a cursor mangled in a URL decodes
+    // to plausible-looking garbage, which then reads as a position past every
+    // real row and returns an empty page: a list that looks finished when it
+    // has not started. Re-encoding and comparing is what actually detects it.
+    if (encodeCursor(out) !== cursor) return null;
+
+    return out;
   } catch {
     return null;
   }

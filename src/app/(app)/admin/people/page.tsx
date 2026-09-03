@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import PageHeading from "@/components/PageHeading";
 import { Reveal } from "@/components/motion";
 import { auth } from "@/lib/auth";
-import { administeredOrganizations, listPeople } from "@/domains/identity";
+import { administeredOrganizations, countPeople, listPeople } from "@/domains/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +21,19 @@ export default async function PeoplePage() {
   if (!session?.user?.id) redirect("/login");
 
   const org = (await administeredOrganizations(session.user.id))[0]!;
-  const people = await listPeople(org.id);
+  // The institution's total is a count rather than the length of a page, now
+  // that a page is not everyone.
+  const [page, total] = await Promise.all([
+    listPeople(org.id),
+    countPeople(org.id),
+  ]);
+  const people = page.items;
 
   return (
     <div>
       <PageHeading
         title="People"
-        subtitle={`${people.length} ${people.length === 1 ? "person" : "people"} in ${org.name}.`}
+        subtitle={`${total} ${total === 1 ? "person" : "people"} in ${org.name}.`}
       />
 
       {people.length === 0 ? (
@@ -77,6 +83,14 @@ export default async function PeoplePage() {
               </div>
             </Reveal>
           ))}
+
+          {/* Said plainly rather than left as a silently truncated list: an
+              administrator who cannot find someone should know why. */}
+          {page.hasMore && (
+            <p className="pt-1 text-[12.5px] text-slate-500">
+              Showing the first {people.length} of {total}, by email address.
+            </p>
+          )}
         </div>
       )}
     </div>

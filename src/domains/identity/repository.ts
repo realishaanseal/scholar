@@ -1,5 +1,6 @@
 import { db, newId } from "@/lib/db";
 import { DEFAULT_SCHEME_ID, SCHEMES } from "@/domains/grading/schemes";
+import { decodeCursor, pageSize, toPage, type Page } from "@/lib/pagination";
 import type { Actor } from "@/lib/authz";
 import { toActor, type EnrollmentRow, type MembershipRow, type TeachingRow } from "./actor";
 import type {
@@ -383,7 +384,25 @@ export type MemberRow = {
  * person on this page; showing them twice would make the list a report about
  * the schema rather than about the school.
  */
-export async function listPeople(organizationId: string): Promise<MemberRow[]> {
+/**
+ * Everyone in an institution, a page at a time.
+ *
+ * This is the query that scales directly with how big a school is, and it was
+ * the one with no limit on it: five thousand students meant five thousand rows
+ * assembled, serialised, and handed to a browser that then had to render them.
+ *
+ * Ordered and paged by email because it is the only column here guaranteed
+ * unique — a name is not, and a keyset cursor on a non-unique column skips
+ * rows whenever two of them tie. `> ?` rather than `>= ?` for the same
+ * reason: the cursor names the last row already seen.
+ */
+export async function listPeople(
+  organizationId: string,
+  options: { limit?: number; cursor?: string | null } = {}
+): Promise<Page<MemberRow>> {
+  const size = pageSize(options.limit);
+  const after = decodeCursor(options.cursor);
+
   const rows = await db
     .prepare(
       `SELECT m.user_id, u.email, u.name,
@@ -393,12 +412,18 @@ export async function listPeople(organizationId: string): Promise<MemberRow[]> {
          FROM organization_memberships m
          JOIN users u ON u.id = m.user_id
         WHERE m.organization_id = ?
+          -- Cast: a parameter used only in a null test gives Postgres nothing
+          -- to infer a type from.
+          AND (?::text IS NULL OR u.email > ?)
         GROUP BY m.user_id, u.email, u.name
-        ORDER BY u.email`
+        ORDER BY u.email
+        LIMIT ?`
     )
-    .all(organizationId);
+    // One more than asked for, so "is there another page" is answered without
+    // a second COUNT over the whole table.
+    .all(organizationId, after, after, size + 1);
 
-  return rows.map((r: any) => ({
+  const mapped: MemberRow[] = rows.map((r: any) => ({
     userId: r.user_id,
     email: r.email ?? null,
     name: r.name ?? null,
@@ -406,6 +431,8 @@ export async function listPeople(organizationId: string): Promise<MemberRow[]> {
     status: r.any_active ? "active" : "suspended",
     joinedAt: toISO(r.joined_at),
   }));
+
+  return toPage(mapped, size, (row) => row.email ?? row.userId);
 }
 
 /* ── Where the institution is, and when it works ───────────────────────── */
@@ -505,4 +532,22 @@ export async function setOrganizationTime(
     );
 
   return getOrganizationTime(organizationId);
+}
+
+/**
+ * How many people an institution has.
+ *
+ * Separate from listPeople because a page is no longer everyone, and "42
+ * people in Northgate" is a different question from "here are the first
+ * fifty". Counting in the database rather than measuring an array is the
+ * whole point of having made the list a page.
+ */
+export async function countPeople(organizationId: string): Promise<number> {
+  const r = await db
+    .prepare(
+      `SELECT COUNT(DISTINCT user_id)::int AS c
+         FROM organization_memberships WHERE organization_id = ?`
+    )
+    .get(organizationId);
+  return Number((r as any)?.c ?? 0);
 }
