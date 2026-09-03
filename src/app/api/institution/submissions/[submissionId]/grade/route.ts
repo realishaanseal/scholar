@@ -4,6 +4,7 @@ import {
   getAssignment, getSubmission, gradeSchema, gradeSubmission,
   scopeOfSubmission, scoreWithinBounds, type ResourceScope,
 } from "@/domains/assessment";
+import { latestDraft, resolveDraft } from "@/domains/grading/assist";
 
 export const runtime = "nodejs";
 
@@ -51,12 +52,33 @@ export const POST = institutionalRoute<Params, ResourceScope & { studentUserId: 
       );
     }
 
+    // A draft is honoured only if it belongs to THIS submission. Without that
+    // check a teacher could pass any draft id and attribute a mark to a model
+    // that never saw the work — which would put fiction in the audit trail,
+    // the one place that must not contain any.
+    const draft = input.draftId ? await latestDraft(params.submissionId) : null;
+    const usedDraft = draft && draft.id === input.draftId ? draft : null;
+
     const graded = await gradeSubmission(
       params.submissionId,
       userId,
       input.score,
-      input.feedback
+      input.feedback,
+      usedDraft?.model ?? null
     );
+
+    if (usedDraft) {
+      // Whether the teacher agreed is worth knowing, and is not something to
+      // infer later from timestamps. A score identical to the suggestion is
+      // an acceptance; anything else is an edit.
+      await resolveDraft(
+        usedDraft.id,
+        usedDraft.suggestedScore === input.score ? "accepted" : "edited",
+        userId,
+        input.score
+      );
+    }
+
     return NextResponse.json({ submission: graded });
   }
 );

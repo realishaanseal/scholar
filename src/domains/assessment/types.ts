@@ -98,6 +98,15 @@ export type SubmitWorkInput = z.infer<typeof submitWorkSchema>;
 export const gradeSchema = z.object({
   score: z.number().min(0).max(10_000).nullable().default(null),
   feedback: z.string().max(20_000).default(""),
+  /**
+   * The suggestion this mark came from, when it came from one.
+   *
+   * Optional, and absent on every mark typed from scratch — marking without
+   * assistance stays the simplest path through this code. When present it
+   * does not decide the score: the score is whatever the teacher posted. It
+   * only records that a model was in the room, and which one.
+   */
+  draftId: z.string().min(1).max(64).nullable().default(null),
 });
 export type GradeInput = z.infer<typeof gradeSchema>;
 

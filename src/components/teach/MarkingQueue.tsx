@@ -6,6 +6,16 @@ import { EASE_OUT } from "@/components/motion";
 import { cn } from "@/lib/cn";
 import type { PendingSubmission } from "@/domains/assessment";
 
+/** Mirrors GradeDraft, minus the fields the marking screen has no use for. */
+type Draft = {
+  id: string;
+  model: string;
+  suggestedScore: number | null;
+  suggestedFeedback: string;
+  rationale: string;
+  confidence: number | null;
+};
+
 /**
  * Everything waiting on this teacher, oldest first.
  *
@@ -22,7 +32,12 @@ export default function MarkingQueue({ initial }: { initial: PendingSubmission[]
   const [queue, setQueue] = useState(initial);
   const [error, setError] = useState<string | null>(null);
 
-  async function submitGrade(item: PendingSubmission, score: string, feedback: string) {
+  async function submitGrade(
+    item: PendingSubmission,
+    score: string,
+    feedback: string,
+    draftId: string | null
+  ) {
     setError(null);
     const res = await fetch(`/api/institution/submissions/${item.id}/grade`, {
       method: "POST",
@@ -30,6 +45,10 @@ export default function MarkingQueue({ initial }: { initial: PendingSubmission[]
       body: JSON.stringify({
         score: score.trim() === "" ? null : Number(score),
         feedback,
+        // Sent only so the audit trail can record that a model was consulted
+        // and whether this teacher agreed with it. The score above is the
+        // teacher's, whatever the suggestion said.
+        draftId,
       }),
     });
     const data = await res.json();
@@ -94,12 +113,37 @@ function MarkingCard({
   onGrade,
 }: {
   item: PendingSubmission;
-  onGrade: (i: PendingSubmission, score: string, feedback: string) => Promise<boolean>;
+  onGrade: (
+    i: PendingSubmission,
+    score: string,
+    feedback: string,
+    draftId: string | null
+  ) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [score, setScore] = useState("");
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function suggest() {
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch(`/api/institution/submissions/${item.id}/draft`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not draft a mark.");
+      setDraft(data.draft);
+    } catch (err) {
+      setDraftError((err as Error).message);
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   return (
     <div className="card overflow-hidden rounded-xl">
@@ -167,6 +211,94 @@ function MarkingCard({
                 </a>
               )}
 
+              {/* The suggestion sits beside the fields and never inside them.
+                  Pre-filling would make "Return" an acceptance by default, and
+                  a mark nobody read is exactly what this feature must not
+                  quietly produce. Using it takes a deliberate click. */}
+              {draft ? (
+                <div className="rounded-lg border border-vx-400/25 bg-vx-400/[0.06] px-3.5 py-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-vx-300">
+                      Suggested by {draft.model}
+                    </span>
+                    {draft.confidence !== null && (
+                      <span className="text-[11px] text-slate-500">
+                        {Math.round(draft.confidence * 100)}% confident
+                      </span>
+                    )}
+                    <span className="text-[11px] text-slate-500">
+                      · not recorded until you return it
+                    </span>
+                  </div>
+
+                  <p className="text-[13px] text-slate-200">
+                    {draft.suggestedScore === null ? (
+                      <span className="text-slate-400">No score suggested.</span>
+                    ) : (
+                      <span className="font-semibold tabular-nums">
+                        {draft.suggestedScore}
+                        {item.points !== null && ` / ${item.points}`}
+                      </span>
+                    )}
+                  </p>
+
+                  {draft.suggestedFeedback && (
+                    <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-slate-300">
+                      {draft.suggestedFeedback}
+                    </p>
+                  )}
+
+                  {draft.rationale && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-[11.5px] text-slate-500 hover:text-slate-400">
+                        Why it says that
+                      </summary>
+                      {/* Written to the teacher about the student. Never sent
+                          on, and never copied into feedback automatically. */}
+                      <p className="mt-1.5 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-400">
+                        {draft.rationale}
+                      </p>
+                    </details>
+                  )}
+
+                  <div className="mt-2.5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScore(
+                          draft.suggestedScore === null ? "" : String(draft.suggestedScore)
+                        );
+                        setFeedback(draft.suggestedFeedback);
+                      }}
+                      className="btn btn-ghost px-2.5 py-1 text-[12px]"
+                    >
+                      Use this
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft(null)}
+                      className="btn btn-ghost px-2.5 py-1 text-[12px] text-slate-500"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => void suggest()}
+                    disabled={drafting}
+                    className="btn btn-ghost px-3 py-1.5 text-[12.5px]"
+                  >
+                    {drafting ? "Reading the work…" : "Suggest a mark"}
+                  </button>
+                  {draftError && (
+                    <span className="text-[12px] text-rose-300">{draftError}</span>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-wrap items-end gap-3">
                 <label className="block">
                   <span className="mb-1 block text-[11.5px] text-slate-400">
@@ -197,7 +329,7 @@ function MarkingCard({
                   disabled={saving}
                   onClick={async () => {
                     setSaving(true);
-                    await onGrade(item, score, feedback);
+                    await onGrade(item, score, feedback, draft?.id ?? null);
                     setSaving(false);
                   }}
                   className="btn-primary px-3.5 py-2 text-[13px]"
