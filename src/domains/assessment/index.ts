@@ -8,3 +8,5 @@
 export * from "./projection";
 export * from "./types";
 export * from "./repository";
+export * from "./marking";
+export * from "./quizzes";

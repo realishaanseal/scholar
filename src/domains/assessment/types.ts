@@ -6,6 +6,8 @@ export type AssignmentStatus = "draft" | "published" | "archived";
 export type LatePolicy = "accept" | "penalise" | "reject";
 export type SubmissionType = "text" | "url" | "file" | "none";
 
+export type AssignmentKind = "task" | "quiz";
+
 export type Assignment = {
   id: string;
   organizationId: string;
@@ -18,6 +20,8 @@ export type Assignment = {
   dueAt: string | null;
   closesAt: string | null;
   submissionType: SubmissionType;
+  /** task | quiz. A quiz carries questions; a task carries written work. */
+  kind: AssignmentKind;
   maxAttempts: number | null;
   latePolicy: LatePolicy;
   status: AssignmentStatus;
@@ -59,6 +63,7 @@ export const assignmentInputSchema = z
     dueAt: instant,
     closesAt: instant,
     submissionType: z.enum(["text", "url", "file", "none"]).default("text"),
+    kind: z.enum(["task", "quiz"]).default("task"),
     maxAttempts: z.number().int().positive().max(100).nullable().default(null),
     latePolicy: z.enum(["accept", "penalise", "reject"]).default("accept"),
     estimatedMins: z.number().int().positive().max(10_000).nullable().default(null),

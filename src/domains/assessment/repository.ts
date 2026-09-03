@@ -28,13 +28,14 @@ export async function createAssignment(
       `INSERT INTO assignments
          (id, organization_id, course_section_id, created_by, title, instructions,
           points, available_from, due_at, closes_at, submission_type, max_attempts,
-          late_policy, estimated_mins)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          late_policy, estimated_mins, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id, organizationId, courseSectionId, createdBy, input.title, input.instructions,
       input.points, input.availableFrom, input.dueAt, input.closesAt,
-      input.submissionType, input.maxAttempts, input.latePolicy, input.estimatedMins
+      input.submissionType, input.maxAttempts, input.latePolicy, input.estimatedMins,
+      input.kind
     );
   const created = await getAssignment(id);
   if (!created) throw new Error("Assignment was created but could not be read back.");
@@ -42,7 +43,7 @@ export async function createAssignment(
 }
 
 const ASSIGNMENT_COLUMNS = `id, organization_id, course_section_id, created_by, title,
-       instructions, points, available_from, due_at, closes_at, submission_type,
+       instructions, points, available_from, due_at, closes_at, submission_type, kind,
        max_attempts, late_policy, status, published_at, estimated_mins`;
 
 export async function getAssignment(id: string): Promise<Assignment | null> {
@@ -146,6 +147,7 @@ function mapAssignment(r: any): Assignment {
     dueAt: iso(r.due_at),
     closesAt: iso(r.closes_at),
     submissionType: r.submission_type,
+    kind: r.kind ?? "task",
     maxAttempts: r.max_attempts ?? null,
     latePolicy: r.late_policy,
     status: r.status,

@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/cn";
+import QuizEditor from "./QuizEditor";
 import type { Assignment } from "@/domains/assessment";
 
 /**
@@ -21,6 +22,7 @@ import type { Assignment } from "@/domains/assessment";
 
 type Props = {
   sectionId: string;
+  courseId: string;
   initialAssignments: Assignment[];
   enrolledCount: number;
 };
@@ -29,6 +31,7 @@ type Banner = { kind: "ok" | "error"; text: string } | null;
 
 export default function SectionWorkbench({
   sectionId,
+  courseId,
   initialAssignments,
   enrolledCount,
 }: Props) {
@@ -152,6 +155,7 @@ export default function SectionWorkbench({
                   assignment={a}
                   index={i}
                   busy={busyId === a.id}
+                  courseId={courseId}
                   onPublish={() => publish(a)}
                   onWithdraw={() => withdraw(a)}
                 />
@@ -166,6 +170,7 @@ export default function SectionWorkbench({
                   assignment={a}
                   index={i}
                   busy={busyId === a.id}
+                  courseId={courseId}
                   onPublish={() => publish(a)}
                   onWithdraw={() => withdraw(a)}
                 />
@@ -211,40 +216,72 @@ function Group({
 }
 
 function AssignmentRow({
-  assignment, index, busy, onPublish, onWithdraw,
+  assignment, index, busy, courseId, onPublish, onWithdraw,
 }: {
   assignment: Assignment;
   index: number;
   busy: boolean;
+  courseId: string;
   onPublish: () => void;
   onWithdraw: () => void;
 }) {
   const published = assignment.status === "published";
+  const isQuiz = assignment.kind === "quiz";
+  const [open, setOpen] = useState(false);
 
   return (
     <Reveal y={8} delay={Math.min(index * 0.03, 0.18)}>
-      <div className="card flex items-center gap-4 rounded-xl px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-medium text-slate-100">{assignment.title}</p>
-          <p className="mt-0.5 text-[12px] text-slate-500">
-            {assignment.dueAt ? `Due ${formatDue(assignment.dueAt)}` : "No deadline"}
-            {assignment.points !== null && ` · ${assignment.points} marks`}
-          </p>
+      <div className="card rounded-xl">
+        <div className="flex items-center gap-4 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-medium text-slate-100">
+              {assignment.title}
+              {isQuiz && (
+                <span className="ms-2 rounded-full bg-white/[0.06] px-2 py-0.5 align-middle text-[10.5px] font-normal text-slate-400">
+                  Quiz
+                </span>
+              )}
+            </p>
+            <p className="mt-0.5 text-[12px] text-slate-500">
+              {assignment.dueAt ? `Due ${formatDue(assignment.dueAt)}` : "No deadline"}
+              {assignment.points !== null && ` · ${assignment.points} marks`}
+            </p>
+          </div>
+
+          {isQuiz && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="btn btn-ghost shrink-0 px-3 py-1.5 text-[12.5px]"
+            >
+              {open ? "Done" : "Questions"}
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={published ? onWithdraw : onPublish}
+            className={cn(
+              "shrink-0 text-[12.5px]",
+              published
+                ? "btn btn-ghost px-3 py-1.5"
+                : "btn-primary px-3 py-1.5"
+            )}
+          >
+            {busy ? "…" : published ? "Withdraw" : "Publish"}
+          </button>
         </div>
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={published ? onWithdraw : onPublish}
-          className={cn(
-            "shrink-0 text-[12.5px]",
-            published
-              ? "btn btn-ghost px-3 py-1.5"
-              : "btn-primary px-3 py-1.5"
-          )}
-        >
-          {busy ? "…" : published ? "Withdraw" : "Publish"}
-        </button>
+        {isQuiz && open && (
+          <div className="border-t border-white/[0.06] px-4 py-4">
+            <QuizEditor
+              assignmentId={assignment.id}
+              courseId={courseId}
+              published={published}
+            />
+          </div>
+        )}
       </div>
     </Reveal>
   );
@@ -284,6 +321,7 @@ function Composer({
   const [dueAt, setDueAt] = useState("");
   const [points, setPoints] = useState("");
   const [estimate, setEstimate] = useState("");
+  const [kind, setKind] = useState<"task" | "quiz">("task");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -296,6 +334,7 @@ function Composer({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          kind,
           title,
           instructions,
           // datetime-local has no zone; the browser's own offset is the right
@@ -310,6 +349,7 @@ function Composer({
 
       onCreated(data.assignment);
       setTitle(""); setInstructions(""); setDueAt(""); setPoints(""); setEstimate("");
+      setKind("task");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -329,13 +369,37 @@ function Composer({
           </div>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <Field label="Kind">
+              <div className="flex gap-1.5">
+                {([
+                  { id: "task", label: "Written work", hint: "They hand something in" },
+                  { id: "quiz", label: "Quiz", hint: "They answer questions" },
+                ] as const).map((k) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    onClick={() => setKind(k.id)}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-2 text-start transition-colors",
+                      kind === k.id
+                        ? "border-vx-400/50 bg-vx-400/[0.08]"
+                        : "border-white/[0.07] hover:border-white/[0.16]"
+                    )}
+                  >
+                    <span className="block text-[13px] text-slate-200">{k.label}</span>
+                    <span className="block text-[11px] text-slate-500">{k.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </Field>
+
             <Field label="Title">
               <input
                 autoFocus
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Problem set 4"
+                placeholder={kind === "quiz" ? "Chapter 4 test" : "Problem set 4"}
                 className="input w-full"
               />
             </Field>
@@ -345,7 +409,11 @@ function Composer({
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 rows={5}
-                placeholder="Questions 1–12. Show your working."
+                placeholder={
+                  kind === "quiz"
+                    ? "Anything they should know before starting."
+                    : "Questions 1–12. Show your working."
+                }
                 className="input w-full resize-y"
               />
             </Field>

@@ -7,6 +7,7 @@ import { sql as assignments } from "./0004_assignments";
 import { sql as files } from "./0005_files";
 import { sql as accountIntent } from "./0006_account_intent";
 import { sql as gradebook } from "./0007_gradebook";
+import { sql as quizzes } from "./0008_quizzes";
 
 /**
  * Versioned schema migrations.
@@ -49,6 +50,7 @@ export const MIGRATIONS: Migration[] = [
   { id: "0005_files", sql: files },
   { id: "0006_account_intent", sql: accountIntent },
   { id: "0007_gradebook", sql: gradebook },
+  { id: "0008_quizzes", sql: quizzes },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */

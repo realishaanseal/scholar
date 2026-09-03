@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { EASE_OUT, Reveal } from "@/components/motion";
 import { cn } from "@/lib/cn";
+import QuizRunner from "./QuizRunner";
 // Straight from the pure module, not the domain barrel: the barrel re-exports
 // the repository, which imports the database, which would put pg in the
 // browser bundle. The type import is erased at build time and costs nothing.
@@ -77,6 +78,11 @@ function AssignmentCard({
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quiz, setQuiz] = useState<
+    { id: string; kind: any; prompt: string; points: number; options?: { id: string; body: string }[] }[]
+    | null
+  >(null);
+  const [sitting, setSitting] = useState(false);
 
   const sub = assignment.submission;
   const marked = sub?.status === "returned";
@@ -101,6 +107,22 @@ function AssignmentCard({
       const res = await fetch(`/api/institution/assignments/${assignment.id}/files`);
       const data = await res.json().catch(() => ({ files: [] }));
       setFiles(res.ok ? data.files : []);
+    }
+  }
+
+  async function startQuiz() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/institution/assignments/${assignment.id}/quiz`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not open this quiz.");
+      setQuiz(data.questions ?? []);
+      setSitting(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -233,7 +255,37 @@ function AssignmentCard({
               {/* Submitting again is allowed while the window is open, because
                   a student who spots a mistake before the deadline should be
                   able to fix it. */}
-              {verdict.accepted ? (
+              {verdict.accepted && assignment.kind === "quiz" ? (
+                sitting && quiz ? (
+                  <QuizRunner
+                    assignmentId={assignment.id}
+                    questions={quiz}
+                    onFinished={() => { setSitting(false); location.reload(); }}
+                  />
+                ) : (
+                  <div className="space-y-2.5">
+                    {verdict.late && (
+                      <p className="text-[12px] text-amber-300/90">
+                        The deadline has passed — this attempt will be marked late.
+                      </p>
+                    )}
+                    <p className="text-[12.5px] leading-relaxed text-slate-400">
+                      {handedIn
+                        ? "You have already sat this. Starting again uses another attempt."
+                        : "Once you start, your answers are marked as soon as you hand in."}
+                    </p>
+                    {error && <p className="text-[12.5px] text-rose-300">{error}</p>}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void startQuiz()}
+                      className="btn-primary px-3.5 py-2 text-[13px] disabled:opacity-50"
+                    >
+                      {busy ? "Opening…" : handedIn ? "Sit it again" : "Start quiz"}
+                    </button>
+                  </div>
+                )
+              ) : verdict.accepted ? (
                 <div className="space-y-2.5">
                   {verdict.late && (
                     <p className="text-[12px] text-amber-300/90">

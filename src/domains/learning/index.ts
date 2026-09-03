@@ -117,6 +117,7 @@ export type StudentAssignment = {
     gradedAt: string | null;
   } | null;
   attachmentCount: number;
+  kind: "task" | "quiz";
 };
 
 /**
@@ -133,7 +134,7 @@ export async function listStudentAssignments(
 ): Promise<StudentAssignment[]> {
   const rows = await db
     .prepare(
-      `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from,
+      `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from, a.kind,
               a.points, a.late_policy, a.submission_type, a.max_attempts,
               s.id AS submission_id, s.attempt, s.status AS submission_status,
               s.body, s.url, s.submitted_at, s.is_late, s.score, s.feedback, s.graded_at,
@@ -160,7 +161,7 @@ export async function getStudentAssignment(
 ): Promise<StudentAssignment | null> {
   const r = await db
     .prepare(
-      `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from,
+      `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from, a.kind,
               a.points, a.late_policy, a.submission_type, a.max_attempts,
               s.id AS submission_id, s.attempt, s.status AS submission_status,
               s.body, s.url, s.submitted_at, s.is_late, s.score, s.feedback, s.graded_at,
@@ -192,6 +193,7 @@ function mapStudentAssignment(r: any): StudentAssignment {
     submissionType: r.submission_type,
     maxAttempts: r.max_attempts ?? null,
     attachmentCount: r.attachment_count ?? 0,
+    kind: r.kind ?? "task",
     submission: r.submission_id
       ? {
           id: r.submission_id,

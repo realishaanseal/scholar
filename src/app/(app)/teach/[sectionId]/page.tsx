@@ -74,6 +74,7 @@ export default async function TeachSectionPage({
         work={
           <SectionWorkbench
             sectionId={sectionId}
+            courseId={scope.courseId}
             initialAssignments={assignments}
             enrolledCount={section.enrolledCount}
           />
