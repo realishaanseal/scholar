@@ -93,6 +93,11 @@ const ADMIN_NAV: NavItem[] = [
     label: "Courses",
     icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
   },
+  {
+    href: "/admin/health",
+    label: "How it is going",
+    icon: "M3 3v18h18M7 15l4-4 3 3 5-6",
+  },
 ];
 
 const WORKSPACE_NAV: Record<WorkspaceId, NavItem[]> = {

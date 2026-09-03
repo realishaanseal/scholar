@@ -118,3 +118,84 @@ export async function checkDeadline(
   const load = await sectionDeadlineLoad(sectionId, excludeAssignmentId);
   return deadlineCollisions(load, proposedDay, proposedMins);
 }
+
+/* ── The institution's own health ──────────────────────────────────────── */
+
+import { courseConcerns, markingHealth } from "./institution";
+import type { CourseHealth, MarkingHealth } from "./institution";
+
+export * from "./institution";
+
+/**
+ * Marking turnaround across an institution.
+ *
+ * Bounded to a window because "since the beginning of time" is not a question
+ * anyone is asking, and an unbounded scan of every submission an institution
+ * has ever received would get slower every term.
+ */
+export async function institutionMarkingHealth(
+  organizationId: string,
+  days = 90
+): Promise<MarkingHealth> {
+  const rows = await db
+    .prepare(
+      `SELECT submitted_at, graded_at
+         FROM assignment_submissions
+        WHERE organization_id = ?
+          AND submitted_at IS NOT NULL
+          AND submitted_at > now() - make_interval(days => ?)`
+    )
+    .all(organizationId, days);
+
+  return markingHealth(
+    (rows as any[]).map((r) => ({
+      submittedAt: toIso(r.submitted_at),
+      gradedAt: toIso(r.graded_at),
+    }))
+  );
+}
+
+/**
+ * Every course, with the ones needing attention marked.
+ *
+ * One query rather than one per course: an institution with two hundred
+ * courses should not cost two hundred round trips to draw a page that mostly
+ * says everything is fine.
+ */
+export async function institutionCourseHealth(
+  organizationId: string
+): Promise<CourseHealth[]> {
+  const rows = await db
+    .prepare(
+      `SELECT c.id, c.code, c.title,
+              COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'published')::int AS published,
+              COUNT(s.id) FILTER (WHERE s.status = 'submitted')::int AS outstanding,
+              MAX(EXTRACT(EPOCH FROM (now() - s.submitted_at)) / 86400)
+                FILTER (WHERE s.status = 'submitted') AS worst_wait
+         FROM courses c
+         LEFT JOIN course_sections cs ON cs.course_id = c.id
+         LEFT JOIN assignments a ON a.course_section_id = cs.id
+         LEFT JOIN assignment_submissions s ON s.assignment_id = a.id
+        WHERE c.organization_id = ?
+        GROUP BY c.id, c.code, c.title
+        ORDER BY c.code`
+    )
+    .all(organizationId);
+
+  return courseConcerns(
+    (rows as any[]).map((r) => ({
+      courseId: r.id,
+      code: String(r.code ?? ""),
+      title: String(r.title ?? ""),
+      published: Number(r.published ?? 0),
+      outstanding: Number(r.outstanding ?? 0),
+      worstWaitDays:
+        r.worst_wait === null || r.worst_wait === undefined ? null : Number(r.worst_wait),
+    }))
+  );
+}
+
+function toIso(v: unknown): string | null {
+  if (!v) return null;
+  return v instanceof Date ? v.toISOString() : String(v);
+}

@@ -27,7 +27,7 @@ export default async function AdminPage() {
         <Stat label="Published work" value={summary.publishedAssignments} />
         {/* The only figure that is a call to action, so the only one with
             colour — a backlog is a thing to do, not a thing to know. */}
-        <Stat label="Awaiting marking" value={summary.awaitingMarking} accent={summary.awaitingMarking > 0} />
+        <Stat label="Awaiting marking" value={summary.awaitingMarking} href="/admin/health" accent={summary.awaitingMarking > 0} />
       </div>
 
       {summary.students === 0 && (
