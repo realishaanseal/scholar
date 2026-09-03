@@ -37,6 +37,7 @@ export default async function InstitutionSettingsPage() {
         initialTimezone={time.timezone}
         initialRestDays={time.restDays}
         initialScheme={time.gradingScheme}
+        initialAiPolicy={time.aiPolicy}
       />
 
       <p className="mt-8">

@@ -416,6 +416,13 @@ export type OrganizationTime = {
   restDays: number[];
   /** Which convention this institution writes grades in. */
   gradingScheme: string;
+  /**
+   * Whether student work may be sent to a model, and whose account decides.
+   *
+   * Defaults to off. A school that has not made this decision has not
+   * implicitly made it.
+   */
+  aiPolicy: "off" | "institution" | "teacher";
 };
 
 /**
@@ -429,7 +436,7 @@ export async function getOrganizationTime(
   organizationId: string
 ): Promise<OrganizationTime> {
   const r = await db
-    .prepare(`SELECT timezone, rest_days, grading_scheme FROM organizations WHERE id = ?`)
+    .prepare(`SELECT timezone, rest_days, grading_scheme, ai_policy FROM organizations WHERE id = ?`)
     .get(organizationId);
 
   const raw = String((r as any)?.rest_days ?? "0,6");
@@ -442,12 +449,22 @@ export async function getOrganizationTime(
     timezone: String((r as any)?.timezone || "UTC"),
     restDays: days.length ? [...new Set(days)].sort() : [0, 6],
     gradingScheme: String((r as any)?.grading_scheme || "percent"),
+    aiPolicy: (["off", "institution", "teacher"] as const).includes(
+      (r as any)?.ai_policy
+    )
+      ? (r as any).ai_policy
+      : "off",
   };
 }
 
 export async function setOrganizationTime(
   organizationId: string,
-  input: { timezone: string; restDays: number[]; gradingScheme?: string }
+  input: {
+    timezone: string;
+    restDays: number[];
+    gradingScheme?: string;
+    aiPolicy?: "off" | "institution" | "teacher";
+  }
 ): Promise<OrganizationTime> {
   // An unknown zone does not fail here — it fails later, inside a formatter,
   // while rendering somebody's deadline. Rejecting it at the boundary keeps
@@ -469,13 +486,23 @@ export async function setOrganizationTime(
     ? input.gradingScheme!
     : DEFAULT_SCHEME_ID;
 
+  // An unrecognised policy resolves to off rather than being stored. The
+  // restrictive direction is the safe one to fail in.
+  const policy = (["off", "institution", "teacher"] as const).includes(
+    input.aiPolicy as never
+  )
+    ? input.aiPolicy!
+    : "off";
+
   await db
     .prepare(
       `UPDATE organizations
-          SET timezone = ?, rest_days = ?, grading_scheme = ?
+          SET timezone = ?, rest_days = ?, grading_scheme = ?, ai_policy = ?
         WHERE id = ?`
     )
-    .run(zone, (days.length ? days : [0, 6]).join(","), schemeId, organizationId);
+    .run(
+      zone, (days.length ? days : [0, 6]).join(","), schemeId, policy, organizationId
+    );
 
   return getOrganizationTime(organizationId);
 }

@@ -128,7 +128,10 @@ export function institutionalRoute<
 export function personalRoute<P extends Record<string, string> = Record<string, string>>(
   handler: (args: RouteArgs<P> & { userId: string }) => Promise<Response>
 ) {
-  return async (req: Request, ctx?: { params: Promise<P> }): Promise<Response> => {
+  // ctx is required rather than optional because Next's generated route
+  // types reject an optional context, and a route with no dynamic segments
+  // is still handed one carrying an empty params promise.
+  return async (req: Request, ctx: { params: Promise<P> }): Promise<Response> => {
     try {
       const session = await auth();
       const userId = session?.user?.id;

@@ -60,14 +60,17 @@ export default function TimeSettings({
   initialTimezone,
   initialRestDays,
   initialScheme,
+  initialAiPolicy,
 }: {
   initialTimezone: string;
   initialRestDays: number[];
   initialScheme: string;
+  initialAiPolicy: "off" | "institution" | "teacher";
 }) {
   const [timezone, setTimezone] = useState(initialTimezone);
   const [restDays, setRestDays] = useState<number[]>(initialRestDays);
   const [gradingScheme, setGradingScheme] = useState(initialScheme);
+  const [aiPolicy, setAiPolicy] = useState(initialAiPolicy);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -100,7 +103,7 @@ export default function TimeSettings({
       const res = await fetch("/api/institution/settings/time", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ timezone, restDays, gradingScheme }),
+        body: JSON.stringify({ timezone, restDays, gradingScheme, aiPolicy }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
@@ -236,6 +239,58 @@ export default function TimeSettings({
             </p>
           )}
         </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Marking assistance</h2>
+        <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
+          Whether teachers can ask a model to suggest a mark. Doing so sends the
+          student's submitted work to whichever provider is configured, so this is a
+          decision about where your students' coursework goes — not a convenience
+          setting. A suggestion never becomes a grade on its own; a teacher always
+          records it.
+        </p>
+
+        <div className="space-y-2">
+          {([
+            ["off", "Off", "No student work is sent to any model."],
+            ["institution", "Institution's provider only",
+             "Teachers may ask for a suggestion, using the provider you configure. They cannot change it."],
+            ["teacher", "Teachers choose their own",
+             "Each teacher uses their own provider and key. You will not know which."],
+          ] as const).map(([value, label, help]) => (
+            <label
+              key={value}
+              className={
+                aiPolicy === value
+                  ? "flex cursor-pointer gap-3 rounded-lg border border-vx-400/40 bg-vx-400/[0.08] px-3.5 py-2.5"
+                  : "flex cursor-pointer gap-3 rounded-lg border border-white/[0.08] px-3.5 py-2.5 hover:border-white/20"
+              }
+            >
+              <input
+                type="radio"
+                name="aiPolicy"
+                value={value}
+                checked={aiPolicy === value}
+                onChange={() => setAiPolicy(value)}
+                className="mt-1"
+              />
+              <span>
+                <span className="block text-[13px] text-slate-200">{label}</span>
+                <span className="block text-[12px] leading-relaxed text-slate-400">{help}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {aiPolicy === "teacher" && (
+          <p className="mt-2.5 rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-200">
+            With this setting your institution cannot say where its students' work is
+            being sent, because each teacher decides separately. If you are subject to
+            the GDPR, the UK Age Appropriate Design Code or India's DPDP Act, that is
+            likely to be a problem worth checking before you choose it.
+          </p>
+        )}
       </section>
 
       <div className="flex items-center gap-3">

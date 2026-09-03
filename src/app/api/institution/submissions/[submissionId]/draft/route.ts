@@ -3,6 +3,8 @@ import { institutionalRoute, NotFound } from "@/lib/api/guard";
 import { getSubmission, scopeOfSubmission, type ResourceScope } from "@/domains/assessment";
 import { draftMark, latestDraft } from "@/domains/grading/assist";
 import { resolveAIConfig } from "@/lib/settings";
+import { getOrganizationTime } from "@/domains/identity";
+import { BadRequest } from "@/lib/api/guard";
 import { enforceRate } from "@/lib/governance";
 
 export const runtime = "nodejs";
@@ -33,6 +35,17 @@ export const POST = institutionalRoute<Params, ResourceScope & { studentUserId: 
   async ({ params, userId, scope }) => {
     const submission = await getSubmission(params.submissionId);
     if (!submission) throw new NotFound();
+
+    // Whether student work may leave the building at all is the
+    // institution's decision, not this teacher's. Checked on the server for
+    // the same reason the submission window is: a hidden button is a
+    // courtesy, not a rule.
+    const org = await getOrganizationTime(scope.organizationId);
+    if (org.aiPolicy === "off") {
+      throw new BadRequest(
+        "Your institution has not enabled marking assistance. An administrator can turn it on in Settings."
+      );
+    }
 
     // Every one of these is a paid call to a model. Limited per teacher
     // rather than per institution, so one person working through a backlog

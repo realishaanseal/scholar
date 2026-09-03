@@ -16,6 +16,7 @@ const timeSchema = z.object({
   timezone: z.string().trim().min(1).max(64),
   restDays: z.array(z.number().int().min(0).max(6)).max(7),
   gradingScheme: z.string().trim().max(32).optional(),
+  aiPolicy: z.enum(["off", "institution", "teacher"]).optional(),
 });
 
 /**
@@ -64,6 +65,7 @@ export const PUT = institutionalRoute<Params, Scope>(
         timezone: saved.timezone,
         restDays: saved.restDays.join(","),
         gradingScheme: saved.gradingScheme,
+        aiPolicy: saved.aiPolicy,
       },
     });
 
