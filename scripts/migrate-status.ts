@@ -33,6 +33,7 @@ const EXPECTED: Record<string, string[]> = {
   "0011_time": [],
   "0012_timestamps_expand": [],
   "0013_timestamps_dualwrite": [],
+  "0014_grading_scheme": [],
 };
 
 async function main() {

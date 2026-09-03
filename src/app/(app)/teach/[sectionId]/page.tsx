@@ -11,6 +11,7 @@ import { getSectionDetail, listRoster } from "@/domains/courses";
 import { listAssignments, scopeOfSection } from "@/domains/assessment";
 import { listMaterials } from "@/domains/library";
 import { sectionGradebook } from "@/domains/grading";
+import { getOrganizationTime } from "@/domains/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,13 @@ export default async function TeachSectionPage({
   const actor = await resolveActor(session.user.id);
   if (!can(actor, "assignment:create", scope)) notFound();
 
-  const [section, assignments, roster, materials, gradebook] = await Promise.all([
+  const [section, assignments, roster, materials, gradebook, orgTime] = await Promise.all([
     getSectionDetail(sectionId),
     listAssignments(sectionId),
     listRoster(sectionId),
     listMaterials(scope.courseId),
     sectionGradebook(sectionId, scope.courseId),
+    getOrganizationTime(scope.organizationId),
   ]);
   if (!section) notFound();
 
@@ -90,7 +92,7 @@ export default async function TeachSectionPage({
           />
         }
         students={<Roster roster={roster} />}
-        grades={<Gradebook data={gradebook} />}
+        grades={<Gradebook data={gradebook} schemeId={orgTime.gradingScheme} />}
       />
     </div>
   );

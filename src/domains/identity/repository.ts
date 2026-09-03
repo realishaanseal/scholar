@@ -1,4 +1,5 @@
 import { db, newId } from "@/lib/db";
+import { DEFAULT_SCHEME_ID, SCHEMES } from "@/domains/grading/schemes";
 import type { Actor } from "@/lib/authz";
 import { toActor, type EnrollmentRow, type MembershipRow, type TeachingRow } from "./actor";
 import type {
@@ -413,6 +414,8 @@ export type OrganizationTime = {
   timezone: string;
   /** Day numbers, 0 = Sunday through 6 = Saturday. */
   restDays: number[];
+  /** Which convention this institution writes grades in. */
+  gradingScheme: string;
 };
 
 /**
@@ -426,7 +429,7 @@ export async function getOrganizationTime(
   organizationId: string
 ): Promise<OrganizationTime> {
   const r = await db
-    .prepare(`SELECT timezone, rest_days FROM organizations WHERE id = ?`)
+    .prepare(`SELECT timezone, rest_days, grading_scheme FROM organizations WHERE id = ?`)
     .get(organizationId);
 
   const raw = String((r as any)?.rest_days ?? "0,6");
@@ -438,12 +441,13 @@ export async function getOrganizationTime(
   return {
     timezone: String((r as any)?.timezone || "UTC"),
     restDays: days.length ? [...new Set(days)].sort() : [0, 6],
+    gradingScheme: String((r as any)?.grading_scheme || "percent"),
   };
 }
 
 export async function setOrganizationTime(
   organizationId: string,
-  input: { timezone: string; restDays: number[] }
+  input: { timezone: string; restDays: number[]; gradingScheme?: string }
 ): Promise<OrganizationTime> {
   // An unknown zone does not fail here — it fails later, inside a formatter,
   // while rendering somebody's deadline. Rejecting it at the boundary keeps
@@ -458,9 +462,20 @@ export async function setOrganizationTime(
 
   const days = [...new Set(input.restDays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
 
+  // An unknown scheme id falls back rather than being stored: a grade written
+  // in a convention nothing can render is worse than one written in the
+  // default.
+  const schemeId = SCHEMES.some((s) => s.id === input.gradingScheme)
+    ? input.gradingScheme!
+    : DEFAULT_SCHEME_ID;
+
   await db
-    .prepare(`UPDATE organizations SET timezone = ?, rest_days = ? WHERE id = ?`)
-    .run(zone, (days.length ? days : [0, 6]).join(","), organizationId);
+    .prepare(
+      `UPDATE organizations
+          SET timezone = ?, rest_days = ?, grading_scheme = ?
+        WHERE id = ?`
+    )
+    .run(zone, (days.length ? days : [0, 6]).join(","), schemeId, organizationId);
 
   return getOrganizationTime(organizationId);
 }

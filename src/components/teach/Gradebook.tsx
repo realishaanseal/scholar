@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import type { Gradebook as GradebookData } from "@/domains/grading";
+import { compareGrades, displayGrade, higherIsBetter, scheme } from "@/domains/grading/schemes";
 
 /**
  * The class, as a grid.
@@ -15,7 +16,15 @@ import type { Gradebook as GradebookData } from "@/domains/grading";
  * The first column stays put while you scroll, because a grid of numbers with
  * the names scrolled off is a grid of anonymous numbers.
  */
-export default function Gradebook({ data }: { data: GradebookData }) {
+export default function Gradebook({
+  data,
+  schemeId = "percent",
+}: {
+  data: GradebookData;
+  /** The institution's grading convention. */
+  schemeId?: string;
+}) {
+  const s = scheme(schemeId);
   const [sortByGrade, setSortByGrade] = useState(false);
 
   if (data.rows.length === 0) {
@@ -41,8 +50,12 @@ export default function Gradebook({ data }: { data: GradebookData }) {
     );
   }
 
+  // Ordered on the underlying percentage rather than the displayed value.
+  // On the German scale a "2" beats a "3" because 85% beats 70%, not because
+  // 2 is less than 3 — and a scheme whose labels are "2:1" and "Fail" has no
+  // numeric value to sort on at all.
   const rows = sortByGrade
-    ? [...data.rows].sort((a, b) => (b.grade.percentage ?? -1) - (a.grade.percentage ?? -1))
+    ? [...data.rows].sort((a, b) => compareGrades(a.grade.percentage, b.grade.percentage))
     : data.rows;
 
   const incomplete = data.rows.some((r) => r.grade.weightsIncomplete);
@@ -122,7 +135,7 @@ export default function Gradebook({ data }: { data: GradebookData }) {
 
                 <td className="sticky end-0 z-10 bg-ink-985 px-3.5 py-2.5 text-end">
                   <span className="font-semibold tabular-nums text-slate-100">
-                    {r.grade.percentage === null ? "—" : `${r.grade.percentage}%`}
+                    {displayGrade(r.grade.percentage, s)?.text ?? "—"}
                   </span>
                   {r.grade.awaiting > 0 && (
                     <span className="ms-1.5 text-[10.5px] text-slate-600">
@@ -135,6 +148,13 @@ export default function Gradebook({ data }: { data: GradebookData }) {
           </tbody>
         </table>
       </div>
+
+      {!higherIsBetter(s) && (
+        <p className="mt-2.5 text-[11.5px] leading-relaxed text-slate-500">
+          On this scale a lower number is a better result. The grade column is
+          ordered best-first regardless.
+        </p>
+      )}
 
       <p className="mt-2.5 text-[11.5px] leading-relaxed text-slate-600">
         Unmarked work is left out of the grade rather than counted as zero — a

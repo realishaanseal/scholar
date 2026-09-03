@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { deadlineView } from "@/lib/time";
+import { displayGrade, higherIsBetter, SCHEMES, scheme } from "@/domains/grading/schemes";
 
 /**
  * Where the institution is, and which days it does not work.
@@ -58,12 +59,15 @@ function allZones(): string[] {
 export default function TimeSettings({
   initialTimezone,
   initialRestDays,
+  initialScheme,
 }: {
   initialTimezone: string;
   initialRestDays: number[];
+  initialScheme: string;
 }) {
   const [timezone, setTimezone] = useState(initialTimezone);
   const [restDays, setRestDays] = useState<number[]>(initialRestDays);
+  const [gradingScheme, setGradingScheme] = useState(initialScheme);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -96,7 +100,7 @@ export default function TimeSettings({
       const res = await fetch("/api/institution/settings/time", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ timezone, restDays }),
+        body: JSON.stringify({ timezone, restDays, gradingScheme }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save.");
@@ -190,6 +194,48 @@ export default function TimeSettings({
             With no days off, Scholar will assume your students are available every day.
           </p>
         )}
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Grades</h2>
+        <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
+          How marks are written down for students and parents. Scholar always works
+          out the same underlying figure from marks and weights — this decides only
+          how it is written, so changing it re-labels existing grades rather than
+          recalculating them.
+        </p>
+
+        <select
+          value={gradingScheme}
+          onChange={(e) => setGradingScheme(e.target.value)}
+          className="input w-full max-w-[380px]"
+        >
+          {SCHEMES.map((s) => (
+            <option key={s.id} value={s.id}>{s.name} — {s.region}</option>
+          ))}
+        </select>
+
+        {/* A worked example, because "de-noten" tells an administrator
+            nothing and "85% is written 2 (gut)" tells them everything. */}
+        <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5">
+          <p className="text-[11.5px] uppercase tracking-wide text-slate-500">
+            A student on 85% would see
+          </p>
+          <p className="mt-1 text-[15px] font-semibold text-slate-100">
+            {displayGrade(85, scheme(gradingScheme))?.text}
+            {displayGrade(85, scheme(gradingScheme))?.name && (
+              <span className="ms-1.5 text-[12.5px] font-normal text-slate-400">
+                {displayGrade(85, scheme(gradingScheme))!.name}
+              </span>
+            )}
+          </p>
+          {!higherIsBetter(scheme(gradingScheme)) && (
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-amber-200">
+              On this scale a lower number is a better result. Scholar orders and
+              colours grades accordingly.
+            </p>
+          )}
+        </div>
       </section>
 
       <div className="flex items-center gap-3">
