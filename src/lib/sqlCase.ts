@@ -26,6 +26,40 @@
  * New tables are snake_case precisely so none of this applies to them. This
  * exists for the legacy tables and should not grow.
  */
+/**
+ * The camelCase columns that actually exist.
+ *
+ * Taken from information_schema on the live database rather than read off the
+ * migration source, so it describes what Postgres holds rather than what
+ * someone intended. Every one belongs to a table created before the schema
+ * settled on snake_case; nothing new should ever be added here.
+ *
+ * Regenerate with:
+ *   SELECT DISTINCT column_name FROM information_schema.columns
+ *    WHERE table_schema = 'public' AND column_name <> lower(column_name);
+ */
+const LEGACY_COLUMNS = new Set([
+  "accessTokenCipher", "actualMins", "aiConfidence", "aiModel",
+  "aiNotes", "aiProvider", "apiKeyCipher", "apiKeyHint",
+  "assignedTo", "calendarId", "captureToken", "captureTokenLastUsedAt",
+  "commentId", "completedAt", "createdAt", "createdBy",
+  "dayOfWeek", "dismissedAt", "dueAt", "educationSystem",
+  "emailVerified", "endHour", "endMin", "estimateMins",
+  "expiresAt", "externalEventId", "externalId", "externalSource",
+  "focusSeconds", "groupId", "homeworkId", "inputLanguage",
+  "interfaceLanguage", "inviteCode", "joinCode", "joinedAt",
+  "lastPulledAt", "lastPushedAt", "lastSyncError", "lastSyncedAt",
+  "lmsFeedPlatform", "lmsFeedUrl", "mimeType", "notifyPrefs",
+  "onTime", "ownerUserId", "passwordHash", "providerAccountId",
+  "rawInput", "refreshTokenCipher", "responseLanguage", "restDays",
+  "revokedAt", "sessionToken", "signalKey", "startHour",
+  "startMin", "startedAt", "studyEndHour", "studyStartHour",
+  "subjectId", "subjectName", "subjectUserId", "syncToken",
+  "taskId", "teacherName", "themeAccent", "tokenExpiresAt",
+  "updatedAt", "userId", "viewerUserId", "weekdayMins",
+  "weekendMins",
+]);
+
 export function quoteCamelIdentifiers(sql: string): string {
   let out = "";
   let i = 0;
@@ -114,9 +148,18 @@ export function quoteCamelIdentifiers(sql: string): string {
       while (j < sql.length && isIdentPart(sql[j])) j++;
       const token = sql.slice(i, j);
 
-      // Mixed case is the signal that this is a legacy camelCase column.
-      // Keywords and snake_case names are single-case and pass through.
-      out += /[A-Z]/.test(token) && /[a-z]/.test(token) ? `"${token}"` : token;
+      // Quoted only if it is a column that genuinely exists in camelCase.
+      //
+      // Narrowed from "anything mixed-case" deliberately. The lexer below
+      // already keeps this out of strings and comments, but an allow-list
+      // means a bug in that lexer can no longer corrupt a value: an unknown
+      // mixed-case token is left exactly as written.
+      //
+      // It also fails in the safe direction. A legacy column missing from
+      // this list produces `column "userid" does not exist` — loud, immediate
+      // and obvious — where the old behaviour's failure mode was writing a
+      // wrong value and saying nothing.
+      out += LEGACY_COLUMNS.has(token) ? `"${token}"` : token;
       i = j;
       continue;
     }

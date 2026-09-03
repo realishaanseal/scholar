@@ -121,7 +121,7 @@ export async function checkDeadline(
 
 /* ── The institution's own health ──────────────────────────────────────── */
 
-import { courseConcerns, markingHealth } from "./institution";
+import { courseConcerns } from "./institution";
 import type { CourseHealth, MarkingHealth } from "./institution";
 
 export * from "./institution";
@@ -137,22 +137,53 @@ export async function institutionMarkingHealth(
   organizationId: string,
   days = 90
 ): Promise<MarkingHealth> {
-  const rows = await db
+  // Aggregated in the database rather than in JavaScript.
+  //
+  // This used to select every submission in the window and compute the median
+  // over the returned rows. That is correct and it does not scale: a
+  // five-thousand-student institution puts six figures of rows on the wire to
+  // produce four numbers. percentile_cont gives an exact median in the
+  // database, and the index on (organization_id, submitted_at) means the scan
+  // is bounded by the window rather than by the table.
+  //
+  // markingHealth() is still the definition of these figures and still tested
+  // against the cases that matter — it is used wherever rows are already in
+  // hand. This is the same arithmetic expressed where the rows live.
+  const r = await db
     .prepare(
-      `SELECT submitted_at, graded_at
-         FROM assignment_submissions
-        WHERE organization_id = ?
-          AND submitted_at IS NOT NULL
-          AND submitted_at > now() - make_interval(days => ?)`
+      `SELECT
+         COUNT(*) FILTER (WHERE graded_at IS NOT NULL)::int AS marked,
+         COUNT(*) FILTER (WHERE graded_at IS NULL)::int     AS outstanding,
+         percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY EXTRACT(EPOCH FROM (graded_at - submitted_at)) / 86400
+         ) FILTER (WHERE graded_at IS NOT NULL AND graded_at >= submitted_at)
+           AS median_days,
+         MAX(EXTRACT(EPOCH FROM (now() - submitted_at)) / 86400)
+           FILTER (WHERE graded_at IS NULL) AS worst_wait
+       FROM assignment_submissions
+      WHERE organization_id = ?
+        AND submitted_at IS NOT NULL
+        AND submitted_at > now() - make_interval(days => ?)`
     )
-    .all(organizationId, days);
+    .get(organizationId, days);
 
-  return markingHealth(
-    (rows as any[]).map((r) => ({
-      submittedAt: toIso(r.submitted_at),
-      gradedAt: toIso(r.graded_at),
-    }))
-  );
+  const marked = Number((r as any)?.marked ?? 0);
+  const outstanding = Number((r as any)?.outstanding ?? 0);
+  const total = marked + outstanding;
+  const median = (r as any)?.median_days;
+  const worst = (r as any)?.worst_wait;
+
+  return {
+    marked,
+    outstanding,
+    medianDays: median === null || median === undefined ? null : round1(Number(median)),
+    worstWaitDays: worst === null || worst === undefined ? null : round1(Number(worst)),
+    returnRate: total === 0 ? null : Math.round((marked / total) * 100) / 100,
+  };
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 /**
@@ -195,7 +226,3 @@ export async function institutionCourseHealth(
   );
 }
 
-function toIso(v: unknown): string | null {
-  if (!v) return null;
-  return v instanceof Date ? v.toISOString() : String(v);
-}

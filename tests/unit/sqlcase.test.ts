@@ -117,3 +117,40 @@ describe("idempotence", () => {
     expect(q(once)).toBe(once);
   });
 });
+
+/* ── Narrowed to columns that actually exist ───────────────────────────── */
+
+describe("only real legacy columns are quoted", () => {
+  it("quotes a column the schema genuinely has", () => {
+    expect(q(`SELECT "x" FROM t WHERE userId = ?`))
+      .toContain('"userId"');
+    expect(q(`SELECT dueAt FROM homework`)).toContain('"dueAt"');
+  });
+
+  it("leaves a mixed-case token that is not a column alone", () => {
+    // Defence in depth behind the lexer. Even if the string-tracking below
+    // had a bug, an unknown token cannot be rewritten — so a value can no
+    // longer be corrupted into an identifier.
+    const sql = `SELECT * FROM t WHERE name = 'MathCore' AND kind = 'InProgress'`;
+    expect(q(sql)).toBe(sql);
+  });
+
+  it("does not quote a plausible-looking name that was never a column", () => {
+    const sql = `SELECT someInventedThing FROM t`;
+    expect(q(sql)).toBe(sql);
+  });
+
+  it("leaves snake_case entirely alone", () => {
+    const sql = `SELECT organization_id, course_section_id FROM assignments`;
+    expect(q(sql)).toBe(sql);
+  });
+
+  it("fails loudly rather than silently when a column is missed", () => {
+    // A legacy column absent from the allow-list produces
+    // `column "userid" does not exist` at query time — immediate and
+    // obvious. The behaviour being replaced failed by writing a wrong value
+    // and saying nothing, which is the direction that matters.
+    const sql = `SELECT notARealColumn FROM t`;
+    expect(q(sql)).not.toContain('"');
+  });
+});
