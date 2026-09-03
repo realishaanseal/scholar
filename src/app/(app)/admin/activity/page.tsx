@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import PageHeading from "@/components/PageHeading";
 import { auth } from "@/lib/auth";
 import { administeredOrganizations } from "@/domains/identity";
@@ -36,6 +37,8 @@ const LABEL: Record<string, string> = {
  * do not.
  */
 export default async function ActivityPage() {
+  const t = await getTranslations("admin");
+
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -49,21 +52,19 @@ export default async function ActivityPage() {
   return (
     <div>
       <PageHeading
-        title="Activity"
-        subtitle="Consequential actions in this institution, newest first."
+        title={t("activityTitle")}
+        subtitle={t("activitySubtitle")}
       />
 
       {refusals > 0 && (
         <p className="mb-4 rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-200">
-          {refusals} {refusals === 1 ? "request was" : "requests were"} refused in this
-          period. A handful is ordinary — a stale link, a class someone no longer teaches.
-          A great many from one person is worth asking about.
+          {t("activityRefused", { count: refusals })}
         </p>
       )}
 
       {entries.length === 0 ? (
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
-          <p className="text-[14px] font-medium text-slate-200">Nothing recorded yet</p>
+          <p className="text-[14px] font-medium text-slate-200">{t("activityEmptyTitle")}</p>
           <p className="mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-slate-400">
             Marking, publishing and file access will appear here as they happen.
           </p>
@@ -122,9 +123,7 @@ export default async function ActivityPage() {
       )}
 
       <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        Ordinary page views are not recorded. This log holds actions that changed
-        something, requests that were refused, and access to student work — not a
-        record of everywhere a person has been.
+        {t("activityNoPageViews")}
       </p>
 
       <p className="mt-4">

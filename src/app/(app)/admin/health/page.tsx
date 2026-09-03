@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import PageHeading from "@/components/PageHeading";
 import { Reveal } from "@/components/motion";
 import { auth } from "@/lib/auth";
@@ -23,6 +24,8 @@ export const dynamic = "force-dynamic";
  * should be confronted with its own.
  */
 export default async function InstitutionHealthPage() {
+  const t = await getTranslations("admin");
+
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -40,35 +43,35 @@ export default async function InstitutionHealthPage() {
   return (
     <div>
       <PageHeading
-        title="How it is going"
-        subtitle="What the institution has set, returned, and left waiting — over the last 90 days."
+        title={t("healthTitle")}
+        subtitle={t("healthSubtitle")}
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Stat
-          label="Typical wait"
+          label={t("healthTypicalWait")}
           value={marking.medianDays === null ? "—" : `${marking.medianDays}d`}
-          hint="from handing in to getting it back"
+          hint={t("healthTypicalWaitHint")}
         />
         <Stat
-          label="Longest wait"
+          label={t("healthLongestWait")}
           value={
             marking.worstWaitDays === null ? "—" : `${Math.round(marking.worstWaitDays)}d`
           }
-          hint="someone is still waiting this long"
+          hint={t("healthLongestWaitHint")}
           accent={(marking.worstWaitDays ?? 0) >= 21}
         />
         <Stat
-          label="Returned"
+          label={t("healthReturned")}
           value={
             marking.returnRate === null ? "—" : `${Math.round(marking.returnRate * 100)}%`
           }
-          hint="of work handed in"
+          hint={t("healthReturnedHint")}
         />
         <Stat
-          label="Waiting"
+          label={t("healthWaiting")}
           value={marking.outstanding}
-          hint="pieces not yet marked"
+          hint={t("healthWaitingHint")}
           accent={marking.outstanding > 0}
         />
       </div>
@@ -84,8 +87,8 @@ export default async function InstitutionHealthPage() {
 
       <h2 className="mb-2.5 mt-8 text-[13px] font-medium text-slate-300">
         {concerns.length === 0
-          ? "Every course looks healthy"
-          : `${concerns.length} ${concerns.length === 1 ? "course needs" : "courses need"} attention`}
+          ? t("healthAllHealthy")
+          : t("healthNeedsAttention", { count: concerns.length })}
       </h2>
 
       {concerns.length === 0 ? (
@@ -144,9 +147,7 @@ export default async function InstitutionHealthPage() {
       </div>
 
       <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        These figures are drawn from work set and marked. Scholar does not report on how
-        individual students spend their time, and no measure of attention, engagement or
-        study habits is available here or anywhere else in the administration console.
+        {t("healthNoSurveillanceNote")}
       </p>
 
       <p className="mt-4">
