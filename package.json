@@ -12,7 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "migrate": "tsx scripts/migrate.ts",
     "migrate:status": "tsx scripts/migrate-status.ts",
-    "institution:setup": "tsx scripts/institution-setup.ts"
+    "institution:setup": "tsx scripts/institution-setup.ts",
+    "timestamps:verify": "tsx scripts/verify-timestamps.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",

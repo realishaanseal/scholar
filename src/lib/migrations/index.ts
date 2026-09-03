@@ -11,6 +11,8 @@ import { sql as quizzes } from "./0008_quizzes";
 import { sql as aiAssistance } from "./0009_ai_assistance";
 import { sql as governance } from "./0010_governance";
 import { sql as time } from "./0011_time";
+import { sql as timestampsExpand } from "./0012_timestamps_expand";
+import { sql as timestampsDualWrite } from "./0013_timestamps_dualwrite";
 
 /**
  * Versioned schema migrations.
@@ -57,6 +59,8 @@ export const MIGRATIONS: Migration[] = [
   { id: "0009_ai_assistance", sql: aiAssistance },
   { id: "0010_governance", sql: governance },
   { id: "0011_time", sql: time },
+  { id: "0012_timestamps_expand", sql: timestampsExpand },
+  { id: "0013_timestamps_dualwrite", sql: timestampsDualWrite },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */
