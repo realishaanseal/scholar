@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { deadlineView } from "@/lib/time";
 import { displayGrade, higherIsBetter, SCHEMES, scheme } from "@/domains/grading/schemes";
 
@@ -30,10 +31,10 @@ const DAYS = [
 
 /** Common patterns, so the usual answer is one click rather than seven. */
 const PRESETS = [
-  { label: "Sat – Sun", days: [0, 6] },
-  { label: "Fri – Sat", days: [5, 6] },
-  { label: "Sunday only", days: [0] },
-  { label: "Friday only", days: [5] },
+  { labelKey: "settingsRestSatSun", days: [0, 6] },
+  { labelKey: "settingsRestFriSat", days: [5, 6] },
+  { labelKey: "settingsRestSunOnly", days: [0] },
+  { labelKey: "settingsRestFriOnly", days: [5] },
 ];
 
 function allZones(): string[] {
@@ -67,6 +68,7 @@ export default function TimeSettings({
   initialScheme: string;
   initialAiPolicy: "off" | "institution" | "teacher";
 }) {
+  const t = useTranslations("admin");
   const [timezone, setTimezone] = useState(initialTimezone);
   const [restDays, setRestDays] = useState<number[]>(initialRestDays);
   const [gradingScheme, setGradingScheme] = useState(initialScheme);
@@ -106,8 +108,8 @@ export default function TimeSettings({
         body: JSON.stringify({ timezone, restDays, gradingScheme, aiPolicy }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not save.");
-      setMessage({ ok: true, text: "Saved. New deadlines will use this clock." });
+      if (!res.ok) throw new Error(data.error ?? t("settingsSaveFailed"));
+      setMessage({ ok: true, text: t("settingsSaved") });
     } catch (err) {
       setMessage({ ok: false, text: (err as Error).message });
     } finally {
@@ -118,11 +120,9 @@ export default function TimeSettings({
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Timezone</h2>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">{t("settingsTimezone")}</h2>
         <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
-          The clock your teachers write deadlines against. A student reading a deadline
-          from another country sees their own time alongside this one, so the rule stays
-          the rule wherever they are.
+          {t("settingsTimezoneHelp")}
         </p>
 
         <select
@@ -137,36 +137,34 @@ export default function TimeSettings({
 
         <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5">
           <p className="text-[11.5px] uppercase tracking-wide text-slate-500">
-            A deadline set for Friday 23:59 means
+            {t("settingsDeadlineMeans")}
           </p>
           <p className="mt-1 text-[13px] text-slate-200">
             {preview.institution.text} {preview.institution.abbrev}
           </p>
           {preview.differs && (
             <p className="mt-0.5 text-[12.5px] text-slate-400">
-              {preview.viewer.text} {preview.viewer.abbrev} — where you are now
+              {preview.viewer.text} {preview.viewer.abbrev} — {t("settingsWhereYouAre")}
             </p>
           )}
         </div>
       </section>
 
       <section>
-        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Days off</h2>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">{t("settingsDaysOff")}</h2>
         <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
-          Which days your students are not at school. Scholar uses this to work out when
-          they actually have time to study, so getting it wrong means telling someone to
-          start an essay on a day they are in lessons.
+          {t("settingsDaysOffHelp")}
         </p>
 
         <div className="mb-3 flex flex-wrap gap-1.5">
           {PRESETS.map((p) => (
             <button
-              key={p.label}
+              key={p.labelKey}
               type="button"
               onClick={() => setRestDays(p.days)}
               className="btn btn-ghost px-2.5 py-1 text-[12px]"
             >
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
@@ -194,18 +192,15 @@ export default function TimeSettings({
 
         {restDays.length === 0 && (
           <p className="mt-2 text-[12px] text-amber-300">
-            With no days off, Scholar will assume your students are available every day.
+            {t("settingsNoDaysOffWarning")}
           </p>
         )}
       </section>
 
       <section>
-        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Grades</h2>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">{t("settingsGrades")}</h2>
         <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
-          How marks are written down for students and parents. Scholar always works
-          out the same underlying figure from marks and weights — this decides only
-          how it is written, so changing it re-labels existing grades rather than
-          recalculating them.
+          {t("settingsGradesHelp")}
         </p>
 
         <select
@@ -222,7 +217,7 @@ export default function TimeSettings({
             nothing and "85% is written 2 (gut)" tells them everything. */}
         <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5">
           <p className="text-[11.5px] uppercase tracking-wide text-slate-500">
-            A student on 85% would see
+            {t("settingsGradesExample")}
           </p>
           <p className="mt-1 text-[15px] font-semibold text-slate-100">
             {displayGrade(85, scheme(gradingScheme))?.text}
@@ -234,30 +229,23 @@ export default function TimeSettings({
           </p>
           {!higherIsBetter(scheme(gradingScheme)) && (
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-amber-200">
-              On this scale a lower number is a better result. Scholar orders and
-              colours grades accordingly.
+              {t("settingsLowerIsBetter")}
             </p>
           )}
         </div>
       </section>
 
       <section>
-        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">Marking assistance</h2>
+        <h2 className="mb-1 text-[13.5px] font-medium text-slate-200">{t("settingsAiTitle")}</h2>
         <p className="mb-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-slate-400">
-          Whether teachers can ask a model to suggest a mark. Doing so sends the
-          student's submitted work to whichever provider is configured, so this is a
-          decision about where your students' coursework goes — not a convenience
-          setting. A suggestion never becomes a grade on its own; a teacher always
-          records it.
+          {t("settingsAiHelp")}
         </p>
 
         <div className="space-y-2">
           {([
-            ["off", "Off", "No student work is sent to any model."],
-            ["institution", "Institution's provider only",
-             "Teachers may ask for a suggestion, using the provider you configure. They cannot change it."],
-            ["teacher", "Teachers choose their own",
-             "Each teacher uses their own provider and key. You will not know which."],
+            ["off", t("settingsAiOff"), t("settingsAiOffHelp")],
+            ["institution", t("settingsAiInstitution"), t("settingsAiInstitutionHelp")],
+            ["teacher", t("settingsAiTeacher"), t("settingsAiTeacherHelp")],
           ] as const).map(([value, label, help]) => (
             <label
               key={value}
@@ -285,10 +273,7 @@ export default function TimeSettings({
 
         {aiPolicy === "teacher" && (
           <p className="mt-2.5 rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-200">
-            With this setting your institution cannot say where its students' work is
-            being sent, because each teacher decides separately. If you are subject to
-            the GDPR, the UK Age Appropriate Design Code or India's DPDP Act, that is
-            likely to be a problem worth checking before you choose it.
+            {t("settingsAiTeacherWarning")}
           </p>
         )}
       </section>
@@ -300,7 +285,7 @@ export default function TimeSettings({
           disabled={saving}
           className="btn-primary px-4 py-2 text-[13px]"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("settingsSaveBusy") : t("settingsSave")}
         </button>
         {message && (
           <span className={message.ok ? "text-[12.5px] text-emerald-300" : "text-[12.5px] text-rose-300"}>
@@ -310,8 +295,7 @@ export default function TimeSettings({
       </div>
 
       <p className="text-[11.5px] leading-relaxed text-slate-600">
-        Changing the timezone does not move deadlines that already exist — each one keeps
-        the clock it was written against, so nobody becomes late because a setting changed.
+        {t("settingsDeadlinesUnchanged")}
       </p>
     </div>
   );
