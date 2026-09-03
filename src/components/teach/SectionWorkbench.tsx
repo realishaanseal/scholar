@@ -29,6 +29,9 @@ type Props = {
 
 type Banner = { kind: "ok" | "error"; text: string } | null;
 
+/** Mirrors CollisionWarning, kept local so no server module is imported. */
+type Clash = { severity: "high" | "medium"; message: string };
+
 export default function SectionWorkbench({
   sectionId,
   courseId,
@@ -324,6 +327,36 @@ function Composer({
   const [kind, setKind] = useState<"task" | "quiz">("task");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clash, setClash] = useState<Clash | null>(null);
+
+  /**
+   * Ask whether the class is already busy that day.
+   *
+   * Fired when the teacher leaves the date field rather than on every
+   * keystroke: a datetime input passes through a dozen invalid states while
+   * being typed, and warning about each would be noise.
+   */
+  async function checkDay(value: string, mins: string) {
+    if (!value) {
+      setClash(null);
+      return;
+    }
+    const day = value.slice(0, 10);
+    const q = new URLSearchParams({ day });
+    if (mins.trim() !== "") q.set("mins", mins.trim());
+
+    try {
+      const res = await fetch(
+        `/api/institution/sections/${sectionId}/deadline-check?${q}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setClash(data.warning ?? null);
+    } catch {
+      // A warning that cannot be fetched is not worth an error message. The
+      // teacher is mid-sentence; the deadline still works.
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -424,6 +457,7 @@ function Composer({
                   type="datetime-local"
                   value={dueAt}
                   onChange={(e) => setDueAt(e.target.value)}
+                  onBlur={(e) => void checkDay(e.target.value, estimate)}
                   className="input w-full"
                 />
               </Field>
@@ -446,6 +480,22 @@ function Composer({
                 />
               </Field>
             </div>
+
+            {/* Said while the date can still be changed painlessly, and never
+                as a refusal: a teacher may have a good reason for a crowded
+                week, and being overruled by a heuristic would be resented most
+                in the cases where the heuristic was right. */}
+            {clash && (
+              <p
+                className={
+                  clash.severity === "high"
+                    ? "rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-200"
+                    : "rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-slate-400"
+                }
+              >
+                {clash.message}
+              </p>
+            )}
 
             <p className="text-[12px] leading-relaxed text-slate-500">
               Your estimate seeds each student&apos;s task once. After that it is theirs —

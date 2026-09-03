@@ -10,6 +10,7 @@ import QuizRunner from "./QuizRunner";
 // browser bundle. The type import is erased at build time and costs nothing.
 import { evaluateSubmission } from "@/domains/assessment/projection";
 import type { StudentAssignment } from "@/domains/learning";
+import type { WorkPlan } from "@/domains/insight/plan";
 
 /**
  * Coursework, from the student's side.
@@ -32,10 +33,14 @@ type AttachedFile = {
 
 export default function CourseWork({
   assignments: initial,
+  plans = [],
 }: {
   assignments: StudentAssignment[];
+  /** Scholar's view of the same work: how long, and how late it can be left. */
+  plans?: WorkPlan[];
 }) {
   const [assignments, setAssignments] = useState(initial);
+  const planFor = new Map(plans.map((p) => [p.assignmentId, p]));
 
   if (assignments.length === 0) {
     return (
@@ -55,6 +60,7 @@ export default function CourseWork({
         <Reveal key={a.id} y={8} delay={Math.min(i * 0.03, 0.18)}>
           <AssignmentCard
             assignment={a}
+            plan={planFor.get(a.id)}
             onSubmitted={(next) =>
               setAssignments((prev) => prev.map((x) => (x.id === next.id ? next : x)))
             }
@@ -67,9 +73,11 @@ export default function CourseWork({
 
 function AssignmentCard({
   assignment,
+  plan,
   onSubmitted,
 }: {
   assignment: StudentAssignment;
+  plan?: WorkPlan;
   onSubmitted: (a: StudentAssignment) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -196,6 +204,11 @@ function AssignmentCard({
             className="overflow-hidden border-t border-white/[0.06]"
           >
             <div className="space-y-4 px-4 py-4">
+              {/* What a course cannot tell you on its own. Shown only while
+                  the work is still outstanding: once it is handed in, how long
+                  it was going to take stopped being useful advice. */}
+              {plan && !handedIn && <PlanLine plan={plan} />}
+
               {assignment.instructions ? (
                 <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-slate-300">
                   {assignment.instructions}
@@ -338,6 +351,64 @@ function AssignmentCard({
  * Colour carries the meaning here rather than decorating it: overdue is the
  * only thing that needs attention, so it is the only thing that is loud.
  */
+/**
+ * Scholar's plan for one piece of work.
+ *
+ * Says the number and then says where it came from. An estimate a student
+ * cannot interrogate is one they will either follow blindly or ignore
+ * entirely, and both are worse than an estimate they can argue with — which
+ * is why the reason is written out rather than hidden behind a tooltip.
+ */
+function PlanLine({ plan }: { plan: WorkPlan }) {
+  const { plan: when } = plan;
+
+  return (
+    <div className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5">
+      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        {plan.expectedMins !== null && (
+          <span className="text-[13px] font-medium text-slate-200">
+            About {formatMins(plan.expectedMins)}
+          </span>
+        )}
+
+        {when.kind === "start-by" && (
+          <span className="text-[12.5px] text-slate-400">
+            · start by{" "}
+            {new Date(when.startBy).toLocaleDateString(undefined, {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+            })}
+          </span>
+        )}
+        {when.kind === "start-now" && (
+          <span className="text-[12.5px] text-amber-300">· start today to finish in time</span>
+        )}
+        {when.kind === "too-late" && (
+          <span className="text-[12.5px] text-rose-300">
+            · about {formatMins(when.shortfallMins)} short of the time you have
+          </span>
+        )}
+      </div>
+
+      {/* The workings. A student who disagrees can see exactly what Scholar
+          assumed, which is the difference between a tool and an oracle. */}
+      <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
+        {plan.reason}
+        {when.kind === "too-late" &&
+          " Worth telling your teacher now, while there is still time to do something about it."}
+      </p>
+    </div>
+  );
+}
+
+function formatMins(mins: number): string {
+  if (mins < 60) return `${Math.round(mins)} min`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+}
+
 function StatusDot({
   handedIn, marked, overdue,
 }: {

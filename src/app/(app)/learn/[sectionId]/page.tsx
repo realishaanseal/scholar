@@ -8,6 +8,7 @@ import { getSectionDetail } from "@/domains/courses";
 import { isEnrolledIn, listStudentAssignments } from "@/domains/learning";
 import { listMaterials } from "@/domains/library";
 import { describeGrade, studentGrade } from "@/domains/grading";
+import { planCoursework } from "@/domains/insight";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,14 @@ export default async function LearnSectionPage({
   const section = await getSectionDetail(sectionId);
   if (!section) notFound();
 
-  const [assignments, materials, grade] = await Promise.all([
+  const [assignments, materials, grade, plans] = await Promise.all([
     listStudentAssignments(sectionId, session.user.id),
     // Published only. A draft is the teacher still preparing.
     listMaterials(section.courseId, { publishedOnly: true }),
     studentGrade(sectionId, section.courseId, session.user.id),
+    // The half a course cannot work out on its own: how long this will take
+    // THIS student, and how late they can leave it.
+    planCoursework(session.user.id, sectionId),
   ]);
 
   return (
@@ -85,7 +89,7 @@ export default async function LearnSectionPage({
       <SectionTabs
         counts={{ work: assignments.length, materials: materials.length, students: 0 }}
         labels={{ work: "Work", materials: "Library" }}
-        work={<CourseWork assignments={assignments} />}
+        work={<CourseWork assignments={assignments} plans={plans} />}
         materials={
           <StudentMaterials
             materials={materials.map((m) => ({
