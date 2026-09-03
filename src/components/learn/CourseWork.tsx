@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { EASE_OUT, Reveal } from "@/components/motion";
 import { cn } from "@/lib/cn";
@@ -43,6 +44,7 @@ export default function CourseWork({
   /** The institution's zone — the clock these deadlines were written against. */
   timezone?: string;
 }) {
+  const t = useTranslations("learn");
   const [assignments, setAssignments] = useState(initial);
   const planFor = new Map(plans.map((p) => [p.assignmentId, p]));
 
@@ -87,6 +89,7 @@ function AssignmentCard({
   timezone: string;
   onSubmitted: (a: StudentAssignment) => void;
 }) {
+  const t = useTranslations("learn");
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<AttachedFile[] | null>(null);
   const [body, setBody] = useState("");
@@ -131,7 +134,7 @@ function AssignmentCard({
     try {
       const res = await fetch(`/api/institution/assignments/${assignment.id}/quiz`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not open this quiz.");
+      if (!res.ok) throw new Error(data.error ?? t("quizOpenError"));
       setQuiz(data.questions ?? []);
       setSitting(true);
     } catch (err) {
@@ -151,7 +154,7 @@ function AssignmentCard({
         body: JSON.stringify({ body, url: url.trim() || null }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not submit.");
+      if (!res.ok) throw new Error(data.error ?? t("submitError"));
 
       onSubmitted({ ...assignment, submission: data.submission });
       setBody("");
@@ -175,7 +178,7 @@ function AssignmentCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium text-slate-100">{assignment.title}</p>
           <p className="mt-0.5 truncate text-[12px] text-slate-500">
-            {assignment.dueAt ? dueLabel(assignment.dueAt, handedIn) : "No deadline"}
+            {assignment.dueAt ? dueLabel(assignment.dueAt, handedIn) : t("noDeadline")}
             {assignment.attachmentCount > 0 &&
               ` · ${assignment.attachmentCount} attachment${assignment.attachmentCount === 1 ? "" : "s"}`}
           </p>
@@ -293,8 +296,8 @@ function AssignmentCard({
                     )}
                     <p className="text-[12.5px] leading-relaxed text-slate-400">
                       {handedIn
-                        ? "You have already sat this. Starting again uses another attempt."
-                        : "Once you start, your answers are marked as soon as you hand in."}
+                        ? t("quizRetakeWarning")
+                        : t("quizStartNote")}
                     </p>
                     {error && <p className="text-[12.5px] text-rose-300">{error}</p>}
                     <button
@@ -303,7 +306,7 @@ function AssignmentCard({
                       onClick={() => void startQuiz()}
                       className="btn-primary px-3.5 py-2 text-[13px] disabled:opacity-50"
                     >
-                      {busy ? "Opening…" : handedIn ? "Sit it again" : "Start quiz"}
+                      {busy ? t("quizOpening") : handedIn ? t("quizSitAgain") : t("quizStart")}
                     </button>
                   </div>
                 )
@@ -318,13 +321,13 @@ function AssignmentCard({
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     rows={4}
-                    placeholder={handedIn ? "Submit a revised answer…" : "Your answer…"}
+                    placeholder={handedIn ? t("answerRevisedPlaceholder") : t("answerPlaceholder")}
                     className="input w-full resize-y text-[13px]"
                   />
                   <input
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    placeholder="Or a link to your work (optional)"
+                    placeholder={t("linkPlaceholder")}
                     className="input w-full text-[13px]"
                   />
                   {error && <p className="text-[12.5px] text-rose-300">{error}</p>}
@@ -334,16 +337,16 @@ function AssignmentCard({
                     onClick={() => void submit()}
                     className="btn-primary px-3.5 py-2 text-[13px]"
                   >
-                    {busy ? "Submitting…" : handedIn ? "Submit again" : "Hand in"}
+                    {busy ? t("submitting") : handedIn ? t("submitAgain") : t("handIn")}
                   </button>
                 </div>
               ) : (
                 <p className="rounded-lg border border-white/[0.07] px-3 py-2.5 text-[12.5px] text-slate-400">
                   {verdict.reason === "not-open-yet"
-                    ? "This is not open for submission yet."
+                    ? t("notOpenForSubmission")
                     : verdict.reason === "closed"
-                      ? "Submissions have closed."
-                      : "The deadline has passed and late work is not accepted."}
+                      ? t("submissionsClosed")
+                      : t("lateNotAccepted")}
                 </p>
               )}
             </div>
