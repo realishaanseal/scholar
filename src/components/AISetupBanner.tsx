@@ -71,11 +71,12 @@ export default function AISetupBanner() {
             </svg>
           </Link>
           <button
-            onClick={() => setDismissed(true)}
+      type="button"
+      onClick={() => setDismissed(true)}
             className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300"
             aria-label="Dismiss"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>

@@ -91,7 +91,8 @@ export default function SharingPanel() {
                   </div>
 
                   <button
-                    className="shrink-0 text-[11.5px] text-red-300/80 hover:text-red-300"
+      type="button"
+      className="shrink-0 text-[11.5px] text-red-300/80 hover:text-red-300"
                     onClick={async () => {
                       await fetchJson(`/api/sharing?id=${g.id}`, { method: "DELETE" });
                       load();
@@ -136,7 +137,8 @@ export default function SharingPanel() {
           <div className="mt-4 space-y-2">
             {received.filter((g) => !g.revokedAt).map((g) => (
               <button
-                key={g.id}
+      type="button"
+      key={g.id}
                 onClick={() => setViewing(g.id)}
                 className="flex w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02]
                            px-4 py-3 text-left transition-colors hover:border-white/15 hover:bg-white/[0.05]"
@@ -170,7 +172,7 @@ function CreateGrant({ scopes, onDone }: { scopes: Scope[]; onDone: () => void }
 
   if (!open) {
     return (
-      <button className="btn-ghost mt-5 px-3 py-2 text-xs" onClick={() => setOpen(true)}>
+      <button type="button" className="btn-ghost mt-5 px-3 py-2 text-xs" onClick={() => setOpen(true)}>
         Share a summary
       </button>
     );
@@ -225,7 +227,8 @@ function CreateGrant({ scopes, onDone }: { scopes: Scope[]; onDone: () => void }
 
       <div className="mt-4 flex gap-2">
         <button
-          className="btn-primary px-4 py-2 text-xs"
+      type="button"
+      className="btn-primary px-4 py-2 text-xs"
           disabled={busy || label.trim().length < 1 || picked.size === 0}
           onClick={async () => {
             setBusy(true);
@@ -242,7 +245,7 @@ function CreateGrant({ scopes, onDone }: { scopes: Scope[]; onDone: () => void }
         >
           Create invite
         </button>
-        <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setOpen(false)}>Cancel</button>
+        <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => setOpen(false)}>Cancel</button>
       </div>
     </div>
   );
@@ -261,7 +264,8 @@ function AcceptCode({ onDone }: { onDone: () => void }) {
         onChange={(e) => setCode(e.target.value.toUpperCase())}
       />
       <button
-        className="btn-ghost shrink-0 px-4 py-2 text-xs"
+      type="button"
+      className="btn-ghost shrink-0 px-4 py-2 text-xs"
         disabled={code.trim().length < 4}
         onClick={async () => {
           setError(null);
@@ -296,7 +300,7 @@ function SharedView({ grantId, onBack }: { grantId: string; onBack: () => void }
   if (error) {
     return (
       <section className="card animate-riseIn p-6">
-        <button onClick={onBack} className="mb-4 text-[11px] text-slate-500 hover:text-slate-300">← Back</button>
+        <button type="button" onClick={onBack} className="mb-4 text-[11px] text-slate-500 hover:text-slate-300">← Back</button>
         <p className="text-sm text-slate-400">{error}</p>
       </section>
     );
@@ -308,7 +312,7 @@ function SharedView({ grantId, onBack }: { grantId: string; onBack: () => void }
 
   return (
     <section className="card animate-riseIn p-6">
-      <button onClick={onBack} className="mb-4 text-[11px] text-slate-500 hover:text-slate-300">← Back</button>
+      <button type="button" onClick={onBack} className="mb-4 text-[11px] text-slate-500 hover:text-slate-300">← Back</button>
       <h3 className="text-lg font-semibold tracking-tight text-white">{grant.subjectName}</h3>
       <p className="mt-0.5 text-[11px] text-slate-500">Shared with you · read only</p>
 

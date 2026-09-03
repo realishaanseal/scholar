@@ -118,7 +118,7 @@ export default function FocusMode({
           <p className="mt-1 text-xs text-slate-500">{formatDue(hw.dueAt)}</p>
         </div>
 
-        <button onClick={pauseAndExit} className="btn-ghost px-4 py-2 text-xs" disabled={saving}>
+        <button type="button" onClick={pauseAndExit} className="btn-ghost px-4 py-2 text-xs" disabled={saving}>
           Save &amp; close
         </button>
       </div>

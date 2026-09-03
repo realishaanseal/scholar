@@ -112,16 +112,18 @@ export default function ClassList({
               {c.location && <span className="ml-1.5 text-slate-600">· {c.location}</span>}
             </span>
             <button
-              onClick={() => setEditing(c.id)}
+      type="button"
+      onClick={() => setEditing(c.id)}
               className="tap-44 shrink-0 text-slate-600 hover:text-slate-300"
               aria-label="Edit"
             >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
               </svg>
             </button>
             <button
-              onClick={async () => {
+      type="button"
+      onClick={async () => {
                 await fetchJson(`/api/timetable?id=${encodeURIComponent(c.id)}`, { method: "DELETE" });
                 onChanged();
               }}
@@ -243,13 +245,14 @@ function EditRow({
 
       <div className="mt-2.5 flex gap-2">
         <button
-          className="btn-primary px-4 py-1.5 text-xs"
+      type="button"
+      className="btn-primary px-4 py-1.5 text-xs"
           onClick={save}
           disabled={busy || form.title.trim().length < 1}
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        <button className="btn-ghost px-3 py-1.5 text-xs" onClick={onCancel}>
+        <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={onCancel}>
           Cancel
         </button>
       </div>

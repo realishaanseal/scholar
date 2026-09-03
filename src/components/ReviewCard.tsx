@@ -47,7 +47,7 @@ export default function ReviewCard({
             {d.provider}
           </span>
         </div>
-        <button onClick={() => setShowRaw((s) => !s)} className="text-xs text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={() => setShowRaw((s) => !s)} className="text-xs text-slate-500 hover:text-slate-300">
           {showRaw ? "Hide" : "Show"} what you said
         </button>
       </div>
@@ -186,7 +186,7 @@ export default function ReviewCard({
       </div>
 
       <div className="mt-6 flex gap-2.5">
-        <button className="btn-primary flex-1 py-3" disabled={saving || !d.title.trim()} onClick={() => onSave(d)}>
+        <button type="button" className="btn-primary flex-1 py-3" disabled={saving || !d.title.trim()} onClick={() => onSave(d)}>
           {saving ? "Saving…" : "Save homework"}
           {!saving && (
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +194,7 @@ export default function ReviewCard({
             </svg>
           )}
         </button>
-        <button className="btn-ghost px-6" disabled={saving} onClick={onDiscard}>
+        <button type="button" className="btn-ghost px-6" disabled={saving} onClick={onDiscard}>
           Discard
         </button>
       </div>

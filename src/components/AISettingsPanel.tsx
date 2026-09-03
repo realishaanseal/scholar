@@ -217,7 +217,7 @@ export default function AISettingsPanel() {
           </div>
 
           {settings && !settings.usingEnvFallback && (
-            <button onClick={resetAll} className="btn-ghost px-3 py-2 text-xs">Reset to .env</button>
+            <button type="button" onClick={resetAll} className="btn-ghost px-3 py-2 text-xs">Reset to .env</button>
           )}
         </div>
 
@@ -331,11 +331,11 @@ export default function AISettingsPanel() {
                   aria-label={showKey ? "Hide key" : "Show key"}
                 >
                   {showKey ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                       <path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 4.2A10.9 10.9 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-3.2 4.5M6.6 6.6A18.5 18.5 0 0 0 2 12s3 8 10 8a10.8 10.8 0 0 0 4.2-.8" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                       <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z" /><circle cx="12" cy="12" r="3" />
                     </svg>
                   )}
@@ -437,12 +437,13 @@ export default function AISettingsPanel() {
           </AnimatePresence>
 
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
-            <button className="btn-primary px-5" onClick={save} disabled={saving}>
+            <button type="button" className="btn-primary px-5" onClick={save} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
 
             <button
-              className="btn-ghost"
+      type="button"
+      className="btn-ghost"
               onClick={runTest}
               disabled={test.state === "running" || (info.needsKey && !haveSomeKey)}
             >
@@ -453,11 +454,11 @@ export default function AISettingsPanel() {
               confirmDelete ? (
                 <span className="ml-auto flex animate-popIn items-center gap-2">
                   <span className="text-xs text-slate-400">Delete the saved key?</span>
-                  <button className="btn-danger px-3 py-2" onClick={removeKey}>Yes, delete</button>
-                  <button className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  <button type="button" className="btn-danger px-3 py-2" onClick={removeKey}>Yes, delete</button>
+                  <button type="button" className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>Cancel</button>
                 </span>
               ) : (
-                <button className="btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>Delete key</button>
+                <button type="button" className="btn-danger ml-auto" onClick={() => setConfirmDelete(true)}>Delete key</button>
               )
             )}
           </div>

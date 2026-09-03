@@ -137,7 +137,7 @@ export default function NowCard({
             </motion.button>
 
             {alternatives.length > 0 && (
-              <button className="btn-ghost px-4 py-2.5 text-xs" onClick={() => setShowAlts((v) => !v)}>
+              <button type="button" className="btn-ghost px-4 py-2.5 text-xs" onClick={() => setShowAlts((v) => !v)}>
                 {showAlts ? "Hide" : `${alternatives.length} other option${alternatives.length === 1 ? "" : "s"}`}
               </button>
             )}
@@ -198,7 +198,8 @@ function TimeBudget({
       <span className="mr-1 text-[11px] text-slate-500">I have</span>
       {OPTIONS.map((m) => (
         <button
-          key={m}
+      type="button"
+      key={m}
           onClick={() => onSet(minutes === m ? null : m)}
           className={`tap-44 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
             minutes === m

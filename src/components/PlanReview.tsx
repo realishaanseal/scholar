@@ -162,7 +162,8 @@ export default function PlanReview({
             </h3>
             {plan.length > 0 && (
               <button
-                className="text-[11px] text-slate-500 transition-colors hover:text-slate-300"
+      type="button"
+      className="text-[11px] text-slate-500 transition-colors hover:text-slate-300"
                 onClick={() =>
                   setSelected(selected.size === plan.length ? new Set() : new Set(plan.map((_, i) => i)))
                 }
@@ -233,13 +234,14 @@ export default function PlanReview({
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <button
-            className="btn-primary px-5 py-2.5"
+      type="button"
+      className="btn-primary px-5 py-2.5"
             onClick={commit}
             disabled={saving || selected.size === 0}
           >
             {saving ? "Adding…" : `Add ${selected.size} task${selected.size === 1 ? "" : "s"}`}
           </button>
-          <button className="btn-ghost px-4 py-2.5" onClick={onDiscard} disabled={saving}>
+          <button type="button" className="btn-ghost px-4 py-2.5" onClick={onDiscard} disabled={saving}>
             Discard
           </button>
           <p className="ml-auto text-[11px] text-slate-600">

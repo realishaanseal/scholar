@@ -181,10 +181,10 @@ export default function StudySettingsPanel() {
                   <span className="text-xs text-slate-400">
                     Delete everything Scholar has learned? Estimates go back to raw values.
                   </span>
-                  <button className="btn-danger ml-auto px-3 py-2 text-xs" onClick={reset}>
+                  <button type="button" className="btn-danger ml-auto px-3 py-2 text-xs" onClick={reset}>
                     Yes, reset
                   </button>
-                  <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setConfirmReset(false)}>
+                  <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => setConfirmReset(false)}>
                     Cancel
                   </button>
                 </>
@@ -194,7 +194,8 @@ export default function StudySettingsPanel() {
                     This data never leaves your device.
                   </span>
                   <button
-                    className="btn-ghost ml-auto px-3 py-2 text-xs"
+      type="button"
+      className="btn-ghost ml-auto px-3 py-2 text-xs"
                     onClick={() => setConfirmReset(true)}
                   >
                     Reset memory

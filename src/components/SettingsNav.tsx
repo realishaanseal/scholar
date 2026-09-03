@@ -91,7 +91,8 @@ export default function SettingsNav({
           const on = section === s.id;
           return (
             <button
-              key={s.id}
+      type="button"
+      key={s.id}
               onClick={() => setSection(s.id)}
               className={`group relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-200 ${
                 on ? "" : "hover:bg-white/[0.03]"

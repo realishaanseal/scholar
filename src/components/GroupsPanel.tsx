@@ -74,7 +74,8 @@ export default function GroupsPanel() {
           <div className="mt-5 space-y-2">
             {groups.map((g) => (
               <button
-                key={g.id}
+      type="button"
+      key={g.id}
                 onClick={() => openGroup(g.id)}
                 className="flex w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02]
                            px-4 py-3 text-left transition-colors hover:border-white/15 hover:bg-white/[0.05]"
@@ -142,10 +143,10 @@ function CreateOrJoin({ onDone }: { onDone: () => void }) {
   if (mode === "none") {
     return (
       <div className="mt-5 flex gap-2">
-        <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setMode("create")}>
+        <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => setMode("create")}>
           New group
         </button>
-        <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setMode("join")}>
+        <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => setMode("join")}>
           Join with a code
         </button>
       </div>
@@ -176,13 +177,14 @@ function CreateOrJoin({ onDone }: { onDone: () => void }) {
 
       <div className="mt-3 flex gap-2">
         <button
-          className="btn-primary px-4 py-2 text-xs"
+      type="button"
+      className="btn-primary px-4 py-2 text-xs"
           onClick={submit}
           disabled={busy || (mode === "create" ? name.trim().length < 1 : code.trim().length < 4)}
         >
           {mode === "create" ? "Create" : "Join"}
         </button>
-        <button className="btn-ghost px-3 py-2 text-xs" onClick={() => { setMode("none"); setError(null); }}>
+        <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => { setMode("none"); setError(null); }}>
           Cancel
         </button>
       </div>
@@ -283,11 +285,12 @@ function GroupDetail({
             </div>
           )}
           <button
-            onClick={onClose}
+      type="button"
+      onClick={onClose}
             aria-label="Close"
             className="tap-44 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/[0.1] bg-white/[0.03] text-slate-400 hover:text-white"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
       </div>
@@ -300,7 +303,8 @@ function GroupDetail({
           ["members", "Members"],
         ] as const).map(([id, label]) => (
           <button
-            key={id}
+      type="button"
+      key={id}
             onClick={() => setTab(id)}
             className={`tap-tall rounded-t-lg px-3.5 py-2 text-[13px] font-medium transition-colors ${
               tab === id ? "border-b-2 border-vx-400 text-white" : "text-slate-500 hover:text-slate-300"
@@ -343,7 +347,8 @@ function GroupDetail({
           </span>
         )}
         <button
-          className="btn-ghost ml-auto px-3 py-2 text-xs text-red-300/80 hover:text-red-300"
+      type="button"
+      className="btn-ghost ml-auto px-3 py-2 text-xs text-red-300/80 hover:text-red-300"
           onClick={async () => {
             await fetchJson(`/api/groups/${group.id}`, { method: "DELETE" });
             onClose();
@@ -406,7 +411,7 @@ function SharedWork({
       )}
 
       {!open ? (
-        <button className="btn-ghost mt-4 px-3 py-2 text-xs" onClick={() => setOpen(true)}>
+        <button type="button" className="btn-ghost mt-4 px-3 py-2 text-xs" onClick={() => setOpen(true)}>
           Post shared work
         </button>
       ) : (
@@ -458,10 +463,10 @@ function SharedWork({
           </div>
 
           <div className="mt-3 flex gap-2">
-            <button className="btn-primary px-4 py-2 text-xs" onClick={submit} disabled={form.title.trim().length < 1}>
+            <button type="button" className="btn-primary px-4 py-2 text-xs" onClick={submit} disabled={form.title.trim().length < 1}>
               Post
             </button>
-            <button className="btn-ghost px-3 py-2 text-xs" onClick={() => setOpen(false)}>Cancel</button>
+            <button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={() => setOpen(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -528,12 +533,13 @@ function TaskRow({
 
         <div className="relative shrink-0">
           <button
-            onClick={() => setReportOpen((v) => !v)}
+      type="button"
+      onClick={() => setReportOpen((v) => !v)}
             className={`tap-44 flex items-center gap-1 rounded-md px-1.5 text-[11px] ${flagTone} hover:text-amber-200`}
             aria-label="Report this post"
             title="Report as wrong, misleading, or something else"
           >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={task.reportedByMe ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={task.reportedByMe ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z" />
               <path d="M4 22V4" />
             </svg>
@@ -544,7 +550,8 @@ function TaskRow({
             <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-lg border border-white/10 bg-ink-985 p-1.5 shadow-lift">
               {task.reportedByMe ? (
                 <button
-                  className="block w-full rounded-md px-2.5 py-1.5 text-left text-[11.5px] text-slate-300 hover:bg-white/[0.06]"
+      type="button"
+      className="block w-full rounded-md px-2.5 py-1.5 text-left text-[11.5px] text-slate-300 hover:bg-white/[0.06]"
                   onClick={() => toggleReport("wrong")}
                 >
                   Remove my report
@@ -552,7 +559,8 @@ function TaskRow({
               ) : (
                 REASONS.map((r) => (
                   <button
-                    key={r.id}
+      type="button"
+      key={r.id}
                     className="block w-full rounded-md px-2.5 py-1.5 text-left text-[11.5px] text-slate-300 hover:bg-white/[0.06]"
                     onClick={() => toggleReport(r.id)}
                   >
@@ -565,7 +573,8 @@ function TaskRow({
         </div>
 
         <button
-          onClick={async () => {
+      type="button"
+      onClick={async () => {
             await fetchJson(`/api/groups/${groupId}?taskId=${task.id}`, { method: "DELETE" });
             onChanged();
           }}
@@ -580,7 +589,7 @@ function TaskRow({
 
       {isOwner && task.reportCount > 0 && (
         <div className="mt-2">
-          <button onClick={loadReports} className="text-[11px] text-amber-300/80 underline underline-offset-2 hover:text-amber-200">
+          <button type="button" onClick={loadReports} className="text-[11px] text-amber-300/80 underline underline-offset-2 hover:text-amber-200">
             {reports ? "Hide" : "View"} report{task.reportCount === 1 ? "" : "s"}
           </button>
           {reports && (
@@ -689,7 +698,7 @@ function Discussion({
         {file && (
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-400">
             <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <button onClick={() => setFile(null)} className="tap-44 text-slate-600 hover:text-red-300" aria-label="Remove attachment">✕</button>
+            <button type="button" onClick={() => setFile(null)} className="tap-44 text-slate-600 hover:text-red-300" aria-label="Remove attachment">✕</button>
           </div>
         )}
         {fileError && <p className="text-[11px] text-red-300">{fileError}</p>}
@@ -709,7 +718,7 @@ function Discussion({
             aria-label="Attach a file"
             title="Attach a file"
           >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+            <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
           </button>
           <input
             className="input flex-1 py-2 text-[13px]"
@@ -719,7 +728,8 @@ function Discussion({
             onKeyDown={(e) => { if (e.key === "Enter" && (comment.trim() || file)) send(); }}
           />
           <button
-            className="btn-ghost shrink-0 px-4 py-2 text-xs"
+      type="button"
+      className="btn-ghost shrink-0 px-4 py-2 text-xs"
             disabled={sending || (!comment.trim() && !file)}
             onClick={send}
           >
@@ -747,7 +757,7 @@ function MembersTab({
             <div className="font-mono text-[15px] tracking-[0.2em] text-white">{group.joinCode}</div>
           </div>
           {isOwner && (
-            <button className="btn-ghost px-3 py-1.5 text-[11px]" onClick={() => post({ action: "rotate-code" })}>
+            <button type="button" className="btn-ghost px-3 py-1.5 text-[11px]" onClick={() => post({ action: "rotate-code" })}>
               Change code
             </button>
           )}
@@ -762,7 +772,8 @@ function MembersTab({
           </span>
           {isOwner && m.role !== "owner" && (
             <button
-              onClick={async () => {
+      type="button"
+      onClick={async () => {
                 await fetchJson(`/api/groups/${group.id}?memberId=${m.userId}`, { method: "DELETE" });
                 onChanged();
               }}

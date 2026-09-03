@@ -196,7 +196,8 @@ export default function Dashboard({ userName }: { userName: string }) {
             <div className="card flex items-center justify-between gap-3 border-rose-500/25 bg-rose-500/[0.06] p-4 text-sm text-rose-200">
               <span>{actionError}</span>
               <button
-                onClick={() => setActionError(null)}
+      type="button"
+      onClick={() => setActionError(null)}
                 className="shrink-0 text-rose-300/70 hover:text-rose-200"
                 aria-label="Dismiss"
               >
@@ -256,7 +257,8 @@ export default function Dashboard({ userName }: { userName: string }) {
             <div className="flex gap-1 rounded-full border border-white/[0.08] bg-white/[0.03] p-1">
               {(["active", "all", "done"] as Filter[]).map((f) => (
                 <button
-                  key={f}
+      type="button"
+      key={f}
                   onClick={() => setFilter(f)}
                   className={`tap-tall relative rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-colors duration-200 ${
                     filter === f ? "text-white" : "text-slate-400 hover:text-slate-200"

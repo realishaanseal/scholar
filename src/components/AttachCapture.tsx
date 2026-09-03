@@ -66,13 +66,14 @@ export function AttachButton({
         onClick={pick}
         disabled={disabled}
         title="Attach a file"
+        aria-label="Attach a file"
         className="group grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl border border-white/10
                    bg-white/[0.045] transition-all duration-300 ease-spring
                    hover:scale-105 hover:border-white/20 hover:bg-white/[0.08] active:scale-95
                    disabled:opacity-40 disabled:hover:scale-100"
         style={{ boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.06)" }}
       >
-        <svg
+        <svg aria-hidden
           viewBox="0 0 24 24"
           className="h-[20px] w-[20px] text-slate-300 transition-colors group-hover:text-white"
           fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"

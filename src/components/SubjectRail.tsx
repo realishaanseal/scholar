@@ -62,7 +62,7 @@ export default function SubjectRail({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">By subject</h3>
           {selected && (
-            <button onClick={() => onSelect(null)} className="text-[11px] text-vx-300 hover:text-vx-200">
+            <button type="button" onClick={() => onSelect(null)} className="text-[11px] text-vx-300 hover:text-vx-200">
               Clear
             </button>
           )}
@@ -79,7 +79,8 @@ export default function SubjectRail({
               const isOn = selected === s.name;
               return (
                 <button
-                  key={s.id}
+      type="button"
+      key={s.id}
                   onClick={() => onSelect(isOn ? null : s.name)}
                   className="group block w-full text-left"
                   style={{ ["--i" as any]: i }}

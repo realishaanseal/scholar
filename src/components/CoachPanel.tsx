@@ -87,8 +87,8 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
           <p className="text-[11px] text-slate-500">Knows your tasks, deadlines and pace</p>
         </div>
         {onClose && (
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/[0.06] hover:text-white" aria-label="Close">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-white/[0.06] hover:text-white" aria-label="Close">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -105,7 +105,8 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
             <div className="mt-4 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
-                  key={s}
+      type="button"
+      key={s}
                   onClick={() => ask(s)}
                   className="chip-btn border border-white/[0.08] bg-white/[0.025] text-[11px] text-slate-400
                              hover:border-white/15 hover:bg-white/[0.06] hover:text-slate-200"
@@ -186,8 +187,13 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
           onChange={(e) => setInput(e.target.value)}
           disabled={busy}
         />
-        <button type="submit" className="btn-primary shrink-0 px-4 py-2.5" disabled={busy || input.trim().length < 2}>
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          type="submit"
+          aria-label="Send"
+          className="btn-primary shrink-0 px-4 py-2.5"
+          disabled={busy || input.trim().length < 2}
+        >
+          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </button>

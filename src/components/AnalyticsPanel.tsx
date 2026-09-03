@@ -73,7 +73,8 @@ export default function AnalyticsPanel() {
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-white">By subject</h3>
           <button
-            className="text-[11px] text-slate-500 transition-colors hover:text-slate-300"
+      type="button"
+      className="text-[11px] text-slate-500 transition-colors hover:text-slate-300"
             onClick={() => setShowTable((v) => !v)}
           >
             {showTable ? "Show chart" : "Show table"}

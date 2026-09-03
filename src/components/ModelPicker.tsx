@@ -63,7 +63,8 @@ export default function ModelPicker({
         <label className="label mb-0">Model</label>
         {canDetect && (
           <button
-            onClick={onRefresh}
+      type="button"
+      onClick={onRefresh}
             disabled={list.state === "loading"}
             className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 transition-colors hover:text-vx-300 disabled:opacity-50"
           >
@@ -181,7 +182,8 @@ export default function ModelPicker({
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {info.modelSuggestions.map((m) => (
                           <button
-                            key={m}
+      type="button"
+      key={m}
                             onClick={() => { onChange(m); setOpen(false); }}
                             className="chip-btn border border-white/[0.08] bg-white/[0.03] text-[11px] text-slate-400 hover:bg-white/[0.07] hover:text-slate-200"
                           >
@@ -195,7 +197,8 @@ export default function ModelPicker({
 
                 {filtered.map((m) => (
                   <button
-                    key={m.id}
+      type="button"
+      key={m.id}
                     onClick={() => { onChange(m.id); setOpen(false); }}
                     className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
                       value === m.id ? "bg-vx-500/[0.16]" : "hover:bg-white/[0.06]"

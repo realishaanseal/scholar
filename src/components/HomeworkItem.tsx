@@ -111,7 +111,9 @@ export default function HomeworkItem({
                 <label className="label">Priority</label>
                 <div className="flex gap-2">
                   {(["low", "normal", "high"] as const).map((p) => (
-                    <button key={p} type="button"
+                    <button
+                      type="button"
+                      key={p}
                       onClick={() => setDraft({ ...draft, priority: p })}
                       className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-medium capitalize transition-all duration-200 ${
                         draft.priority === p
@@ -134,8 +136,8 @@ export default function HomeworkItem({
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <button className="btn-primary px-5" onClick={save}>Save changes</button>
-            <button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
+            <button type="button" className="btn-primary px-5" onClick={save}>Save changes</button>
+            <button type="button" className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
 
             <AnimatePresence mode="wait" initial={false}>
               {confirmDelete ? (
@@ -148,8 +150,8 @@ export default function HomeworkItem({
                   className="ml-auto flex items-center gap-2"
                 >
                   <span className="text-xs text-slate-400">Delete this?</span>
-                  <button className="btn-danger px-3 py-2" onClick={() => onDelete(hw.id)}>Yes, delete</button>
-                  <button className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>No</button>
+                  <button type="button" className="btn-danger px-3 py-2" onClick={() => onDelete(hw.id)}>Yes, delete</button>
+                  <button type="button" className="btn-ghost px-3 py-2" onClick={() => setConfirmDelete(false)}>No</button>
                 </motion.span>
               ) : (
                 <motion.button
@@ -316,7 +318,7 @@ export default function HomeworkItem({
           )}
 
           {hw.details && hw.details.length > 120 && (
-            <button onClick={() => setExpanded((e) => !e)} className="mt-1.5 text-xs text-slate-500 transition-colors hover:text-vx-300">
+            <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1.5 text-xs text-slate-500 transition-colors hover:text-vx-300">
               {expanded ? "Show less" : "Show more"}
             </button>
           )}
@@ -338,25 +340,27 @@ export default function HomeworkItem({
 
         {!done && onFocus && (
           <button
-            onClick={onFocus}
+      type="button"
+      onClick={onFocus}
             className="tap-44 shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
                        hover:bg-white/[0.07] hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
             aria-label="Start focus session"
             title="Start focus session"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><path d="M10 8.5l6 3.5-6 3.5z" />
             </svg>
           </button>
         )}
 
         <button
-          onClick={() => setEditing(true)}
+      type="button"
+      onClick={() => setEditing(true)}
           className="tap-44 shrink-0 rounded-lg p-2 text-slate-500 opacity-0 transition-all duration-200
                      hover:bg-white/[0.07] hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
           aria-label="Edit"
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
           </svg>
         </button>

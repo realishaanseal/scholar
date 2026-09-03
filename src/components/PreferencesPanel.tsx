@@ -120,7 +120,8 @@ export default function PreferencesPanel() {
 
           {notifications.permission === "default" && (
             <button
-              className="btn-ghost ml-auto shrink-0 px-3 py-2 text-xs"
+      type="button"
+      className="btn-ghost ml-auto shrink-0 px-3 py-2 text-xs"
               onClick={async () => {
                 const result = await notifications.request();
                 if (result === "granted") {
@@ -134,7 +135,8 @@ export default function PreferencesPanel() {
 
           {notifications.permission === "granted" && (
             <button
-              className="btn-ghost ml-auto shrink-0 px-3 py-2 text-xs"
+      type="button"
+      className="btn-ghost ml-auto shrink-0 px-3 py-2 text-xs"
               onClick={() => notifications.show("Test notification", "This is what an alert looks like.", "scholar-test")}
             >
               Send a test
@@ -143,7 +145,8 @@ export default function PreferencesPanel() {
         </div>
 
         <button
-          className="btn-ghost mt-4 px-3 py-2 text-xs"
+      type="button"
+      className="btn-ghost mt-4 px-3 py-2 text-xs"
           onClick={async () => {
             await fetchJson("/api/scholar/signals", {
               method: "PATCH",

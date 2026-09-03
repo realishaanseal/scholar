@@ -188,7 +188,8 @@ export default function AccountPanel({
                 </span>
                 <span className="min-w-0 flex-1 text-[13px] text-slate-200">{PROVIDER_NAMES[p]}</span>
                 <button
-                  className="btn-ghost shrink-0 px-3 py-1.5 text-[11px] text-slate-400 hover:text-rose-300"
+      type="button"
+      className="btn-ghost shrink-0 px-3 py-1.5 text-[11px] text-slate-400 hover:text-rose-300"
                   disabled={unlinkBusy === p}
                   onClick={() => unlink(p)}
                 >
@@ -251,7 +252,8 @@ export default function AccountPanel({
 
         {!confirmDelete ? (
           <button
-            className="btn-ghost mt-4 px-3 py-2 text-xs text-red-300/80 hover:text-red-300"
+      type="button"
+      className="btn-ghost mt-4 px-3 py-2 text-xs text-red-300/80 hover:text-red-300"
             onClick={() => setConfirmDelete(true)}
           >
             Delete my account
@@ -273,14 +275,16 @@ export default function AccountPanel({
 
             <div className="mt-3 flex gap-2">
               <button
-                className="btn-danger px-4 py-2 text-xs"
+      type="button"
+      className="btn-danger px-4 py-2 text-xs"
                 disabled={confirmText.trim().toLowerCase() !== (email ?? "").toLowerCase()}
                 onClick={remove}
               >
                 Delete permanently
               </button>
               <button
-                className="btn-ghost px-3 py-2 text-xs"
+      type="button"
+      className="btn-ghost px-3 py-2 text-xs"
                 onClick={() => { setConfirmDelete(false); setConfirmText(""); setError(null); }}
               >
                 Cancel

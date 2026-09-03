@@ -89,7 +89,8 @@ export default function TimetablePanel() {
       {/* ── Setup ──────────────────────────────────────────────────────── */}
       <section className="card overflow-hidden">
         <button
-          onClick={() => setSetupOpen((v) => !v)}
+      type="button"
+      onClick={() => setSetupOpen((v) => !v)}
           aria-expanded={setupOpen}
           className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
         >

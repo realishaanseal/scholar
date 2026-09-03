@@ -541,18 +541,20 @@ export default function LiveClasses() {
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5 sm:p-6">
               <h3 className="text-lg font-semibold tracking-tight text-white">Classes</h3>
               <button
-                onClick={() => setOpen(false)}
+      type="button"
+      onClick={() => setOpen(false)}
                 aria-label="Close"
                 className="tap-44 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/[0.1] bg-white/[0.03] text-slate-400 hover:text-white"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
 
             <div className="flex gap-1 border-b border-white/[0.07] px-4 pt-2 sm:px-6">
               {([["now", "Now"], ["setup", "Setup"]] as const).map(([id, label]) => (
                 <button
-                  key={id}
+      type="button"
+      key={id}
                   onClick={() => setTab(id)}
                   className={`tap-tall relative rounded-t-lg px-3.5 py-2 text-[13px] font-medium transition-colors ${
                     tab === id ? "text-white" : "text-slate-500 hover:text-slate-300"
@@ -580,7 +582,7 @@ export default function LiveClasses() {
                   <div className="p-5 sm:p-6">
                     <div className="rounded-xl border border-dashed border-white/[0.08] px-4 py-10 text-center">
                       <p className="text-sm text-slate-400">No timetable set up yet.</p>
-                      <button className="btn-primary mt-4 px-4 py-2 text-xs" onClick={() => setTab("setup")}>
+                      <button type="button" className="btn-primary mt-4 px-4 py-2 text-xs" onClick={() => setTab("setup")}>
                         Set up your timetable
                       </button>
                     </div>
