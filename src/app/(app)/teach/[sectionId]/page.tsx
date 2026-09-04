@@ -6,6 +6,7 @@ import Announcements from "@/components/teach/Announcements";
 import Register from "@/components/teach/Register";
 import SectionWorkbench from "@/components/teach/SectionWorkbench";
 import Gradebook from "@/components/teach/Gradebook";
+import SectionOutcomes from "@/components/teach/SectionOutcomes";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authz";
 import { resolveActor } from "@/domains/identity";
@@ -97,6 +98,9 @@ export default async function TeachSectionPage({
         grades={<Gradebook data={gradebook} schemeId={orgTime.gradingScheme} />}
         notices={<Announcements sectionId={sectionId} />}
         register={<Register sectionId={sectionId} />}
+        outcomes={
+          <SectionOutcomes sectionId={sectionId} organizationId={scope.organizationId!} />
+        }
       />
     </div>
   );
