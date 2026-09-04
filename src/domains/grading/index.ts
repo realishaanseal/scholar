@@ -76,7 +76,7 @@ export async function sectionGradebook(
   sectionId: string,
   courseId: string
 ): Promise<Gradebook> {
-  const [columnRows, enrolledRows, scoreRows, categories] = await Promise.all([
+  const [columnRows, enrolledRows, scoreRows, categories, assigneeRows] = await Promise.all([
     db
       .prepare(
         `SELECT id, title, points, grade_category_id, due_at
@@ -103,7 +103,25 @@ export async function sectionGradebook(
       )
       .all(sectionId),
     listCategories(courseId),
+    // Who each assignment was actually set for, where that is not everyone.
+    // An empty result for an assignment means the whole section, which is the
+    // normal case and costs nothing to express.
+    db
+      .prepare(
+        `SELECT aa.assignment_id, aa.user_id
+           FROM assignment_assignees aa
+           JOIN assignments a ON a.id = aa.assignment_id
+          WHERE a.course_section_id = ?`
+      )
+      .all(sectionId),
   ]);
+
+  // assignmentId -> the students it was set for. Absent means everyone.
+  const assignedTo = new Map<string, Set<string>>();
+  for (const r of assigneeRows as any[]) {
+    if (!assignedTo.has(r.assignment_id)) assignedTo.set(r.assignment_id, new Set());
+    assignedTo.get(r.assignment_id)!.add(r.user_id);
+  }
 
   const columns: GradebookColumn[] = columnRows.map((r: any) => ({
     assignmentId: r.id,
@@ -127,6 +145,14 @@ export async function sectionGradebook(
     const items: GradedItem[] = [];
 
     for (const col of columns) {
+      // Work this student was never set is not their work. Not missing, not a
+      // zero, not an empty cell dragging a percentage down — absent.
+      const only = assignedTo.get(col.assignmentId);
+      if (only && !only.has(e.user_id)) {
+        cells[col.assignmentId] = { score: null, status: "not-set", isLate: false };
+        continue;
+      }
+
       const s = subs.get(col.assignmentId);
       cells[col.assignmentId] = {
         score: s?.score === null || s?.score === undefined ? null : Number(s.score),
@@ -184,9 +210,17 @@ export async function studentGrade(
                 AND x.posted_at IS NOT NULL
               ORDER BY x.attempt DESC LIMIT 1
            ) s ON true
-          WHERE a.course_section_id = ? AND a.status = 'published'`
+          WHERE a.course_section_id = ? AND a.status = 'published'
+            -- Set for everyone, or set for this student specifically.
+            AND (
+              NOT EXISTS (SELECT 1 FROM assignment_assignees x WHERE x.assignment_id = a.id)
+              OR EXISTS (
+                SELECT 1 FROM assignment_assignees x
+                 WHERE x.assignment_id = a.id AND x.user_id = ?
+              )
+            )`
       )
-      .all(userId, sectionId),
+      .all(userId, sectionId, userId),
     listCategories(courseId),
   ]);
 

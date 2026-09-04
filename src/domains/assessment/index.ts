@@ -11,3 +11,4 @@ export * from "./repository";
 export * from "./marking";
 export * from "./quizzes";
 export * from "./rubrics";
+export * from "./differentiation";

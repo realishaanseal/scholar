@@ -4,6 +4,7 @@ import { can } from "@/lib/authz";
 import {
   evaluateSubmission, getAssignment, listOwnSubmissions, listSubmissions,
   scopeOfAssignment, submitWorkSchema, upsertSubmission, type ResourceScope,
+  isSetFor,
 } from "@/domains/assessment";
 
 export const runtime = "nodejs";
@@ -58,6 +59,10 @@ export const POST = institutionalRoute<Params, ResourceScope>(
       // A draft is the teacher still writing. Nothing to submit against.
       throw new NotFound();
     }
+
+    // A hidden assignment is a courtesy; a refused POST is the rule. Somebody
+    // who guesses an id must not be able to hand in work set for a classmate.
+    if (!(await isSetFor(params.assignmentId, userId))) throw new NotFound();
 
     const verdict = evaluateSubmission(
       {

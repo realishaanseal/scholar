@@ -153,9 +153,18 @@ export async function listStudentAssignments(
             ORDER BY x.attempt DESC LIMIT 1
          ) s ON true
         WHERE a.course_section_id = ? AND a.status = 'published'
+            -- Set for everyone, or set for this student specifically. Work
+            -- somebody else was given is not theirs to see.
+            AND (
+              NOT EXISTS (SELECT 1 FROM assignment_assignees x WHERE x.assignment_id = a.id)
+              OR EXISTS (
+                SELECT 1 FROM assignment_assignees x
+                 WHERE x.assignment_id = a.id AND x.user_id = ?
+              )
+            )
         ORDER BY a.due_at NULLS LAST, a.created_at`
     )
-    .all(userId, sectionId);
+    .all(userId, sectionId, userId);
 
   return rows.map(mapStudentAssignment);
 }
