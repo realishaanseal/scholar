@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CourseWork from "@/components/learn/CourseWork";
 import SectionTabs from "@/components/teach/SectionTabs";
+import Announcements from "@/components/teach/Announcements";
 import StudentMaterials from "@/components/learn/StudentMaterials";
 import { auth } from "@/lib/auth";
 import { getSectionDetail } from "@/domains/courses";
@@ -101,6 +102,7 @@ export default async function LearnSectionPage({
             }))}
           />
         }
+        notices={<Announcements sectionId={sectionId} />}
       />
     </div>
   );

@@ -176,8 +176,12 @@ export async function studentGrade(
         `SELECT a.id, a.points, a.grade_category_id, a.due_at, s.score
            FROM assignments a
            LEFT JOIN LATERAL (
+             -- Only released marks. Counting a withheld one would let a
+             -- student work it out from their own percentage, which is the
+             -- same disclosure by a slower route.
              SELECT score FROM assignment_submissions x
               WHERE x.assignment_id = a.id AND x.user_id = ?
+                AND x.posted_at IS NOT NULL
               ORDER BY x.attempt DESC LIMIT 1
            ) s ON true
           WHERE a.course_section_id = ? AND a.status = 'published'`

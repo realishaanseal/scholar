@@ -28,14 +28,16 @@ export async function createAssignment(
       `INSERT INTO assignments
          (id, organization_id, course_section_id, created_by, title, instructions,
           points, available_from, due_at, closes_at, submission_type, max_attempts,
-          late_policy, estimated_mins, kind, due_timezone, rubric_id, rubric_scores)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          late_policy, estimated_mins, kind, due_timezone, rubric_id, rubric_scores,
+          grade_posting)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id, organizationId, courseSectionId, createdBy, input.title, input.instructions,
       input.points, input.availableFrom, input.dueAt, input.closesAt,
       input.submissionType, input.maxAttempts, input.latePolicy, input.estimatedMins,
-      input.kind, input.dueTimezone, input.rubricId, input.rubricScores
+      input.kind, input.dueTimezone, input.rubricId, input.rubricScores,
+      input.gradePosting
     );
   const created = await getAssignment(id);
   if (!created) throw new Error("Assignment was created but could not be read back.");
@@ -45,7 +47,7 @@ export async function createAssignment(
 const ASSIGNMENT_COLUMNS = `id, organization_id, course_section_id, created_by, title,
        instructions, points, available_from, due_at, closes_at, submission_type, kind,
        max_attempts, late_policy, status, published_at, estimated_mins, due_timezone,
-       rubric_id, rubric_scores`;
+       rubric_id, rubric_scores, grade_posting`;
 
 export async function getAssignment(id: string): Promise<Assignment | null> {
   const r = await db
@@ -157,6 +159,7 @@ function mapAssignment(r: any): Assignment {
     dueTimezone: r.due_timezone ?? null,
     rubricId: r.rubric_id ?? null,
     rubricScores: r.rubric_scores !== false,
+    gradePosting: r.grade_posting === "manual" ? "manual" : "automatic",
   };
 }
 
@@ -324,11 +327,21 @@ export async function gradeSubmission(
   const before = await getSubmission(id);
   if (!before) throw new Error("That submission no longer exists.");
 
+  // Posted at the same moment unless this assignment holds marks back. The
+  // policy lives on the assignment because it is a decision about the pile,
+  // not about one student — a teacher marking thirty papers over three days
+  // wants them released together.
   await db
     .prepare(
-      `UPDATE assignment_submissions
-          SET score = ?, feedback = ?, graded_at = now(), graded_by = ?, status = 'returned'
-        WHERE id = ?`
+      `UPDATE assignment_submissions s
+          SET score = ?, feedback = ?, graded_at = now(), graded_by = ?,
+              status = 'returned',
+              posted_at = CASE
+                WHEN a.grade_posting = 'manual' THEN s.posted_at
+                ELSE now()
+              END
+         FROM assignments a
+        WHERE s.id = ? AND a.id = s.assignment_id`
     )
     .run(score, feedback, gradedBy, id);
 

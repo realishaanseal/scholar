@@ -17,13 +17,14 @@ import { cn } from "@/lib/cn";
  * refreshes while marking does not land back on Work.
  */
 
-export type TabKey = "work" | "materials" | "students" | "grades";
+export type TabKey = "work" | "materials" | "students" | "grades" | "notices";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "work", label: "Work" },
   { key: "materials", label: "Materials" },
   { key: "students", label: "Students" },
   { key: "grades", label: "Grades" },
+  { key: "notices", label: "Notices" },
 ];
 
 export default function SectionTabs({
@@ -31,6 +32,7 @@ export default function SectionTabs({
   materials,
   students,
   grades,
+  notices,
   counts,
   labels,
 }: {
@@ -43,6 +45,8 @@ export default function SectionTabs({
   students?: React.ReactNode;
   /** Omitted on the student view: a class grid is a teacher's tool. */
   grades?: React.ReactNode;
+  /** Shown to both, because a notice is for the class. */
+  notices?: React.ReactNode;
   counts?: Partial<Record<TabKey, number>>;
   /**
    * The same shelf is "Materials" to whoever fills it and "Library" to
@@ -55,7 +59,8 @@ export default function SectionTabs({
   const tabs = TABS.filter(
     (t) =>
       !(t.key === "students" && students === undefined) &&
-      !(t.key === "grades" && grades === undefined)
+      !(t.key === "grades" && grades === undefined) &&
+      !(t.key === "notices" && notices === undefined)
   );
 
   const [active, setActive] = useState<TabKey>(() => {
@@ -124,6 +129,9 @@ export default function SectionTabs({
       )}
       {grades !== undefined && (
         <div role="tabpanel" hidden={active !== "grades"}>{grades}</div>
+      )}
+      {notices !== undefined && (
+        <div role="tabpanel" hidden={active !== "notices"}>{notices}</div>
       )}
     </div>
   );

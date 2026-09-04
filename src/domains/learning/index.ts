@@ -137,7 +137,13 @@ export async function listStudentAssignments(
       `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from, a.kind,
               a.points, a.late_policy, a.submission_type, a.max_attempts,
               s.id AS submission_id, s.attempt, s.status AS submission_status,
-              s.body, s.url, s.submitted_at, s.is_late, s.score, s.feedback, s.graded_at,
+              s.body, s.url, s.submitted_at, s.is_late, s.graded_at,
+              -- A mark and its feedback are withheld together until the
+              -- teacher releases them. Nulled in the query rather than
+              -- filtered afterwards, so no code path can forget.
+              CASE WHEN s.posted_at IS NOT NULL THEN s.score END AS score,
+              CASE WHEN s.posted_at IS NOT NULL THEN s.feedback ELSE '' END AS feedback,
+              s.posted_at,
               (SELECT COUNT(*)::int FROM assignment_files af
                 WHERE af.assignment_id = a.id) AS attachment_count
          FROM assignments a
@@ -164,7 +170,13 @@ export async function getStudentAssignment(
       `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from, a.kind,
               a.points, a.late_policy, a.submission_type, a.max_attempts,
               s.id AS submission_id, s.attempt, s.status AS submission_status,
-              s.body, s.url, s.submitted_at, s.is_late, s.score, s.feedback, s.graded_at,
+              s.body, s.url, s.submitted_at, s.is_late, s.graded_at,
+              -- A mark and its feedback are withheld together until the
+              -- teacher releases them. Nulled in the query rather than
+              -- filtered afterwards, so no code path can forget.
+              CASE WHEN s.posted_at IS NOT NULL THEN s.score END AS score,
+              CASE WHEN s.posted_at IS NOT NULL THEN s.feedback ELSE '' END AS feedback,
+              s.posted_at,
               (SELECT COUNT(*)::int FROM assignment_files af
                 WHERE af.assignment_id = a.id) AS attachment_count
          FROM assignments a

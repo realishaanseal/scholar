@@ -37,6 +37,11 @@ export type Assignment = {
    * nobody trusts.
    */
   rubricScores: boolean;
+  /**
+   * When a mark becomes visible. 'automatic' releases it as it is written;
+   * 'manual' holds the pile until the teacher posts it.
+   */
+  gradePosting: "automatic" | "manual";
 };
 
 export type Submission = {
@@ -88,6 +93,7 @@ export const assignmentInputSchema = z
     dueTimezone: z.string().trim().max(64).nullable().default(null),
     rubricId: z.string().trim().max(64).nullable().default(null),
     rubricScores: z.boolean().default(true),
+    gradePosting: z.enum(["automatic", "manual"]).default("automatic"),
   })
   // Mirrors the CHECK constraints in migration 0004. Validating here as well
   // means a teacher gets a sentence they can act on rather than a constraint
