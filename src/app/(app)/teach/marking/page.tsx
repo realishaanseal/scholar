@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import PageHeading from "@/components/PageHeading";
 import MarkingQueue from "@/components/teach/MarkingQueue";
+import ExtensionQueue from "@/components/teach/ExtensionQueue";
 import { auth } from "@/lib/auth";
-import { listPendingMarking } from "@/domains/assessment";
+import { listPendingMarking, pendingExtensions } from "@/domains/assessment";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,10 @@ export default async function MarkingPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const pending = await listPendingMarking(session.user.id);
+  const [pending, extensions] = await Promise.all([
+    listPendingMarking(session.user.id),
+    pendingExtensions(session.user.id),
+  ]);
 
   return (
     <div>
@@ -30,6 +34,7 @@ export default async function MarkingPage() {
             : `${pending.length} submission${pending.length === 1 ? "" : "s"} waiting, oldest first.`
         }
       />
+      <ExtensionQueue initial={extensions} />
       <MarkingQueue initial={pending} />
     </div>
   );

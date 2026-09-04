@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import AskForTime from "@/components/learn/AskForTime";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { EASE_OUT, Reveal } from "@/components/motion";
@@ -446,9 +447,18 @@ function PlanLine({ plan }: { plan: WorkPlan }) {
           assumed, which is the difference between a tool and an oracle. */}
       <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
         {plan.reason}
-        {when.kind === "too-late" &&
-          " Worth telling your teacher now, while there is still time to do something about it."}
       </p>
+
+      {/* Until now this finding stopped here, which left the student holding
+          it. The figures Scholar already computed go with the request, so
+          asking costs a tap rather than a case. */}
+      {when.kind === "too-late" && plan.expectedMins !== null && (
+        <AskForTime
+          assignmentId={plan.assignmentId}
+          workMins={plan.expectedMins}
+          availableMins={Math.max(0, plan.expectedMins - when.shortfallMins)}
+        />
+      )}
     </div>
   );
 }
