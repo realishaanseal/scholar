@@ -3,6 +3,7 @@ import PageHeading from "@/components/PageHeading";
 import AnalyticsPanel from "@/components/AnalyticsPanel";
 import StudentPatterns from "@/components/learn/StudentPatterns";
 import EstimateReceipts from "@/components/learn/EstimateReceipts";
+import FinishingRoom from "@/components/learn/FinishingRoom";
 import { auth } from "@/lib/auth";
 import { enrolledOrganizations } from "@/domains/learning";
 
@@ -34,6 +35,7 @@ export default async function InsightsPage() {
           institution is involved, and they are the ones Scholar has been
           quietly keeping without ever showing anybody. */}
       <EstimateReceipts userId={session.user.id} />
+      <FinishingRoom userId={session.user.id} />
 
       {orgs.length > 0 && (
         <div className="mb-6">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CourseWork from "@/components/learn/CourseWork";
+import BeforeYouSubmit from "@/components/learn/BeforeYouSubmit";
 import SectionTabs from "@/components/teach/SectionTabs";
 import Announcements from "@/components/teach/Announcements";
 import StudentMaterials from "@/components/learn/StudentMaterials";
@@ -93,7 +94,24 @@ export default async function LearnSectionPage({
       <SectionTabs
         counts={{ work: assignments.length, materials: materials.length, students: 0 }}
         labels={{ work: "Work", materials: "Library" }}
-        work={<CourseWork assignments={assignments} plans={plans} timezone={section.timezone} />}
+        work={
+          <>
+            {/* The soonest thing still to hand in that will be marked against
+                a rubric. One prompt for the piece in front of them, rather
+                than a note on every row of a list they are scrolling past. */}
+            <BeforeYouSubmit
+              userId={session.user.id}
+              organizationId={section.organizationId}
+              rubricId={
+                assignments
+                  .filter((a) => a.rubricId && a.submission?.status !== "returned")
+                  .sort((a, b) => (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999"))[0]
+                  ?.rubricId ?? null
+              }
+            />
+            <CourseWork assignments={assignments} plans={plans} timezone={section.timezone} />
+          </>
+        }
         materials={
           <StudentMaterials
             materials={materials.map((m) => ({

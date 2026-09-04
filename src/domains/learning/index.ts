@@ -118,6 +118,8 @@ export type StudentAssignment = {
   } | null;
   attachmentCount: number;
   kind: "task" | "quiz";
+  /** The rubric this will be marked against, when the teacher attached one. */
+  rubricId: string | null;
 };
 
 /**
@@ -135,7 +137,7 @@ export async function listStudentAssignments(
   const rows = await db
     .prepare(
       `SELECT a.id, a.title, a.instructions, a.due_at, a.closes_at, a.available_from, a.kind,
-              a.points, a.late_policy, a.submission_type, a.max_attempts,
+              a.points, a.late_policy, a.submission_type, a.max_attempts, a.rubric_id,
               s.id AS submission_id, s.attempt, s.status AS submission_status,
               s.body, s.url, s.submitted_at, s.is_late, s.graded_at,
               -- A mark and its feedback are withheld together until the
@@ -215,6 +217,7 @@ function mapStudentAssignment(r: any): StudentAssignment {
     maxAttempts: r.max_attempts ?? null,
     attachmentCount: r.attachment_count ?? 0,
     kind: r.kind ?? "task",
+    rubricId: r.rubric_id ?? null,
     submission: r.submission_id
       ? {
           id: r.submission_id,

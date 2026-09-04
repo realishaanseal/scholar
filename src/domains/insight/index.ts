@@ -342,3 +342,36 @@ export async function estimateReceipts(userId: string): Promise<Calibration> {
     }))
   );
 }
+
+/**
+ * Finished work with both a deadline and a measured duration.
+ *
+ * Feeds finishingMargins. Personal tables only, and scoped to one user — the
+ * shape of this read is why the margins module never needs to know who it is
+ * describing.
+ */
+export async function finishedWithDeadlines(userId: string) {
+  const rows = await db
+    .prepare(
+      `SELECT "dueAt", "completedAt", "estimateMins", "actualMins"
+         FROM task_events
+        WHERE "userId" = ?
+          AND "dueAt" IS NOT NULL AND "dueAt" <> ''
+          AND "estimateMins" > 0
+          AND "actualMins" > 0
+        ORDER BY "completedAt" DESC
+        LIMIT 200`
+    )
+    .all(userId);
+
+  return (rows as any[])
+    .map((r) => ({
+      dueAt: new Date(r.dueAt),
+      completedAt: new Date(r.completedAt),
+      estimateMins: Number(r.estimateMins),
+      actualMins: Number(r.actualMins),
+    }))
+    .filter(
+      (p) => !Number.isNaN(p.dueAt.getTime()) && !Number.isNaN(p.completedAt.getTime())
+    );
+}
