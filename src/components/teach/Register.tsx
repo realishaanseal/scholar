@@ -209,8 +209,7 @@ export default function Register({ sectionId }: { sectionId: string }) {
           </div>
 
           <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-            Excused is not counted against a student. Changing a mark after the register
-            has been taken is recorded, because this is a legal record.
+            Excused is not counted against a student. Amending a taken register is recorded.
           </p>
         </>
       )}

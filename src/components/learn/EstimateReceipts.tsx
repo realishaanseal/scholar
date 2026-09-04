@@ -80,10 +80,6 @@ export default async function EstimateReceipts({ userId }: { userId: string }) {
           </div>
         ))}
       </div>
-
-      <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        Counted only from work you both estimated and finished. Nobody else is shown this.
-      </p>
     </section>
   );
 }

@@ -4,12 +4,13 @@ import { motion } from "motion/react";
 import { EASE_OUT } from "@/components/motion";
 
 /**
- * Shared page title block for the top-level app pages (Timetable,
- * Calendar, Insights, Groups, Settings, Extension). The gradient heading
- * clips in and the subtitle follows a beat later, on top of the route
- * cross-fade the AppShell already runs.
+ * Shared page title block for the top-level app pages.
+ *
+ * The subtitle is optional and exists for a count or a state — "12 people",
+ * "nothing waiting on you". A page whose subtitle would only rephrase its
+ * title passes none.
  */
-export default function PageHeading({ title, subtitle }: { title: string; subtitle: string }) {
+export default function PageHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-7">
       <motion.h1
@@ -20,14 +21,16 @@ export default function PageHeading({ title, subtitle }: { title: string; subtit
       >
         <span className="gradient-text">{title}</span>
       </motion.h1>
-      <motion.p
-        className="mt-1.5 text-sm text-slate-400"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.1 }}
-      >
-        {subtitle}
-      </motion.p>
+      {subtitle && (
+        <motion.p
+          className="mt-1.5 text-sm text-slate-400"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.1 }}
+        >
+          {subtitle}
+        </motion.p>
+      )}
     </div>
   );
 }

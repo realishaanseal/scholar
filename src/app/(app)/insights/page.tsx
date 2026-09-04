@@ -28,10 +28,7 @@ export default async function InsightsPage() {
 
   return (
     <div>
-      <PageHeading
-        title="Insights"
-        subtitle="How your work actually goes — pace, estimates, and patterns."
-      />
+      <PageHeading title="Insights" />
 
       {/* Their own measurements first. These apply whether or not an
           institution is involved, and they are the ones Scholar has been

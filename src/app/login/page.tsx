@@ -54,7 +54,6 @@ export default async function LoginPage({
   return (
     <AuthShell
       title={copy.signInTitle}
-      subtitle={copy.signInSubtitle}
       footer={
         <>
           <Link href="/login" className="inline-block py-2 text-slate-500 hover:text-slate-300">

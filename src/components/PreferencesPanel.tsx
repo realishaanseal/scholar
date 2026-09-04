@@ -75,8 +75,7 @@ export default function PreferencesPanel() {
           <div>
             <h3 className="text-sm font-semibold text-white">Alerts</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Scholar only raises these when the numbers actually warrant it — there are no
-              recurring reminders and nothing fires on a timer.
+              Raised only when the numbers warrant it.
             </p>
           </div>
           {status && <span className="shrink-0 text-[11px] text-emerald-300">{status}</span>}
@@ -165,8 +164,7 @@ export default function PreferencesPanel() {
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Language</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          These are separate on purpose. You can read an English interface, type in a mix of
-          languages, and still get answers back in whichever you prefer.
+          Interface, input and replies are set separately.
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -225,11 +223,6 @@ export default function PreferencesPanel() {
             </select>
           </Field>
         </div>
-
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-600">
-          Mixed input works without changing anything — &ldquo;physics ka ch 4 friday ko submit
-          karna hai&rdquo; is read as a Physics assignment due Friday.
-        </p>
       </section>
     </div>
   );

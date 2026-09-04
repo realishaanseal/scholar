@@ -33,9 +33,8 @@ export default function Gradebook({
     return (
       <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
         <p className="text-[14px] font-medium text-slate-200">{t("gradebookEmptyEnrolled")}</p>
-        <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
-          Marks appear here once students are added to this class and work has been
-          returned to them.
+        <p className="mt-1.5 text-[13px] text-slate-400">
+          Add students to this class first.
         </p>
       </div>
     );
@@ -45,8 +44,8 @@ export default function Gradebook({
     return (
       <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
         <p className="text-[14px] font-medium text-slate-200">{t("gradebookEmptyWork")}</p>
-        <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
-          Publish an assignment and this becomes a grid of who has done what.
+        <p className="mt-1.5 text-[13px] text-slate-400">
+          Publish an assignment to fill this in.
         </p>
       </div>
     );
@@ -150,9 +149,8 @@ export default function Gradebook({
       </div>
 
       {!higherIsBetter(s) && (
-        <p className="mt-2.5 text-[11.5px] leading-relaxed text-slate-500">
-          On this scale a lower number is a better result. The grade column is
-          ordered best-first regardless.
+        <p className="mt-2.5 text-[11.5px] text-slate-500">
+          On this scale a lower number is better. Ordered best-first.
         </p>
       )}
 

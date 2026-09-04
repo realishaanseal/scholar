@@ -158,7 +158,7 @@ export default function AISettingsPanel() {
     setConfirmDelete(false);
     setTest({ state: "idle" });
     setModels({ state: "idle" });
-    setMessage({ tone: "ok", text: "API key deleted. Parsing falls back to the offline parser until you add another." });
+    setMessage({ tone: "ok", text: "API key deleted." });
   }
 
   async function resetAll() {
@@ -223,9 +223,9 @@ export default function AISettingsPanel() {
 
         {settings?.usingEnvFallback && (
           <p className="mt-3.5 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-xs leading-relaxed text-slate-400">
-            Nothing saved here yet, so Scholar is using the configuration in your{" "}
-            <code className="font-mono text-slate-300">.env.local</code> file. Anything you set below
-            takes priority over it, per account.
+            Using your{" "}
+            <code className="font-mono text-slate-300">.env.local</code> file. Anything set
+            below takes priority, per account.
           </p>
         )}
       </div>
@@ -234,8 +234,7 @@ export default function AISettingsPanel() {
       <div>
         <h3 className="mb-1 text-sm font-semibold text-white">Choose a provider</h3>
         <p className="mb-4 text-xs leading-relaxed text-slate-500">
-          Your key is encrypted before it's stored and is never sent to the browser again — only a
-          masked hint comes back.
+          Keys are encrypted before storage; only a masked hint comes back.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -365,7 +364,7 @@ export default function AISettingsPanel() {
                   </a>, then run <code className="font-mono text-slate-300">ollama pull {info.defaultModel}</code>.
                 </>
               ) : (
-                "No API key needed. This is the built-in fallback — it works offline but won't rewrite messy notes well."
+                "No API key needed. Works offline, but will not rewrite messy notes well."
               )}
             </p>
           )}

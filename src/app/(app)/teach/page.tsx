@@ -43,8 +43,7 @@ export default async function TeachPage() {
             You are not teaching any classes
           </p>
           <p className="mt-1.5 max-w-[52ch] text-[13px] leading-relaxed text-slate-400">
-            Classes appear here once you are added to one. Your own homework,
-            timetable and planning are unaffected either way — they stay yours.
+            Classes appear here once you are added to one.
           </p>
         </div>
       </div>

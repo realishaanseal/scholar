@@ -116,7 +116,7 @@ function Roster({ roster }: { roster: { id: string; userId: string; enrolledAt: 
       <div className="card grid place-items-center rounded-xl px-6 py-12 text-center">
         <p className="text-[14px] font-medium text-slate-200">Nobody is enrolled yet</p>
         <p className="mt-1.5 max-w-[44ch] text-[13px] leading-relaxed text-slate-400">
-          Work you publish will reach no one until students are added to this class.
+          No students enrolled — published work reaches nobody.
         </p>
       </div>
     );

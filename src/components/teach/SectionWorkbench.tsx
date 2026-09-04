@@ -306,9 +306,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
       <p className="text-[14px] font-medium text-slate-200">No assignments yet</p>
-      <p className="mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-slate-400">
-        When you publish one, it appears on every enrolled student&apos;s dashboard with
-        your deadline — and they keep their own estimate and planning around it.
+      <p className="mt-1.5 text-[13px] text-slate-400">
+        Published work reaches every enrolled student.
       </p>
       <button
         type="button"
@@ -555,9 +554,8 @@ function Composer({
               </p>
             )}
 
-            <p className="text-[12px] leading-relaxed text-slate-500">
-              Your estimate seeds each student&apos;s task once. After that it is theirs —
-              a student who knows this course takes them longer keeps their own number.
+            <p className="text-[12px] text-slate-500">
+              Seeds each student&apos;s estimate once; after that it is theirs.
             </p>
 
             {error && <p className="text-[13px] text-rose-300">{error}</p>}

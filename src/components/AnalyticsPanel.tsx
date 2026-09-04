@@ -56,8 +56,7 @@ export default function AnalyticsPanel() {
       <div className="card animate-riseIn p-10 text-center">
         <h3 className="text-sm font-semibold text-white">No history yet</h3>
         <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">
-          Finish a few tasks using the focus timer and this fills in — how long your work
-          actually takes, which subjects run over, and whether you&apos;re finishing on time.
+          Finish a few tasks with the focus timer and this fills in.
         </p>
       </div>
     );

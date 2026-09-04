@@ -128,10 +128,6 @@ export default function CourseCreator({ hasCourses }: { hasCourses: boolean }) {
         {error && <span className="text-[12.5px] text-rose-300">{error}</span>}
       </div>
 
-      <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        The academic year and term are set up for you if this is your first course. You
-        can rename them later; nothing here is difficult to change.
-      </p>
     </form>
   );
 }

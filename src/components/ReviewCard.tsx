@@ -74,14 +74,13 @@ export default function ReviewCard({
             </svg>
             <div className="min-w-0">
               <div className="font-medium text-amber-200">
-                No AI model ran — this was parsed by the built-in offline fallback.
+                No AI model ran.
               </div>
               {d.providerError ? (
                 <p className="mt-1 text-amber-200/75">{d.providerError}</p>
               ) : (
                 <p className="mt-1 text-amber-200/75">
-                  The offline parser tidies spacing and spots common deadline phrases, but it can't
-                  fix spelling or rewrite a messy note.
+                  Parsed offline — spelling and phrasing are left as written.
                 </p>
               )}
               <Link

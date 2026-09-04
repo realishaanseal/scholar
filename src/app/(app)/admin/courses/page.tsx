@@ -29,8 +29,7 @@ export default async function AdminCoursesPage() {
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
           <p className="text-[14px] font-medium text-slate-200">No courses yet</p>
           <p className="mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-slate-400">
-            Create one above. It comes with its first class, and an academic year and
-            term if this is your first.
+            Create one above.
           </p>
         </div>
       ) : (

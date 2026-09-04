@@ -28,10 +28,7 @@ export default async function InstitutionSettingsPage() {
 
   return (
     <div>
-      <PageHeading
-        title="Settings"
-        subtitle={`How ${org.name} keeps time, and when its students are free.`}
-      />
+      <PageHeading title="Settings" subtitle={org.name} />
 
       <TimeSettings
         initialTimezone={time.timezone}

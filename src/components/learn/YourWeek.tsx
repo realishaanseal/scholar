@@ -4,16 +4,9 @@ import { planWeek } from "@/domains/insight";
 /**
  * The week, in hours and in order.
  *
- * Two things every other LMS leaves a student to work out alone: how much
- * time actually exists before the next deadline, and which of four things to
- * start tonight.
- *
- * The order is not by deadline. Sorting by deadline is what a student does on
- * their own and it is what gets them into trouble — a four-hour essay due
- * Friday needs starting before a twenty-minute worksheet due Wednesday. Every
- * row says why it sits where it does, because advice a student cannot argue
- * with is advice they will either follow blindly or ignore entirely, and both
- * are worse than advice they can check.
+ * Ordered by slack, not by deadline — see orderOfWork. Each row carries its
+ * own reason, which is the only explanation this component renders: advice a
+ * student cannot check is advice they follow blindly or ignore.
  */
 export default async function YourWeek({
   userId,
@@ -34,22 +27,14 @@ export default async function YourWeek({
 
   return (
     <section className="card mb-5 rounded-xl px-4 py-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[13.5px] font-medium text-slate-200">Your week</h2>
-        <span className="text-[12px] text-slate-500">
-          in study hours, not days
-        </span>
-      </div>
+      <h2 className="text-[13.5px] font-medium text-slate-200">Your week</h2>
 
-      {/* The headline sentence. Hours rather than "due in 3 days", because
-          three days is not a quantity of anything anybody can spend. */}
       <p className="mt-1.5 max-w-[58ch] text-[13px] leading-relaxed text-slate-300">
         {tight ? (
           <>
             You have <span className="text-slate-100">{hours(budget.workMins)} hours</span> of
             work and <span className="text-amber-300">{hours(budget.availableMins)} hours</span>{" "}
-            to do it in — about {hours(-budget.slackMins)} hours short. Worth telling a
-            teacher now, while there is still time to do something about it.
+            to do it in — about {hours(-budget.slackMins)} hours short.
           </>
         ) : (
           <>
@@ -70,14 +55,14 @@ export default async function YourWeek({
       {budget.unestimated > 0 && (
         <p className="mt-1 text-[11.5px] text-slate-600">
           {budget.unestimated} {budget.unestimated === 1 ? "piece has" : "pieces have"} no
-          time estimate, so the total is a floor rather than a figure.
+          estimate, so this is a floor.
         </p>
       )}
 
       {order.length > 0 && (
         <>
           <p className="mt-3.5 text-[11.5px] uppercase tracking-wide text-slate-500">
-            The order worth doing them in
+            Order to work in
           </p>
           <ol className="mt-1.5 space-y-2">
             {order.map((o, i) => (
@@ -102,8 +87,6 @@ export default async function YourWeek({
                       </span>
                     )}
                   </p>
-                  {/* The workings. A student who disagrees can see exactly
-                      what Scholar counted. */}
                   <p
                     className={
                       o.atRisk
@@ -117,11 +100,6 @@ export default async function YourWeek({
               </li>
             ))}
           </ol>
-
-          <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-            Not ordered by deadline. A long piece due later often needs starting before a
-            short one due sooner, which is the thing deadline order gets wrong.
-          </p>
         </>
       )}
     </section>

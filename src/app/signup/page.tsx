@@ -56,7 +56,6 @@ export default async function SignUpPage({
   return (
     <AuthShell
       title={copy.signUpTitle}
-      subtitle={copy.signUpSubtitle}
       footer={
         <>
           <Link href="/signup" className="inline-block py-2 text-slate-500 hover:text-slate-300">
@@ -72,9 +71,9 @@ export default async function SignUpPage({
         </>
       }
     >
-      {copy.afterSignUp && (
+      {copy.note && (
         <p className="mb-4 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-slate-400">
-          {copy.afterSignUp}
+          {copy.note}
         </p>
       )}
       <OAuthButtons enabled={enabledOAuthProviders} />

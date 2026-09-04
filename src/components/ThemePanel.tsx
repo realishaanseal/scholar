@@ -103,9 +103,7 @@ export default function ThemePanel() {
           <div>
             <h3 className="text-sm font-semibold text-white">Appearance</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Pick any accent color — it reskins buttons, gradients, focus rings and the ambient
-              background everywhere in Scholar, and follows your account to any device you sign
-              into.
+              Follows your account to any device you sign into.
             </p>
           </div>
           {status && (
@@ -172,7 +170,7 @@ export default function ThemePanel() {
             />
             <div>
               <p className="text-[13px] font-medium text-slate-200">Custom color</p>
-              <p className="text-[11px] text-slate-500">Any hue — drag to preview, it saves automatically.</p>
+              <p className="text-[11px] text-slate-500">Drag to preview; saves automatically.</p>
             </div>
           </div>
 

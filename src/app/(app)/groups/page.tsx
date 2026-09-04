@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default function GroupsPage() {
   return (
     <div>
-      <PageHeading title="Groups" subtitle="Shared boards for group work." />
+      <PageHeading title="Groups" />
       <GroupsPanel />
     </div>
   );

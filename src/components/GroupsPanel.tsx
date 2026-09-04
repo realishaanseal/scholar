@@ -66,8 +66,7 @@ export default function GroupsPanel() {
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Study groups</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          A shared board for group projects and revision. Your own homework stays private —
-          only what you post here is visible to the group.
+          A shared board. Only what you post here is visible to the group.
         </p>
 
         {groups.length > 0 && (

@@ -218,9 +218,8 @@ export default function RubricBuilder({
         {error && <span className="text-[12.5px] text-rose-300">{error}</span>}
       </div>
 
-      <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        Each criterion is worth its best level. Levels do not have to be evenly spaced —
-        4 / 3 / 2 / 0 is a common and deliberate shape.
+      <p className="mt-3 text-[11.5px] text-slate-600">
+        Each criterion is worth its best level. Levels need not be evenly spaced.
       </p>
     </form>
   );

@@ -99,8 +99,7 @@ export default function CoachPanel({ onClose }: { onClose?: () => void }) {
         {turns.length === 0 && (
           <div className="pt-2">
             <p className="text-[13px] leading-relaxed text-slate-400">
-              Ask about your workload and I&apos;ll answer from what&apos;s actually in Scholar —
-              your deadlines, how much time you have, and how long your work usually takes.
+              Ask about your workload — deadlines, time, and how long your work takes.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (

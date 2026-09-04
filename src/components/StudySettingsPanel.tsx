@@ -87,8 +87,7 @@ export default function StudySettingsPanel() {
           <div>
             <h3 className="text-sm font-semibold text-white">Study time</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Scholar uses this to judge whether you actually have time for a task before it&apos;s
-              due — not just how close the deadline is.
+              Used to work out whether a deadline is actually reachable.
             </p>
           </div>
           {status && <span className="shrink-0 text-[11px] text-emerald-300">{status}</span>}
@@ -125,8 +124,7 @@ export default function StudySettingsPanel() {
             />
           </div>
           <p className="mt-2 text-[11px] text-slate-600">
-            Work isn&apos;t scheduled outside this window, so a deadline at 9am tomorrow counts
-            tonight&apos;s hours — not the hours you&apos;d be asleep.
+            Nothing is scheduled outside this window.
           </p>
         </div>
       </section>
@@ -134,14 +132,12 @@ export default function StudySettingsPanel() {
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">What Scholar has learned</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Built only from tasks you finished using the focus timer. Estimates are adjusted
-          toward how long your work actually takes.
+          Built from tasks finished with the focus timer.
         </p>
 
         {!memory || memory.totalEvents === 0 ? (
           <p className="mt-5 rounded-lg border border-dashed border-white/[0.08] px-4 py-6 text-center text-xs text-slate-500">
-            Nothing learned yet. Finish a task with the focus timer and it&apos;ll start
-            calibrating your estimates.
+            Nothing learned yet. Finish a task with the focus timer.
           </p>
         ) : (
           <>

@@ -57,8 +57,7 @@ export default function SharingPanel() {
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Share with a parent or guardian</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          You choose exactly what they can see, and you can stop it at any time. They never get
-          access to your account — only to the summary you pick.
+          A summary you choose. Never account access, and revocable at any time.
         </p>
 
         <div className="mt-4 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
@@ -126,7 +125,7 @@ export default function SharingPanel() {
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Shared with you</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Summaries other people have chosen to share. They can stop at any time.
+          Revocable by them at any time.
         </p>
 
         {received.filter((g) => !g.revokedAt).length === 0 ? (

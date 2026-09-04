@@ -177,7 +177,7 @@ export default function TimetableImport({ onImported }: { onImported: () => void
         <div className="min-w-0">
           <h4 className="text-[13px] font-medium text-slate-200">Import a whole timetable</h4>
           <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-            Paste it or attach a photo — Scholar reads it and you confirm before anything saves.
+            Paste it or attach a photo. You confirm before anything saves.
           </p>
         </div>
         {done !== null && (

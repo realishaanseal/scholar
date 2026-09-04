@@ -215,8 +215,7 @@ export default function Capture({
       {speech.error && <p className="mt-2.5 text-xs text-amber-300/90">{speech.error}</p>}
       {speech.mode === "recording" && !speech.listening && !speech.transcribing && (
         <p className="mt-2.5 text-[11px] text-slate-600">
-          Dictation records and transcribes with your AI provider, since this browser&apos;s
-          built-in speech recognition isn&apos;t available.
+          This browser has no built-in speech recognition, so dictation uses your AI provider.
         </p>
       )}
       <AnimatePresence>

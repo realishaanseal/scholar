@@ -54,16 +54,23 @@ describe("account intent grants nothing", () => {
   it("tells teachers and admins that access must be granted", () => {
     // Silence here means someone signs up, sees nothing, and concludes the
     // product is broken.
-    expect(INTENT_COPY.teacher.afterSignUp).toBeTruthy();
-    expect(INTENT_COPY.admin.afterSignUp).toBeTruthy();
+    expect(INTENT_COPY.teacher.note).toBeTruthy();
+    expect(INTENT_COPY.admin.note).toBeTruthy();
     // A student needs nothing granted, so there is nothing to say.
-    expect(INTENT_COPY.student.afterSignUp).toBeUndefined();
+    expect(INTENT_COPY.student.note).toBeUndefined();
   });
 
-  it("has copy for every door", () => {
+  it("keeps the doors to a label and at most one sentence", () => {
+    // The chooser is three named doors, not three pitches. Anything longer
+    // than a sentence is explaining the product to somebody already at it.
     for (const intent of ACCOUNT_INTENTS) {
-      expect(INTENT_COPY[intent].label).toBeTruthy();
-      expect(INTENT_COPY[intent].blurb).toBeTruthy();
+      const copy = INTENT_COPY[intent];
+      expect(copy.label).toBeTruthy();
+      expect(copy.label.split(" ")).toHaveLength(1);
+      if (copy.note) {
+        expect(copy.note.split(". ").filter(Boolean)).toHaveLength(1);
+        expect(copy.note.length).toBeLessThan(90);
+      }
     }
   });
 });

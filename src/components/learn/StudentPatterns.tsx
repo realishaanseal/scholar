@@ -78,11 +78,6 @@ export default async function StudentPatterns({
                 </div>
               ))}
           </div>
-
-          <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-            Counted only where a teacher marked you against named criteria, and only from
-            work that has been returned. Nobody else is shown this.
-          </p>
         </section>
       )}
 

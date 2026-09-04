@@ -80,8 +80,7 @@ export default function TimetablePanel() {
           </div>
           <h3 className="text-sm font-semibold text-white">No timetable yet</h3>
           <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">
-            Paste or upload your school timetable below and Scholar will lay out your week —
-            and use the free periods to work out when you can actually study.
+            Paste or upload your timetable and Scholar will lay out your week.
           </p>
         </motion.div>
       )}
@@ -134,8 +133,7 @@ export default function TimetablePanel() {
             >
               <div className="border-t border-white/[0.06] px-5 pb-5 pt-4">
                 <p className="text-xs leading-relaxed text-slate-500">
-                  Breaks and library periods can be imported too — tag them in the timetable
-                  text, or fix the tag on any row below.
+                  Breaks and library periods can be tagged in the text or fixed below.
                 </p>
                 <ClassList classes={classes} onChanged={load} />
                 {/* Import is the only way in: a manual "add one class" form was

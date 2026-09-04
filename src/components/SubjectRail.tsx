@@ -70,7 +70,7 @@ export default function SubjectRail({
 
         {subjects.length === 0 ? (
           <p className="text-xs leading-relaxed text-slate-500">
-            Subjects appear here automatically as the AI categorises your work.
+            Subjects appear here as your work is categorised.
           </p>
         ) : (
           <div className="space-y-3">

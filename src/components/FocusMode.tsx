@@ -177,8 +177,7 @@ export default function FocusMode({
       </div>
 
       <p className="mt-3 text-[11px] text-slate-600">
-        Time is recorded when you finish, and used to make future estimates for{" "}
-        {hw.subject?.name ?? "this subject"} more accurate.
+        Time is recorded when you finish.
       </p>
     </motion.div>
   );

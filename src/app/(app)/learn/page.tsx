@@ -36,10 +36,8 @@ export default async function LearnPage() {
       {courses.length === 0 ? (
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
           <p className="text-[14px] font-medium text-slate-200">No courses yet</p>
-          <p className="mt-1.5 max-w-[50ch] text-[13px] leading-relaxed text-slate-400">
-            When your school adds you to a class it appears here, and the work your
-            teachers set turns up on your homework list automatically — with their
-            deadline and your own plan around it.
+          <p className="mt-1.5 text-[13px] text-slate-400">
+            Classes appear here once your school adds you to one.
           </p>
         </div>
       ) : (

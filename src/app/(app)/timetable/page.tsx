@@ -6,10 +6,7 @@ export const dynamic = "force-dynamic";
 export default function TimetablePage() {
   return (
     <div>
-      <PageHeading
-        title="Timetable"
-        subtitle="Your recurring classes, so Scholar knows when you're free to study."
-      />
+      <PageHeading title="Timetable" />
       <TimetablePanel />
     </div>
   );

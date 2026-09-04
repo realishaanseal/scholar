@@ -54,8 +54,7 @@ export default function CourseWork({
       <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
         <p className="text-[14px] font-medium text-slate-200">No work set yet</p>
         <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-slate-400">
-          When your teacher publishes something it appears here, and on your homework
-          list with the deadline already filled in.
+          Published work appears here and on your homework list.
         </p>
       </div>
     );

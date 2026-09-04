@@ -17,7 +17,7 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <PageHeading title={org.name} subtitle="How the institution is set up, and what it is doing." />
+      <PageHeading title={org.name} />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <Stat label="Students" value={summary.students} href="/admin/people" />
@@ -34,8 +34,7 @@ export default async function AdminPage() {
         <div className="card mt-4 rounded-xl px-4 py-3.5">
           <p className="text-[13.5px] text-slate-200">Nobody is enrolled yet</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-slate-400">
-            Create a course, then add people to it. Anyone without a Scholar account
-            yet is invited, and joins the moment they register.
+            Create a course, then add people to it.
           </p>
           <div className="mt-2.5 flex gap-2">
             <Link href="/admin/courses" className="btn btn-ghost px-3 py-1.5 text-[12.5px]">

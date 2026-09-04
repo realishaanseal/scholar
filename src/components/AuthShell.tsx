@@ -12,7 +12,7 @@ export default function AuthShell({
   footer,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
@@ -44,7 +44,9 @@ export default function AuthShell({
           className="card p-7 xl:p-8"
         >
           <h1 className="text-xl font-semibold tracking-tight text-white">{title}</h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{subtitle}</p>
+          {subtitle && (
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{subtitle}</p>
+          )}
           <div className="mt-6">{children}</div>
         </motion.div>
 

@@ -21,7 +21,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
   {
     id: "ai",
     label: "AI settings",
-    hint: "Provider, model and API key",
+    hint: "Provider, model, API key",
     icon: "M12 2l1.9 5.5L19 9l-5.1 1.5L12 16l-1.9-5.5L5 9l5.1-1.5z",
   },
   {
@@ -33,7 +33,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
   {
     id: "preferences",
     label: "Alerts & language",
-    hint: "What Scholar warns you about, and in which language",
+    hint: "Alert types and languages",
     icon: "M4 6h16M4 12h16M4 18h10",
   },
   {
@@ -45,13 +45,13 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: string }[] =
   {
     id: "sharing",
     label: "Sharing",
-    hint: "What a parent or guardian can see",
+    hint: "What a guardian can see",
     icon: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
   },
   {
     id: "account",
     label: "Account",
-    hint: "Who you're signed in as",
+    hint: "Sign-in methods and your data",
     icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   },
 ];

@@ -172,9 +172,8 @@ export default function PeopleInviter({ sections }: { sections: Section[] }) {
         </div>
       )}
 
-      <p className="mt-3 text-[11.5px] leading-relaxed text-slate-600">
-        Scholar does not send email. Invitations wait here until the person registers,
-        so tell them yourself the way you normally would.
+      <p className="mt-3 text-[11.5px] text-slate-600">
+        Scholar sends no email — tell them to register yourself.
       </p>
     </form>
   );

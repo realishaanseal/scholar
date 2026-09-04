@@ -105,8 +105,7 @@ export default function AccountPanel({
           <div>
             <h3 className="text-sm font-semibold text-white">Varaxis ID</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              One account for Varaxis products. Scholar is the first — others will sign in with
-              this same identity rather than asking you to start again.
+              One account across Varaxis products.
             </p>
           </div>
           {status && <span className="shrink-0 text-[11px] text-emerald-300">{status}</span>}
@@ -155,8 +154,7 @@ export default function AccountPanel({
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Sign-in methods</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          What you can use to get into this account. Signing in linked more than one automatically
-          when the same email address matched.
+          How you get into this account.
         </p>
 
         {!signInMethods ? (
@@ -225,16 +223,14 @@ export default function AccountPanel({
       <section className="card animate-riseIn p-6">
         <h3 className="text-sm font-semibold text-white">Your data</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Everything Scholar holds lives in a database file on this machine. Nothing is sent
-          anywhere except the AI provider you configured, and only when you ask it to read something.
+          Export or delete everything Scholar holds about you.
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
           <div className="min-w-0">
             <p className="text-[13px] text-slate-200">Export everything</p>
             <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-              All your homework, history, subjects and settings as a JSON file. Encrypted API keys
-              and attachment contents are left out on purpose.
+              Homework, history, subjects and settings as JSON.
             </p>
           </div>
           <a href="/api/account?export=1" download className="btn-ghost ml-auto shrink-0 px-4 py-2 text-xs">

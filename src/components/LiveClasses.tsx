@@ -605,9 +605,7 @@ export default function LiveClasses() {
               ) : (
                 <div className="p-5 sm:p-6">
                   <p className="text-xs leading-relaxed text-slate-500">
-                    Import or fix your timetable here any time — the same list is used everywhere in
-                    Scholar, including Settings → Preferences. Breaks and library periods can be
-                    imported too — tag them from the timetable text or fix the tag afterwards below.
+                    Import or fix your timetable at any time. Breaks and library periods can be tagged too.
                   </p>
                   <ClassList classes={list} onChanged={load} />
                   <TimetableImport onImported={load} />

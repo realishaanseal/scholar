@@ -118,8 +118,7 @@ export default function MaterialsPanel({
           Drop textbooks, worksheets or slides here
         </p>
         <p className="mt-1 text-[12px] text-slate-500">
-          PDF, EPUB, Word, PowerPoint, images — up to 32MB. Students see them
-          once you publish.
+          PDF, EPUB, Word, PowerPoint, images — up to 32MB.
         </p>
         <button
           type="button"

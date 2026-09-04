@@ -104,7 +104,7 @@ export default function Announcements({ sectionId }: { sectionId: string }) {
             {error && <span className="text-[12.5px] text-rose-300">{error}</span>}
           </div>
           <p className="mt-2 text-[11.5px] text-slate-600">
-            Scholar does not send email. This appears in the class straight away.
+            Appears in the class immediately; no email is sent.
           </p>
         </form>
       )}

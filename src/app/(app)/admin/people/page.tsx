@@ -77,8 +77,7 @@ export default async function PeoplePage() {
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
           <p className="text-[14px] font-medium text-slate-200">Nobody here yet</p>
           <p className="mt-1.5 max-w-[48ch] text-[13px] leading-relaxed text-slate-400">
-            Add them above. Anyone who already has a Scholar account joins straight
-            away; anyone who does not joins when they register with that address.
+            Add them above.
           </p>
         </div>
       ) : (

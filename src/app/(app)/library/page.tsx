@@ -53,9 +53,8 @@ export default async function LibraryPage() {
       {materials.length === 0 ? (
         <div className="card grid place-items-center rounded-xl px-6 py-16 text-center">
           <p className="text-[14px] font-medium text-slate-200">Nothing here yet</p>
-          <p className="mt-1.5 max-w-[44ch] text-[13px] leading-relaxed text-slate-400">
-            Ebooks, worksheets, slides and links your teachers publish appear here — from
-            every course at once, so you do not have to remember which one it was under.
+          <p className="mt-1.5 text-[13px] text-slate-400">
+            Material your teachers publish appears here.
           </p>
         </div>
       ) : (
@@ -124,10 +123,6 @@ export default async function LibraryPage() {
             );
           })}
 
-          <p className="text-[11.5px] leading-relaxed text-slate-600">
-            Courses with work due soonest come first, so what you need next is near the
-            top rather than wherever the alphabet put it.
-          </p>
         </div>
       )}
     </div>

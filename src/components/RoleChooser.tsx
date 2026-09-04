@@ -42,13 +42,8 @@ export default function RoleChooser({ mode }: { mode: "login" | "signup" }) {
                 </svg>
               </span>
 
-              <span className="min-w-0 flex-1">
-                <span className="block text-[14px] font-medium text-slate-100">
-                  {copy.label}
-                </span>
-                <span className="mt-0.5 block text-[12.5px] leading-snug text-slate-500">
-                  {copy.blurb}
-                </span>
+              <span className="min-w-0 flex-1 text-[14px] font-medium text-slate-100">
+                {copy.label}
               </span>
 
               <svg

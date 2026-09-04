@@ -11,10 +11,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <PageHeading
-        title="Settings"
-        subtitle="Choose which AI reads your homework, how much time you have to study, and how Scholar looks and talks to you."
-      />
+      <PageHeading title="Settings" />
 
       <SettingsNav
         name={session.user.name ?? null}

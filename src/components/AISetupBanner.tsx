@@ -57,9 +57,7 @@ export default function AISetupBanner() {
         <div className="min-w-[14rem] flex-1">
           <h2 className="text-sm font-semibold text-white">The AI isn&apos;t connected yet</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            Scholar is running on its built-in offline parser, which tidies spacing and catches
-            common deadline phrases — but it can&apos;t fix spelling or rewrite a messy note.
-            Connecting a provider takes about a minute and there are free options.
+            Scholar is using its offline parser. Connecting a provider takes about a minute.
           </p>
         </div>
 
