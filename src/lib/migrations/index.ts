@@ -16,6 +16,7 @@ import { sql as timestampsDualWrite } from "./0013_timestamps_dualwrite";
 import { sql as gradingScheme } from "./0014_grading_scheme";
 import { sql as aiPolicy } from "./0015_ai_policy";
 import { sql as invitations } from "./0016_invitations";
+import { sql as rubrics } from "./0017_rubrics";
 
 /**
  * Versioned schema migrations.
@@ -67,6 +68,7 @@ export const MIGRATIONS: Migration[] = [
   { id: "0014_grading_scheme", sql: gradingScheme },
   { id: "0015_ai_policy", sql: aiPolicy },
   { id: "0016_invitations", sql: invitations },
+  { id: "0017_rubrics", sql: rubrics },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */

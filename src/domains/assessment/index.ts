@@ -10,3 +10,4 @@ export * from "./types";
 export * from "./repository";
 export * from "./marking";
 export * from "./quizzes";
+export * from "./rubrics";

@@ -29,6 +29,14 @@ export type Assignment = {
   estimatedMins: number | null;
   /** IANA zone the deadline was written against. Null on rows that predate it. */
   dueTimezone: string | null;
+  /** The rubric this is marked against, when there is one. */
+  rubricId: string | null;
+  /**
+   * Whether filling the rubric in sets the score, or merely explains one the
+   * teacher enters separately. Explicit because guessing produces a gradebook
+   * nobody trusts.
+   */
+  rubricScores: boolean;
 };
 
 export type Submission = {
@@ -78,6 +86,8 @@ export const assignmentInputSchema = z
      * the rule into a different one.
      */
     dueTimezone: z.string().trim().max(64).nullable().default(null),
+    rubricId: z.string().trim().max(64).nullable().default(null),
+    rubricScores: z.boolean().default(true),
   })
   // Mirrors the CHECK constraints in migration 0004. Validating here as well
   // means a teacher gets a sentence they can act on rather than a constraint

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { EASE_OUT, Reveal } from "@/components/motion";
 import { cn } from "@/lib/cn";
 import QuizRunner from "./QuizRunner";
+import RubricResult from "./RubricResult";
 // Straight from the pure module, not the domain barrel: the barrel re-exports
 // the repository, which imports the database, which would put pg in the
 // browser bundle. The type import is erased at build time and costs nothing.
@@ -218,6 +219,10 @@ function AssignmentCard({
                   the work is still outstanding: once it is handed in, how long
                   it was going to take stopped being useful advice. */}
               {assignment.dueAt && <DeadlineLine iso={assignment.dueAt} timezone={timezone} />}
+
+              {/* Criterion by criterion, which is the half of a mark that
+                  tells a student what to do differently. */}
+              {sub && <RubricResult submissionId={sub.id} />}
 
               {plan && !handedIn && <PlanLine plan={plan} />}
 

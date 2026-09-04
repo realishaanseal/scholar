@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import RubricMarker from "./RubricMarker";
 import { EASE_OUT } from "@/components/motion";
 import { cn } from "@/lib/cn";
 import type { PendingSubmission } from "@/domains/assessment";
@@ -213,6 +214,14 @@ function MarkingCard({
                   Open submitted link ↗
                 </a>
               )}
+
+              {/* Marked against criteria before a number is chosen, which is
+                  the order a rubric exists to impose. Renders nothing when
+                  the assignment has no rubric. */}
+              <RubricMarker
+                submissionId={item.id}
+                onSuggestedScore={(n) => setScore(String(n))}
+              />
 
               {/* The suggestion sits beside the fields and never inside them.
                   Pre-filling would make "Return" an acceptance by default, and

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EASE_OUT, Reveal } from "@/components/motion";
 import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/cn";
 import QuizEditor from "./QuizEditor";
 import { wallClockToInstant } from "@/lib/time";
+import RubricBuilder from "./RubricBuilder";
 import type { Assignment } from "@/domains/assessment";
 
 /**
@@ -195,6 +196,7 @@ export default function SectionWorkbench({
       <Composer
         open={composing}
         sectionId={sectionId}
+        courseId={courseId}
         timezone={timezone}
         onClose={() => setComposing(false)}
         onCreated={(a) => {
@@ -322,10 +324,11 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 /* ── Composer ──────────────────────────────────────────────────────────── */
 
 function Composer({
-  open, sectionId, timezone, onClose, onCreated,
+  open, sectionId, courseId, timezone, onClose, onCreated,
 }: {
   open: boolean;
   sectionId: string;
+  courseId: string;
   timezone: string;
   onClose: () => void;
   onCreated: (a: Assignment) => void;
@@ -336,6 +339,26 @@ function Composer({
   const [points, setPoints] = useState("");
   const [estimate, setEstimate] = useState("");
   const [kind, setKind] = useState<"task" | "quiz">("task");
+  const [rubricId, setRubricId] = useState("");
+  const [rubrics, setRubrics] = useState<Array<{ id: string; title: string; points: number }>>([]);
+
+  // Fetched when the composer opens rather than with the page: most
+  // assignments are created without one, and a list nobody looks at is a
+  // request nobody needed.
+  const loadRubrics = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/institution/courses/${courseId}/rubrics`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setRubrics(data.rubrics ?? []);
+    } catch {
+      // A rubric list that will not load must not stop somebody setting work.
+    }
+  }, [courseId]);
+
+  useEffect(() => {
+    if (open) void loadRubrics();
+  }, [open, loadRubrics]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clash, setClash] = useState<Clash | null>(null);
@@ -387,6 +410,7 @@ function Composer({
           // Friday 23:59 from an airport is setting 23:59 at their school.
           dueAt: dueAt ? wallClockToInstant(dueAt, timezone).toISOString() : null,
           dueTimezone: dueAt ? timezone : null,
+          rubricId: rubricId || null,
           points: points ? Number(points) : null,
           estimatedMins: estimate ? Number(estimate) : null,
         }),
@@ -492,6 +516,26 @@ function Composer({
                   placeholder="45"
                   className="input w-full"
                 />
+              </Field>
+            </div>
+
+            <div className="mt-4">
+              <Field label="Marked against a rubric" hint="Optional">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={rubricId}
+                    onChange={(e) => setRubricId(e.target.value)}
+                    className="input min-w-[220px] flex-1"
+                  >
+                    <option value="">No rubric</option>
+                    {rubrics.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title} — {r.points} points
+                      </option>
+                    ))}
+                  </select>
+                  <RubricBuilder courseId={courseId} onCreated={() => void loadRubrics()} />
+                </div>
               </Field>
             </div>
 

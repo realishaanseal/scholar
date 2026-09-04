@@ -28,14 +28,14 @@ export async function createAssignment(
       `INSERT INTO assignments
          (id, organization_id, course_section_id, created_by, title, instructions,
           points, available_from, due_at, closes_at, submission_type, max_attempts,
-          late_policy, estimated_mins, kind, due_timezone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          late_policy, estimated_mins, kind, due_timezone, rubric_id, rubric_scores)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id, organizationId, courseSectionId, createdBy, input.title, input.instructions,
       input.points, input.availableFrom, input.dueAt, input.closesAt,
       input.submissionType, input.maxAttempts, input.latePolicy, input.estimatedMins,
-      input.kind, input.dueTimezone
+      input.kind, input.dueTimezone, input.rubricId, input.rubricScores
     );
   const created = await getAssignment(id);
   if (!created) throw new Error("Assignment was created but could not be read back.");
@@ -44,7 +44,8 @@ export async function createAssignment(
 
 const ASSIGNMENT_COLUMNS = `id, organization_id, course_section_id, created_by, title,
        instructions, points, available_from, due_at, closes_at, submission_type, kind,
-       max_attempts, late_policy, status, published_at, estimated_mins, due_timezone`;
+       max_attempts, late_policy, status, published_at, estimated_mins, due_timezone,
+       rubric_id, rubric_scores`;
 
 export async function getAssignment(id: string): Promise<Assignment | null> {
   const r = await db
@@ -154,6 +155,8 @@ function mapAssignment(r: any): Assignment {
     publishedAt: iso(r.published_at),
     estimatedMins: r.estimated_mins ?? null,
     dueTimezone: r.due_timezone ?? null,
+    rubricId: r.rubric_id ?? null,
+    rubricScores: r.rubric_scores !== false,
   };
 }
 
