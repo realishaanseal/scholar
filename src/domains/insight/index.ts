@@ -227,3 +227,118 @@ export async function institutionCourseHealth(
   );
 }
 
+
+/* ── The week ──────────────────────────────────────────────────────────── */
+
+import { calibration, orderOfWork, timeBudget } from "./week";
+import type { Calibration, Sequenced, TimeBudget, WorkItem } from "./week";
+
+export * from "./week";
+
+/**
+ * Everything a student still owes, across every course.
+ *
+ * Estimates are calibrated the same way the per-course planner calibrates
+ * them, so the number in the week view and the number on the assignment agree.
+ * Two places computing the same figure differently is how a student stops
+ * believing either.
+ */
+export async function outstandingWork(
+  userId: string,
+  organizationId: string
+): Promise<WorkItem[]> {
+  const [rows, pace] = await Promise.all([
+    db
+      .prepare(
+        `SELECT a.id, a.title, a.due_at, a.estimated_mins,
+                c.code, c.title AS subject, cs.id AS section_id
+           FROM enrollments e
+           JOIN course_sections cs ON cs.id = e.course_section_id
+           JOIN courses c ON c.id = cs.course_id
+           JOIN assignments a ON a.course_section_id = cs.id AND a.status = 'published'
+          WHERE e.user_id = ? AND e.status = 'active'
+            AND cs.organization_id = ?
+            AND NOT EXISTS (
+              SELECT 1 FROM assignment_submissions s
+               WHERE s.assignment_id = a.id AND s.user_id = e.user_id
+            )
+            AND (
+              NOT EXISTS (SELECT 1 FROM assignment_assignees x WHERE x.assignment_id = a.id)
+              OR EXISTS (
+                SELECT 1 FROM assignment_assignees x
+                 WHERE x.assignment_id = a.id AND x.user_id = e.user_id
+              )
+            )
+          ORDER BY a.due_at NULLS LAST`
+      )
+      .all(userId, organizationId),
+    paceBySubject(userId),
+  ]);
+
+  return (rows as any[]).map((r) => {
+    const teacherMins =
+      r.estimated_mins === null || r.estimated_mins === undefined
+        ? null
+        : Number(r.estimated_mins);
+    return {
+      id: r.id,
+      title: String(r.title ?? ""),
+      courseCode: String(r.code ?? ""),
+      sectionId: r.section_id,
+      dueAt: r.due_at instanceof Date ? r.due_at : r.due_at ? new Date(r.due_at) : null,
+      estimateMins: calibrateEstimate(teacherMins, pace[r.subject]).mins,
+    };
+  });
+}
+
+export type WeekPlan = {
+  budget: TimeBudget;
+  order: Sequenced[];
+};
+
+/** The whole week: how much time there is, and what to do first. */
+export async function planWeek(
+  userId: string,
+  organizationId: string,
+  now: Date = new Date()
+): Promise<WeekPlan> {
+  const [items, profile] = await Promise.all([
+    outstandingWork(userId, organizationId),
+    getAvailability(userId),
+  ]);
+
+  return {
+    budget: timeBudget(items, profile, now),
+    order: orderOfWork(items, profile, now),
+  };
+}
+
+/**
+ * What this student's own estimates have been worth.
+ *
+ * Read from task_events, which has been recording estimate against actual
+ * since long before there was an institution in the picture. Scholar has been
+ * using it to correct the numbers it shows and never telling anybody — which
+ * is the wrong way round, because somebody who knows their physics estimates
+ * run short can act on it, and somebody whose estimates are silently
+ * corrected learns nothing.
+ */
+export async function estimateReceipts(userId: string): Promise<Calibration> {
+  const rows = await db
+    .prepare(
+      `SELECT subjectName AS subject, estimateMins, actualMins
+         FROM task_events
+        WHERE userId = ? AND estimateMins > 0 AND actualMins > 0
+        ORDER BY createdAt DESC
+        LIMIT 400`
+    )
+    .all(userId);
+
+  return calibration(
+    (rows as any[]).map((r) => ({
+      subject: String(r.subject ?? "Other"),
+      estimateMins: Number(r.estimateMins ?? 0),
+      actualMins: Number(r.actualMins ?? 0),
+    }))
+  );
+}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import PageHeading from "@/components/PageHeading";
 import AnalyticsPanel from "@/components/AnalyticsPanel";
 import StudentPatterns from "@/components/learn/StudentPatterns";
+import EstimateReceipts from "@/components/learn/EstimateReceipts";
 import { auth } from "@/lib/auth";
 import { enrolledOrganizations } from "@/domains/learning";
 
@@ -32,8 +33,11 @@ export default async function InsightsPage() {
         subtitle="How your work actually goes — pace, estimates, and patterns."
       />
 
-      {/* Institution-derived first: it is about work somebody else set, and
-          therefore the part a student is most likely to want to act on. */}
+      {/* Their own measurements first. These apply whether or not an
+          institution is involved, and they are the ones Scholar has been
+          quietly keeping without ever showing anybody. */}
+      <EstimateReceipts userId={session.user.id} />
+
       {orgs.length > 0 && (
         <div className="mb-6">
           <StudentPatterns userId={session.user.id} organizationId={orgs[0]} />
