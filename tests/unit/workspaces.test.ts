@@ -118,6 +118,21 @@ describe("navigation is separated by job", () => {
     return shell.slice(start, shell.indexOf("];", start));
   };
 
+  it("gives every navigable route an owning workspace", () => {
+    // /library shipped in the nav without being added to WORKSPACES.owns, so
+    // the shell could not infer which workspace it belonged to and fell
+    // through to a positional fallback. That happened to land correctly, which
+    // is why nothing caught it. Separation tests check what a nav must NOT
+    // contain; this checks that what it does contain actually resolves.
+    const hrefs = [...shell.matchAll(/href:\s*"(\/[^"]*)"/g)].map((m) => m[1]);
+    expect(hrefs.length).toBeGreaterThan(8);
+
+    for (const href of hrefs) {
+      if (href === "/settings") continue; // account-level, deliberately outside
+      expect(workspaceForPath(href), `${href} belongs to no workspace`).not.toBeNull();
+    }
+  });
+
   it("keeps homework and coursework tools out of the teaching nav", () => {
     // The complaint that prompted this: a teacher was being offered Homework,
     // Import and Focus — tools for doing coursework, shown to whoever sets it.
