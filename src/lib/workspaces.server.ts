@@ -31,7 +31,7 @@ import type { WorkspaceId } from "./workspaces";
  * empty navigation would be a worse bug than an unnecessary tab.
  */
 export async function availableWorkspaces(userId: string): Promise<WorkspaceId[]> {
-  const [teaches, admins, enrolled, hasOwnWork] = await Promise.all([
+  const [teaches, admins, enrolled, guards, hasOwnWork] = await Promise.all([
     db
       .prepare(`SELECT 1 AS present FROM section_teachers WHERE user_id = ? LIMIT 1`)
       .get(userId),
@@ -47,6 +47,15 @@ export async function availableWorkspaces(userId: string): Promise<WorkspaceId[]
       .prepare(
         `SELECT 1 AS present FROM enrollments
           WHERE user_id = ? AND status = 'active' LIMIT 1`
+      )
+      .get(userId),
+    // A live guardian link. Revoked links are excluded, so a workspace
+    // disappears the moment a school withdraws the relationship rather than
+    // at the next sign-in.
+    db
+      .prepare(
+        `SELECT 1 AS present FROM guardian_links
+          WHERE guardian_user_id = ? AND revoked_at IS NULL LIMIT 1`
       )
       .get(userId),
     // Any trace of them using Scholar for themselves. Homework covers the
@@ -68,6 +77,7 @@ export async function availableWorkspaces(userId: string): Promise<WorkspaceId[]
   if (enrolled || hasOwnWork) out.push("personal");
   if (teaches) out.push("teaching");
   if (admins) out.push("admin");
+  if (guards) out.push("family");
 
   // Never nothing.
   return out.length > 0 ? out : ["personal"];

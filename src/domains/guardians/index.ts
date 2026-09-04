@@ -156,6 +156,44 @@ export async function getLink(
   return r ? map(r) : null;
 }
 
+export type Ward = {
+  studentUserId: string;
+  studentName: string | null;
+  organizationId: string;
+  organizationName: string;
+  relationship: string;
+};
+
+/**
+ * The children this adult may read about, with enough to render a list.
+ *
+ * Separate from childrenOf, which returns bare ids and exists to populate
+ * Actor.guardianOf during authorization. That one is deliberately narrow —
+ * a permission check has no business loading names — so this is the read a
+ * screen uses, and the two do not share a shape.
+ */
+export async function wardsOf(guardianUserId: string): Promise<Ward[]> {
+  const rows = await db
+    .prepare(
+      `SELECT g.student_user_id, g.organization_id, g.relationship,
+              u.name AS student_name, o.name AS organization_name
+         FROM guardian_links g
+         JOIN users u ON u.id = g.student_user_id
+         JOIN organizations o ON o.id = g.organization_id
+        WHERE g.guardian_user_id = ? AND g.revoked_at IS NULL
+        ORDER BY u.name NULLS LAST, g.student_user_id`
+    )
+    .all(guardianUserId);
+
+  return (rows as any[]).map((r) => ({
+    studentUserId: r.student_user_id,
+    studentName: r.student_name ?? null,
+    organizationId: r.organization_id,
+    organizationName: r.organization_name,
+    relationship: r.relationship ?? "",
+  }));
+}
+
 /** The children this adult may read about. Drives Actor.guardianOf. */
 export async function childrenOf(guardianUserId: string): Promise<string[]> {
   const rows = await db

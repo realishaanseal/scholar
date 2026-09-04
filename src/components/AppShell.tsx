@@ -91,6 +91,21 @@ const TEACHING_NAV: NavItem[] = [
   },
 ];
 
+/**
+ * What a guardian does: read about their child, and nothing else.
+ *
+ * One destination on purpose. A guardian is not an administrator of their
+ * child and does not get a console — they get the summary the school has
+ * decided to share, and the navigation says so by having nowhere else to go.
+ */
+const FAMILY_NAV: NavItem[] = [
+  {
+    href: "/family",
+    labelKey: "navFamily",
+    icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  },
+];
+
 /** What an administrator does: people, and the shape of the year. */
 const ADMIN_NAV: NavItem[] = [
   {
@@ -107,6 +122,11 @@ const ADMIN_NAV: NavItem[] = [
     href: "/admin/courses",
     labelKey: "navAdminCourses",
     icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+  },
+  {
+    href: "/admin/attendance",
+    labelKey: "navAttendance",
+    icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
   },
   {
     href: "/admin/health",
@@ -129,6 +149,7 @@ const WORKSPACE_NAV: Record<WorkspaceId, NavItem[]> = {
   personal: PERSONAL_NAV,
   teaching: TEACHING_NAV,
   admin: ADMIN_NAV,
+  family: FAMILY_NAV,
 };
 
 const SETTINGS_ITEM: NavItem = {

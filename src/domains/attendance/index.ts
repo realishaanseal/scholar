@@ -193,6 +193,74 @@ export type AttendanceSummary = {
   rate: number | null;
 };
 
+export type StudentAttendance = AttendanceSummary & {
+  userId: string;
+  name: string | null;
+  email: string | null;
+};
+
+/**
+ * Everyone's attendance over a period, for an administrator.
+ *
+ * The exit criterion for attendance was that an administrator can produce a
+ * term's record for one student. Doing that by calling attendanceFor once per
+ * student is one query per person and a page that gets slower every September,
+ * so the aggregate happens in Postgres and the whole roster comes back once.
+ *
+ * Ordered by name, deliberately. Sorting a register worst-first turns a
+ * statutory record into a ranking of children, which is a different document
+ * with a different purpose, and not one an attendance screen should quietly
+ * become.
+ */
+export async function attendanceForOrganization(
+  organizationId: string,
+  from: string,
+  to: string
+): Promise<StudentAttendance[]> {
+  const rows = await db
+    .prepare(
+      `SELECT m.user_id,
+              u.name  AS name,
+              u.email AS email,
+              COUNT(*) FILTER (WHERE m.state = 'present')::int AS present,
+              COUNT(*) FILTER (WHERE m.state = 'absent')::int  AS absent,
+              COUNT(*) FILTER (WHERE m.state = 'late')::int    AS late,
+              COUNT(*) FILTER (WHERE m.state = 'excused')::int AS excused,
+              COUNT(*)::int AS sessions
+         FROM attendance_marks m
+         JOIN attendance_sessions s ON s.id = m.session_id
+         JOIN users u ON u.id = m.user_id
+        WHERE m.organization_id = ?
+          AND s.on_date BETWEEN ?::date AND ?::date
+        GROUP BY m.user_id, u.name, u.email
+        ORDER BY u.name NULLS LAST, m.user_id`
+    )
+    .all(organizationId, from, to);
+
+  return (rows as any[]).map((r) => {
+    const present = Number(r.present ?? 0);
+    const absent = Number(r.absent ?? 0);
+    const late = Number(r.late ?? 0);
+    const excused = Number(r.excused ?? 0);
+    const sessions = Number(r.sessions ?? 0);
+    return {
+      userId: r.user_id,
+      name: r.name ?? null,
+      email: r.email ?? null,
+      present,
+      absent,
+      late,
+      excused,
+      sessions,
+      // Identical to attendanceFor, rounding included: the same student must
+      // not read 94% on the roster and 93.5% on their own page.
+      rate: sessions === 0
+        ? null
+        : Math.round(((present + late + excused) / sessions) * 100) / 100,
+    };
+  });
+}
+
 /**
  * One student's attendance over a period.
  *

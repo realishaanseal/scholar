@@ -11,6 +11,7 @@
  *   personal   your own work — tasks, timetable, focus, insights
  *   teaching   the classes you teach — assignments, materials, marking
  *   admin      the institution — people, courses, terms
+ *   family     the children you are a guardian of
  *
  * A workspace is offered only when the underlying relationship exists, and
  * that relationship is read from the database (see workspaces.server.ts —
@@ -21,7 +22,7 @@
  * sees a homework tab again.
  */
 
-export type WorkspaceId = "personal" | "teaching" | "admin";
+export type WorkspaceId = "personal" | "teaching" | "admin" | "family";
 
 export type WorkspaceInfo = {
   id: WorkspaceId;
@@ -55,6 +56,12 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
     home: "/admin",
     owns: ["/admin"],
   },
+  family: {
+    id: "family",
+    labelKey: "workspaceFamily",
+    home: "/family",
+    owns: ["/family"],
+  },
 };
 
 /**
@@ -68,6 +75,7 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
 export function defaultWorkspace(available: WorkspaceId[]): WorkspaceId {
   if (available.includes("admin")) return "admin";
   if (available.includes("teaching")) return "teaching";
+  if (available.includes("family")) return "family";
   return "personal";
 }
 

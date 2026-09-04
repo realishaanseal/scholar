@@ -68,13 +68,57 @@ describe("the school asserts the relationship", () => {
 });
 
 describe("the personal layer is not a school's to hand on", () => {
+  const PERSONAL = [
+    "homework", "task_events", "academic_profile", "timetable",
+    "focusSeconds", "dismissed_signals", "study_sessions",
+  ];
+
+  /** A word-boundary match built without a template literal.
+   *
+   *  The previous version of this wrote new RegExp(`\b${t}\b`), where \b is
+   *  JavaScript's backspace escape and never reached the regex engine as a
+   *  boundary. It searched for "\x08homework\x08" and passed on any input at
+   *  all. String.raw keeps the backslash intact. */
+  const boundary = (t: string) => new RegExp(String.raw`\b` + t + String.raw`\b`);
+
+  it("builds a boundary pattern rather than a backspace", () => {
+    // Guards the bug above: if this reverts, every assertion below goes quiet.
+    expect(boundary("homework").source.charCodeAt(0)).toBe(92);
+    expect(boundary("homework").test("FROM homework WHERE")).toBe(true);
+  });
+
   it("names no personal table", () => {
     // Scholar knows when a child studies, for how long, and what they
     // planned. A parent is not an administrator of their child.
-    for (const t of ["homework", "task_events", "academic_profile", "timetable",
-                     "focusSeconds", "dismissed_signals", "study_sessions"]) {
-      expect(guardians, `guardians must not read ${t}`).not.toMatch(new RegExp(`\b${t}\b`));
+    for (const t of PERSONAL) {
+      expect(guardians, `guardians must not read ${t}`).not.toMatch(boundary(t));
     }
+  });
+
+  it("keeps the family screens clear of the personal layer too", () => {
+    // The domain being clean is not enough once there are pages: a component
+    // could import from anywhere. These are the only surfaces a guardian sees.
+    const surfaces = [
+      "src/components/family/ChildDigest.tsx",
+      "src/app/(app)/family/page.tsx",
+      "src/app/(app)/family/[studentId]/page.tsx",
+    ].map((f) => readFileSync(join(process.cwd(), f), "utf8"));
+
+    for (const src of surfaces) {
+      for (const t of PERSONAL) {
+        expect(src, `a family screen must not read ${t}`).not.toMatch(boundary(t));
+      }
+      expect(src).not.toMatch(/domains\/insight|scholar\/memory|scholar\/availability/);
+    }
+  });
+
+  it("scopes a child page by the session, never by the url alone", () => {
+    // The student id in the path names which of *their* children to show. It
+    // must not be the thing that decides whether they may see one.
+    const page = readFileSync(
+      join(process.cwd(), "src/app/(app)/family/[studentId]/page.tsx"), "utf8");
+    expect(page).toMatch(/wardsOf\(session\.user\.id\)/);
+    expect(page).toMatch(/notFound\(\)/);
   });
 
   it("shapes the digest so nothing personal can be added by accident", () => {

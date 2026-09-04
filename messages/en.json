@@ -618,7 +618,10 @@
     "navTimetable": "Timetable",
     "workspaceAdmin": "Administration",
     "workspacePersonal": "My work",
-    "workspaceTeaching": "Teaching"
+    "workspaceTeaching": "Teaching",
+    "workspaceFamily": "Family",
+    "navFamily": "My children",
+    "navAttendance": "Attendance"
   },
   "teach": {
     "attemptChip": "attempt {n}",
