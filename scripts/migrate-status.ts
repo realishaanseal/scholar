@@ -41,6 +41,7 @@ const EXPECTED: Record<string, string[]> = {
   "0019_differentiation": ["assignment_assignees"],
   "0020_attendance": ["attendance_sessions", "attendance_marks"],
   "0021_cohorts": ["cohorts", "cohort_members", "cohort_sections"],
+  "0022_guardians": ["guardian_links"],
 };
 
 async function main() {

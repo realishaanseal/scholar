@@ -144,7 +144,7 @@ function mapMembership(r: any): OrganizationMembership {
  * on user_id because this runs on essentially every authenticated request.
  */
 export async function resolveActor(userId: string): Promise<Actor> {
-  const [memberships, teaching, enrollments] = await Promise.all([
+  const [memberships, teaching, enrollments, wards] = await Promise.all([
     db
       .prepare(
         `SELECT organization_id, role, department_id, status
@@ -175,9 +175,22 @@ export async function resolveActor(userId: string): Promise<Actor> {
          WHERE e.user_id = ? AND e.status = 'active'`
       )
       .all(userId) as Promise<EnrollmentRow[]>,
+
+    // The children this adult may read about. Revoked links grant nothing:
+    // family arrangements change, sometimes because a court decided they
+    // should, and access has to end the moment a school says it has.
+    db
+      .prepare(
+        `SELECT student_user_id FROM guardian_links
+          WHERE guardian_user_id = ? AND revoked_at IS NULL`
+      )
+      .all(userId),
   ]);
 
-  return toActor(userId, { memberships, teaching, enrollments });
+  const actor = toActor(userId, { memberships, teaching, enrollments });
+  const children = (wards as any[]).map((r) => r.student_user_id);
+
+  return children.length > 0 ? { ...actor, guardianOf: children } : actor;
 }
 
 /* ── Academic structure ────────────────────────────────────────────────── */
