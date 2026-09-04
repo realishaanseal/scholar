@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { jsonRoute } from "@/lib/apiRoute";
 import { createUserWithPassword, findUserByEmail } from "@/lib/queries";
+import { acceptInvitationsFor } from "@/domains/identity";
 import { db } from "@/lib/db";
 import { ACCOUNT_INTENTS } from "@/lib/accountIntent";
 
@@ -49,6 +50,18 @@ export const POST = jsonRoute(async (req: Request) => {
 
   try {
     await createUserWithPassword(parsed.data.name, email, passwordHash);
+
+    // An institution may have been expecting this person. Applied here rather
+    // than on first sign-in so their very first page already has their
+    // courses on it — arriving to an empty Scholar and being told to come
+    // back later is how an onboarding loses people.
+    const created = await findUserByEmail(email);
+    if (created) {
+      const applied = await acceptInvitationsFor(created.id, email);
+      if (applied > 0) {
+        console.info(`[signup] applied ${applied} invitation(s) for ${email}`);
+      }
+    }
 
     // Separate statement rather than a wider createUserWithPassword: that
     // function is shared with OAuth account creation, and this is only ever

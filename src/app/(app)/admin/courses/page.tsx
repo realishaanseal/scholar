@@ -4,6 +4,7 @@ import { Reveal } from "@/components/motion";
 import { auth } from "@/lib/auth";
 import { administeredOrganizations } from "@/domains/identity";
 import { listCourses, listSections } from "@/domains/courses";
+import CourseCreator from "@/components/admin/CourseCreator";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,14 @@ export default async function AdminCoursesPage() {
         subtitle={`${courses.length} ${courses.length === 1 ? "course" : "courses"} in ${org.name}.`}
       />
 
+      <CourseCreator hasCourses={courses.length > 0} />
+
       {courses.length === 0 ? (
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
           <p className="text-[14px] font-medium text-slate-200">No courses yet</p>
           <p className="mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-slate-400">
-            A course is created from the command line for now, together with its first
-            section and the teacher who takes it.
+            Create one above. It comes with its first class, and an academic year and
+            term if this is your first.
           </p>
         </div>
       ) : (

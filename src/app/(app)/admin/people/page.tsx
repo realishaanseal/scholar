@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 import PageHeading from "@/components/PageHeading";
 import { Reveal } from "@/components/motion";
 import { auth } from "@/lib/auth";
-import { administeredOrganizations, countPeople, listPeople } from "@/domains/identity";
+import {
+  administeredOrganizations, countPeople, listPeople, pendingInvitations,
+} from "@/domains/identity";
+import { listCourses, listSections } from "@/domains/courses";
+import PeopleInviter from "@/components/admin/PeopleInviter";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +27,20 @@ export default async function PeoplePage() {
   const org = (await administeredOrganizations(session.user.id))[0]!;
   // The institution's total is a count rather than the length of a page, now
   // that a page is not everyone.
-  const [page, total] = await Promise.all([
+  const [page, total, pending, courses] = await Promise.all([
     listPeople(org.id),
     countPeople(org.id),
+    pendingInvitations(org.id),
+    listCourses(org.id),
   ]);
   const people = page.items;
+
+  // Classes an invitee can be dropped straight into, so inviting a cohort and
+  // building its roster are one action rather than two.
+  const sectionLists = await Promise.all(courses.map((c) => listSections(c.id)));
+  const sections = courses.flatMap((c, i) =>
+    sectionLists[i].map((sec) => ({ id: sec.id, label: `${c.code} · ${sec.name}` }))
+  );
 
   return (
     <div>
@@ -36,13 +49,36 @@ export default async function PeoplePage() {
         subtitle={`${total} ${total === 1 ? "person" : "people"} in ${org.name}.`}
       />
 
+      <PeopleInviter sections={sections} />
+
+      {/* Invited and not yet arrived. Shown so an administrator can tell the
+          difference between somebody who has not registered and an address
+          that was typed wrong. */}
+      {pending.length > 0 && (
+        <div className="card mb-5 rounded-xl px-4 py-3.5">
+          <p className="text-[12.5px] font-medium text-slate-200">
+            {pending.length} invited, waiting to register
+          </p>
+          <ul className="mt-2 space-y-1">
+            {pending.map((p) => (
+              <li key={p.id} className="flex items-baseline gap-2 text-[12.5px] text-slate-400">
+                <span className="font-mono">{p.email}</span>
+                <span className="text-[11.5px] text-slate-600">{p.role.toLowerCase().replace(/_/g, " ")}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11.5px] leading-relaxed text-slate-600">
+            They join automatically when they sign up with that address.
+          </p>
+        </div>
+      )}
+
       {people.length === 0 ? (
         <div className="card grid place-items-center rounded-xl px-6 py-14 text-center">
           <p className="text-[14px] font-medium text-slate-200">Nobody here yet</p>
           <p className="mt-1.5 max-w-[48ch] text-[13px] leading-relaxed text-slate-400">
-            People are linked from the command line for now. They must already have a
-            Scholar account — the script connects existing people to the institution
-            rather than creating accounts for them.
+            Add them above. Anyone who already has a Scholar account joins straight
+            away; anyone who does not joins when they register with that address.
           </p>
         </div>
       ) : (

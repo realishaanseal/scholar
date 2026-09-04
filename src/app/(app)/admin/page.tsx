@@ -34,12 +34,17 @@ export default async function AdminPage() {
         <div className="card mt-4 rounded-xl px-4 py-3.5">
           <p className="text-[13.5px] text-slate-200">Nobody is enrolled yet</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-slate-400">
-            People are added from the command line while the console is being built:
-            <code className="mx-1 rounded bg-white/[0.06] px-1.5 py-0.5 text-[11.5px]">
-              npm run institution:setup -- --students them@example.com
-            </code>
-            Accounts must already exist; the script links people, it never creates them.
+            Create a course, then add people to it. Anyone without a Scholar account
+            yet is invited, and joins the moment they register.
           </p>
+          <div className="mt-2.5 flex gap-2">
+            <Link href="/admin/courses" className="btn btn-ghost px-3 py-1.5 text-[12.5px]">
+              Create a course
+            </Link>
+            <Link href="/admin/people" className="btn btn-ghost px-3 py-1.5 text-[12.5px]">
+              Add people
+            </Link>
+          </div>
         </div>
       )}
     </div>
