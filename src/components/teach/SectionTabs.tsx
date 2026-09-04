@@ -17,7 +17,7 @@ import { cn } from "@/lib/cn";
  * refreshes while marking does not land back on Work.
  */
 
-export type TabKey = "work" | "materials" | "students" | "grades" | "notices";
+export type TabKey = "work" | "materials" | "students" | "grades" | "notices" | "register";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "work", label: "Work" },
@@ -25,6 +25,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "students", label: "Students" },
   { key: "grades", label: "Grades" },
   { key: "notices", label: "Notices" },
+  { key: "register", label: "Register" },
 ];
 
 export default function SectionTabs({
@@ -33,6 +34,7 @@ export default function SectionTabs({
   students,
   grades,
   notices,
+  register,
   counts,
   labels,
 }: {
@@ -47,6 +49,8 @@ export default function SectionTabs({
   grades?: React.ReactNode;
   /** Shown to both, because a notice is for the class. */
   notices?: React.ReactNode;
+  /** Teacher only: a register names which children were in a room. */
+  register?: React.ReactNode;
   counts?: Partial<Record<TabKey, number>>;
   /**
    * The same shelf is "Materials" to whoever fills it and "Library" to
@@ -60,7 +64,8 @@ export default function SectionTabs({
     (t) =>
       !(t.key === "students" && students === undefined) &&
       !(t.key === "grades" && grades === undefined) &&
-      !(t.key === "notices" && notices === undefined)
+      !(t.key === "notices" && notices === undefined) &&
+      !(t.key === "register" && register === undefined)
   );
 
   const [active, setActive] = useState<TabKey>(() => {
@@ -132,6 +137,9 @@ export default function SectionTabs({
       )}
       {notices !== undefined && (
         <div role="tabpanel" hidden={active !== "notices"}>{notices}</div>
+      )}
+      {register !== undefined && (
+        <div role="tabpanel" hidden={active !== "register"}>{register}</div>
       )}
     </div>
   );

@@ -39,6 +39,7 @@ const EXPECTED: Record<string, string[]> = {
   "0017_rubrics": ["rubrics", "rubric_criteria", "rubric_levels", "rubric_marks"],
   "0018_announcements": ["announcements"],
   "0019_differentiation": ["assignment_assignees"],
+  "0020_attendance": ["attendance_sessions", "attendance_marks"],
 };
 
 async function main() {

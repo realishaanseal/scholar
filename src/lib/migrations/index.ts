@@ -19,6 +19,7 @@ import { sql as invitations } from "./0016_invitations";
 import { sql as rubrics } from "./0017_rubrics";
 import { sql as announcements } from "./0018_announcements";
 import { sql as differentiation } from "./0019_differentiation";
+import { sql as attendance } from "./0020_attendance";
 
 /**
  * Versioned schema migrations.
@@ -73,6 +74,7 @@ export const MIGRATIONS: Migration[] = [
   { id: "0017_rubrics", sql: rubrics },
   { id: "0018_announcements", sql: announcements },
   { id: "0019_differentiation", sql: differentiation },
+  { id: "0020_attendance", sql: attendance },
 ];
 
 /** Arbitrary but fixed: two deploys booting at once must pick the same lock. */

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import MaterialsPanel from "@/components/teach/MaterialsPanel";
 import SectionTabs from "@/components/teach/SectionTabs";
 import Announcements from "@/components/teach/Announcements";
+import Register from "@/components/teach/Register";
 import SectionWorkbench from "@/components/teach/SectionWorkbench";
 import Gradebook from "@/components/teach/Gradebook";
 import { auth } from "@/lib/auth";
@@ -95,6 +96,7 @@ export default async function TeachSectionPage({
         students={<Roster roster={roster} />}
         grades={<Gradebook data={gradebook} schemeId={orgTime.gradingScheme} />}
         notices={<Announcements sectionId={sectionId} />}
+        register={<Register sectionId={sectionId} />}
       />
     </div>
   );
