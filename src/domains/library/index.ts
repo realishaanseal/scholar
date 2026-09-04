@@ -337,3 +337,78 @@ export async function coursesReferencingFile(fileId: string): Promise<
     publishedMaterial: Boolean(r.published_material),
   }));
 }
+
+/**
+ * Everything a student has been given, across every course they take.
+ *
+ * Materials lived inside a per-course tab, which means a student who wants
+ * "the physics ebook" has to first remember which course it is under. That is
+ * the wrong shape: a library is a place you browse, and browsing one shelf at
+ * a time with the shelves in separate rooms is not browsing.
+ *
+ * Ordered by what is actually due rather than alphabetically. Scholar is the
+ * only system here that knows which of a student's work is imminent, so on
+ * Wednesday the material for Friday's essay belongs at the top. That is the
+ * join no other library has available to it.
+ */
+export type StudentMaterial = CourseMaterial & {
+  courseCode: string;
+  courseTitle: string;
+  sectionId: string;
+  /** Hours until the soonest outstanding work in this course. Null when none. */
+  hoursUntilDue: number | null;
+};
+
+export async function materialsForStudent(
+  userId: string,
+  organizationId: string
+): Promise<StudentMaterial[]> {
+  const rows = await db
+    .prepare(
+      `SELECT m.id, m.organization_id, m.course_id, m.title, m.description,
+              m.kind, m.file_id, m.url, m.is_published, m.position, m.created_at,
+              c.code AS course_code, c.title AS course_title,
+              cs.id AS section_id,
+              -- The soonest thing still outstanding in this course, which is
+              -- what decides whether this shelf matters today.
+              (
+                SELECT MIN(a.due_at)
+                  FROM assignments a
+                 WHERE a.course_section_id = cs.id
+                   AND a.status = 'published'
+                   AND a.due_at > now()
+                   AND NOT EXISTS (
+                     SELECT 1 FROM assignment_submissions s
+                      WHERE s.assignment_id = a.id AND s.user_id = e.user_id
+                   )
+                   AND (
+                     NOT EXISTS (SELECT 1 FROM assignment_assignees x WHERE x.assignment_id = a.id)
+                     OR EXISTS (
+                       SELECT 1 FROM assignment_assignees x
+                        WHERE x.assignment_id = a.id AND x.user_id = e.user_id
+                     )
+                   )
+              ) AS next_due
+         FROM enrollments e
+         JOIN course_sections cs ON cs.id = e.course_section_id
+         JOIN courses c ON c.id = cs.course_id
+         JOIN course_materials m ON m.course_id = c.id AND m.is_published
+        WHERE e.user_id = ? AND e.status = 'active'
+          AND cs.organization_id = ?
+        ORDER BY next_due NULLS LAST, c.code, m.position, m.created_at`
+    )
+    .all(userId, organizationId);
+
+  const now = Date.now();
+  return (rows as any[]).map((r) => {
+    const due = r.next_due instanceof Date ? r.next_due.getTime()
+      : r.next_due ? Date.parse(r.next_due) : null;
+    return {
+      ...mapMaterial(r),
+      courseCode: String(r.course_code ?? ""),
+      courseTitle: String(r.course_title ?? ""),
+      sectionId: r.section_id,
+      hoursUntilDue: due === null ? null : Math.max(0, Math.round((due - now) / 3_600_000)),
+    };
+  });
+}

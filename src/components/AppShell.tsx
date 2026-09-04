@@ -60,8 +60,21 @@ const PERSONAL_NAV: NavItem[] = [
  */
 const COURSES_ITEM: NavItem = {
   href: "/learn",
-    labelKey: "navCourses",
+  labelKey: "navCourses",
   icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+};
+
+/**
+ * The library, beside Courses and offered on the same condition.
+ *
+ * Everything a student has been given, across every course at once — because
+ * finding the physics ebook should not begin with remembering which course it
+ * was filed under.
+ */
+const LIBRARY_ITEM: NavItem = {
+  href: "/library",
+  labelKey: "navLibrary",
+  icon: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2zM9 7h6M9 11h4",
 };
 
 /** What a teacher does: classes, and the marking waiting in them. */
@@ -205,7 +218,7 @@ export default function AppShell({
   // the tools for organising it.
   const items =
     workspace === "personal" && enrolled
-      ? [PERSONAL_NAV[0], COURSES_ITEM, ...PERSONAL_NAV.slice(1)]
+      ? [PERSONAL_NAV[0], COURSES_ITEM, LIBRARY_ITEM, ...PERSONAL_NAV.slice(1)]
       : WORKSPACE_NAV[workspace];
 
   return (

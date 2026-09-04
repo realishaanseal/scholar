@@ -4,6 +4,7 @@ import { calibrateEstimate, deadlineCollisions, planStart } from "./plan";
 import type { CollisionWarning, WorkPlan } from "./plan";
 
 export * from "./plan";
+export * from "./student";
 
 /**
  * Where the institution's data meets what Scholar knows about the student.

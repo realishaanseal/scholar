@@ -268,3 +268,21 @@ function iso(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   return v instanceof Date ? v.toISOString() : String(v);
 }
+
+/**
+ * Which institutions a person is actually enrolled in.
+ *
+ * Plural because a student can legitimately be at two — a sixth-former taking
+ * a course at a partner college, somebody transferring mid-year — and a view
+ * that quietly picked the first would drop half their work with no error
+ * anywhere.
+ */
+export async function enrolledOrganizations(userId: string): Promise<string[]> {
+  const rows = await db
+    .prepare(
+      `SELECT DISTINCT organization_id FROM enrollments
+        WHERE user_id = ? AND status = 'active'`
+    )
+    .all(userId);
+  return (rows as any[]).map((r) => r.organization_id);
+}

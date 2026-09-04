@@ -123,22 +123,23 @@
     "deadlineDifferentDay": "आपके यहाँ यह दूसरा दिन है"
   },
   "shell": {
-    "navHomework": "गृहकार्य",
-    "navTimetable": "समय-सारणी",
-    "navInsights": "अंतर्दृष्टि",
-    "navGroups": "समूह",
-    "navCourses": "पाठ्यक्रम",
+    "navActivity": "गतिविधि",
+    "navAdminCourses": "पाठ्यक्रम",
     "navClasses": "कक्षाएँ",
+    "navCourses": "पाठ्यक्रम",
+    "navGroups": "समूह",
+    "navHealth": "स्थिति",
+    "navHomework": "गृहकार्य",
+    "navInsights": "अंतर्दृष्टि",
+    "navLibrary": "पुस्तकालय",
     "navMarking": "जाँच",
     "navOverview": "अवलोकन",
     "navPeople": "लोग",
-    "navAdminCourses": "पाठ्यक्रम",
-    "navHealth": "स्थिति",
-    "navActivity": "गतिविधि",
     "navSettings": "सेटिंग्स",
+    "navTimetable": "समय-सारणी",
+    "workspaceAdmin": "प्रशासन",
     "workspacePersonal": "मेरा काम",
-    "workspaceTeaching": "अध्यापन",
-    "workspaceAdmin": "प्रशासन"
+    "workspaceTeaching": "अध्यापन"
   },
   "teach": {
     "attemptChip": "प्रयास {n}",

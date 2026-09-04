@@ -65,16 +65,46 @@ describe("a register is not a student-facing list", () => {
 });
 
 describe("attendance never becomes a prediction about a child", () => {
-  it("is not read by the insight layer", () => {
-    // Attendance is institutional data and an administrator may see it. As an
-    // input to a per-student prediction it would profile children on their
-    // presence, and the correlation it finds is mostly poverty, illness and
-    // caring responsibilities.
-    const insight = readdirSync(join(process.cwd(), "src/domains/insight"))
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => code(join("src/domains/insight", f)))
-      .join("\n");
-    expect(insight).not.toMatch(/attendance/i);
+  it("is not read by anything that plans, ranks or reports upward", () => {
+    // The rule was originally written as "no file in the insight layer may
+    // mention attendance", which was a proxy rather than the rule. A student
+    // reading their own register to find out what they missed is the data
+    // being used for the person it is about, which was never the concern.
+    //
+    // The concern is that it becomes a prediction, or reaches an
+    // administrator. So the planner, the institution-health module and the
+    // risk detector stay clear of it entirely, and only the student-facing
+    // module may read it at all.
+    for (const f of ["plan.ts", "index.ts", "institution.ts"]) {
+      expect(
+        code(join("src/domains/insight", f)),
+        `${f} must not read attendance`
+      ).not.toMatch(/attendance/i);
+    }
+  });
+
+  it("is read only to tell a student what they missed", () => {
+    // The one permitted use, and it is a lookup rather than an inference:
+    // these are the days you were away, and this is what was set on them.
+    const student = code("src/domains/insight/student.ts");
+    expect(student).toMatch(/whatYouMissed/);
+    // No verdict about the person — nothing scored, ranked or forecast.
+    expect(student).not.toMatch(/\brisk\b|\bpredict|\blikely\b/i);
+  });
+
+  it("never reaches an administrator's screens", () => {
+    // Phase 10 refused engagement metrics for administrators. An attendance
+    // chart by year group would be the same tool with a different label.
+    const dir = join(process.cwd(), "src/app/(app)/admin");
+    const pages: string[] = [];
+    (function walk(d: string) {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (e.name.endsWith(".tsx")) pages.push(readFileSync(p, "utf8"));
+      }
+    })(dir);
+    expect(pages.join("\n")).not.toMatch(/attendance/i);
   });
 
   it("is not read by the risk detector", () => {
