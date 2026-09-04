@@ -9,3 +9,4 @@ export * from "./repository";
 export { toActor } from "./actor";
 export type { MembershipRow, TeachingRow, EnrollmentRow } from "./actor";
 export * from "./invitations";
+export * from "./cohorts";

@@ -1,4 +1,5 @@
 import { db, newId } from "@/lib/db";
+import { syncCohort } from "./cohorts";
 
 /**
  * Bringing people into an institution before they have an account.
@@ -49,6 +50,7 @@ export async function invite(input: {
   email: string;
   role: InvitationRole;
   courseSectionId?: string | null;
+  cohortId?: string | null;
   invitedBy: string;
 }): Promise<Invitation> {
   const email = normalise(input.email);
@@ -56,17 +58,18 @@ export async function invite(input: {
   await db
     .prepare(
       `INSERT INTO invitations
-         (id, organization_id, email, role, course_section_id, invited_by)
-       VALUES (?, ?, ?, ?, ?, ?)
+         (id, organization_id, email, role, course_section_id, cohort_id, invited_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (organization_id, email) WHERE accepted_at IS NULL
        DO UPDATE SET role = excluded.role,
                      course_section_id = excluded.course_section_id,
+                     cohort_id = excluded.cohort_id,
                      invited_by = excluded.invited_by,
                      created_at = now()`
     )
     .run(
       newId(), input.organizationId, email, input.role,
-      input.courseSectionId ?? null, input.invitedBy
+      input.courseSectionId ?? null, input.cohortId ?? null, input.invitedBy
     );
 
   const row = await db
@@ -130,7 +133,7 @@ export async function acceptInvitationsFor(
   try {
     const rows = await db
       .prepare(
-        `SELECT id, organization_id, role, course_section_id
+        `SELECT id, organization_id, role, course_section_id, cohort_id
            FROM invitations
           WHERE email = ? AND accepted_at IS NULL`
       )
@@ -168,6 +171,20 @@ export async function acceptInvitationsFor(
             )
             .run(newId(), r.organization_id, r.course_section_id, userId);
         }
+      }
+
+      // A cohort on the invitation puts them in the year group, and the sync
+      // enrols them in everything it is linked to — so inviting a cohort and
+      // building all of its rosters is one action.
+      if (r.cohort_id) {
+        await db
+          .prepare(
+            `INSERT INTO cohort_members (id, organization_id, cohort_id, user_id)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT (cohort_id, user_id) DO NOTHING`
+          )
+          .run(newId(), r.organization_id, r.cohort_id, userId);
+        await syncCohort(r.organization_id, r.cohort_id);
       }
 
       await db
